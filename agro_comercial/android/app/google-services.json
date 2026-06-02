@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "547900345321",
+    "project_id": "agro-comercial",
+    "storage_bucket": "agro-comercial.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547900345321:android:699586724cd1455b56d978",
+        "android_client_info": {
+          "package_name": "com.example.agro_comercial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtOlTuVUKQi6cdG38mepLwN-ZPp5ycNdE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547900345321:android:3cb02296370771d956d978",
+        "android_client_info": {
+          "package_name": "dev.vinicius.agro_comercil.agro_comercial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtOlTuVUKQi6cdG38mepLwN-ZPp5ycNdE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
