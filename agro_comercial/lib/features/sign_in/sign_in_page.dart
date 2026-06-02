@@ -3,8 +3,8 @@ import 'dart:developer';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/keys.dart';
-import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
+import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/multi_text_button.dart';
@@ -13,7 +13,6 @@ import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 
 import '../../locator.dart';
-import '../../services/sync_service/sync_service.dart';
 import 'sign_in_controller.dart';
 import 'sign_in_state.dart';
 
@@ -24,18 +23,16 @@ class SignInPage extends StatefulWidget {
   State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
+class _SignInPageState extends State<SignInPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _signInController = locator.get<SignInController>();
-  final _syncController = locator.get<SyncController>();
 
   @override
   void initState() {
     super.initState();
     _signInController.addListener(_handleSignInStateChange);
-    _syncController.addListener(_handleSyncStateChange);
   }
 
   @override
@@ -43,60 +40,33 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
     _emailController.dispose();
     _passwordController.dispose();
     _signInController.dispose();
-    _syncController.dispose();
     super.dispose();
   }
 
   void _handleSignInStateChange() {
-    switch (_signInController.state.runtimeType) {
-      case SignInStateLoading:
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const CustomCircularProgressIndicator(),
-        );
-        break;
-      case SignInStateSuccess:
-        _syncController.syncFromServer();
-        break;
-      case SignInStateError:
-        Navigator.pop(context); // Remove o loading
-        showCustomModalBottomSheet(
-          context: context,
-          content: (_signInController.state as SignInStateError).message,
-          buttonText: "Tentar novamente",
-        );
-        break;
-    }
-  }
+    final state = _signInController.state;
 
-  void _handleSyncStateChange() {
-    switch (_syncController.state.runtimeType) {
-      case DownloadedDataFromServer:
-        _syncController.syncToServer();
-        break;
-      case UploadedDataToServer:
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          NamedRoute.home,
-          (route) => false,
-        );
-        break;
-      case SyncStateError:
-      case UploadDataToServerError:
-      case DownloadDataFromServerError:
-        Navigator.pop(context); // Remove o loading
-        showCustomModalBottomSheet(
-          context: context,
-          content: (_syncController.state as SyncStateError).message,
-          buttonText: "Tentar novamente",
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-            context,
-            NamedRoute.signIn,
-            (route) => false,
-          ),
-        );
-        break;
+    if (state is SignInStateLoading) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const CustomCircularProgressIndicator(),
+      );
+    } else if (state is SignInStateSuccess) {
+      Navigator.pop(context); // Remove o loading
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/home', // Rota em string para evitar erro de classe não definida
+        (route) => false,
+      );
+    } else if (state is SignInStateError) {
+      Navigator.pop(context); // Remove o loading
+      customModalBottomSheet(
+        context,
+        content: state.message,
+        buttonText: "Tentar novamente",
+      );
     }
   }
 
@@ -119,7 +89,7 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
         key: Keys.signInListView,
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
         children: [
-          const SizedBox(height: 48), // Espaço para não colar no topo
+          const SizedBox(height: 48),
           Text(
             'Bem-vindo de volta!',
             textAlign: TextAlign.center,
@@ -127,8 +97,6 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
               color: AppColors.greenlightOne,
             ),
           ),
-          // Se tiver a imagem descomente abaixo, mas recomendo ajustar a altura
-          // Image.asset('assets/images/sign_in_image.png', height: 200),
           const SizedBox(height: 32),
           Form(
             key: _formKey,
@@ -157,8 +125,10 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
             alignment: Alignment.centerRight,
             child: TextButton(
               key: Keys.forgotPasswordButton,
-              onPressed: () =>
-                  Navigator.popAndPushNamed(context, NamedRoute.forgotPassword),
+              onPressed: () => Navigator.popAndPushNamed(
+                context,
+                '/forgot_password',
+              ), // Rota corrigida
               child: const Text('Esqueceu a senha?'),
             ),
           ),
@@ -177,8 +147,10 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
           ),
           MultiTextButton(
             key: Keys.signInDontHaveAccountButton,
-            onPressed: () =>
-                Navigator.popAndPushNamed(context, NamedRoute.signUp),
+            onPressed: () => Navigator.popAndPushNamed(
+              context,
+              '/sign_up',
+            ), // Rota corrigida
             children: [
               Text(
                 'Não tem uma conta? ',

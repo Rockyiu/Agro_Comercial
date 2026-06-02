@@ -3,10 +3,15 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 
-Future<void> customModalBottomSheet(BuildContext context) {
+Future<void> customModalBottomSheet(
+  BuildContext context, {
+  required String content,
+  required String buttonText,
+  VoidCallback? onPressed,
+}) {
   return showModalBottomSheet<void>(
     context: context,
-    shape: RoundedRectangleBorder(
+    shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.only(
         topLeft: Radius.circular(38.0),
         topRight: Radius.circular(38.0),
@@ -14,7 +19,7 @@ Future<void> customModalBottomSheet(BuildContext context) {
     ),
     builder: (BuildContext context) {
       return Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.iceWhite,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(38.0),
@@ -27,10 +32,14 @@ Future<void> customModalBottomSheet(BuildContext context) {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(
-                'Ops. Algo deu errado.',
-                style: AppTextStyles.midText20.copyWith(
-                  color: AppColors.greenlightOne,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  content, // Agora exibe o erro dinâmico do Firebase
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.midText20.copyWith(
+                    color: AppColors.greenlightOne,
+                  ),
                 ),
               ),
               Padding(
@@ -39,8 +48,8 @@ Future<void> customModalBottomSheet(BuildContext context) {
                   horizontal: 32.0,
                 ),
                 child: PrimaryButton(
-                  text: 'Tentar Novamente',
-                  onPressed: () => Navigator.pop(context),
+                  text: buttonText, // Agora exibe o texto dinâmico do botão
+                  onPressed: onPressed ?? () => Navigator.pop(context),
                 ),
               ),
             ],

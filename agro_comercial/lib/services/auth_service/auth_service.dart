@@ -1,12 +1,13 @@
 import 'package:agro_comercial/common/models/user_model.dart';
+import 'package:agro_comercial/services/services.dart';
 
 abstract class AuthService {
   Future<DataResult<UserModel>> signUp({
     String? name,
     required String email,
     required String password,
-    required String cpf,
-    required String role,
+    required String cpf, // Adicionado para o Agro Comercial
+    required String role, // Adicionado para identificar Admin vs Colaborador
   });
 
   Future<DataResult<UserModel>> signIn({

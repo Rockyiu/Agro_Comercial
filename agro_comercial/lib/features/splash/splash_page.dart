@@ -1,11 +1,10 @@
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/common/constants/routes.dart';
-import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:flutter/material.dart';
 
-import '../../locator.dart';
-import '../../services/sync_service/sync_service.dart';
+import 'package:agro_comercial/common/constants/app_colors.dart';
+import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/locator.dart';
+
 import 'splash_controller.dart';
 import 'splash_state.dart';
 
@@ -16,65 +15,28 @@ class SplashPage extends StatefulWidget {
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> with CustomModalSheetMixin {
+class _SplashPageState extends State<SplashPage> {
   final _splashController = locator.get<SplashController>();
-  final _syncController = locator.get<SyncController>();
 
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) => Sizes.init(context));
-
     _splashController.isUserLogged();
     _splashController.addListener(_handleSplashStateChange);
-    _syncController.addListener(_handleSyncStateChange);
   }
 
   @override
   void dispose() {
     _splashController.dispose();
-    _syncController.dispose();
     super.dispose();
   }
 
   void _handleSplashStateChange() {
+    // Se o usuário estiver logado, vai para a Home, senão, vai para o Login
     if (_splashController.state is AuthenticatedUser) {
-      _syncController.syncFromServer();
-    } else {
-      Navigator.pushReplacementNamed(context, NamedRoute.initial);
-    }
-  }
-
-  void _handleSyncStateChange() {
-    final state = _syncController.state;
-
-    switch (state.runtimeType) {
-      case DownloadedDataFromServer:
-        _syncController.syncToServer();
-        break;
-      case UploadedDataToServer:
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          NamedRoute.home,
-          (route) => false,
-        );
-        break;
-      case SyncStateError:
-      case UploadDataToServerError:
-      case DownloadDataFromServerError:
-        showCustomModalBottomSheet(
-          context: context,
-          content: (state as SyncStateError).message,
-          buttonText: 'Go to login',
-          isDismissible: false,
-          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-            context,
-            NamedRoute.initial,
-            (route) => false,
-          ),
-        );
-        break;
+      Navigator.pushReplacementNamed(context, '/home');
+    } else if (_splashController.state is UnauthenticatedUser) {
+      Navigator.pushReplacementNamed(context, '/sign_in');
     }
   }
 
@@ -87,21 +49,22 @@ class _SplashPageState extends State<SplashPage> with CustomModalSheetMixin {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: AppColors.greenGradient,
+            colors: AppColors.greenGradient, // Mantido o gradiente original
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'financy',
-              style: AppTextStyles.bigText.copyWith(color: AppColors.white),
+              'Gestão Rural', // Trocado "financy" para o nome do seu projeto
+              style: AppTextStyles.midText36.copyWith(color: Colors.white),
             ),
+            const SizedBox(height: 8.0),
             Text(
-              'Syncing data...',
-              style: AppTextStyles.smallText13.copyWith(color: AppColors.white),
+              'Carregando...', // Traduzido
+              style: AppTextStyles.smallText.copyWith(color: Colors.white),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 24.0),
             const CustomCircularProgressIndicator(),
           ],
         ),

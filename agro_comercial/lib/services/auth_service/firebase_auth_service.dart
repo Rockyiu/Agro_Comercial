@@ -2,9 +2,9 @@ import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agro_comercial/services/services.dart';
 
 import 'auth_service.dart';
-// Certifique-se de importar suas classes de DataResult e Exceptions corretas aqui
 
 class FirebaseAuthService implements AuthService {
   FirebaseAuthService()
@@ -28,7 +28,7 @@ class FirebaseAuthService implements AuthService {
       );
 
       if (result.user != null) {
-        // Busca os dados adicionais no banco (Crucial para pegar o 'role' e 'cpf')
+        // Busca os dados adicionais no banco Firestore para pegar o 'role' e 'cpf'
         final doc = await _firestore
             .collection('users')
             .doc(result.user!.uid)
@@ -47,7 +47,6 @@ class FirebaseAuthService implements AuthService {
             ),
           );
         } else {
-          // Fallback caso o documento não exista
           return DataResult.success(_createUserModelFromAuthUser(result.user!));
         }
       }
@@ -67,7 +66,7 @@ class FirebaseAuthService implements AuthService {
     required String role,
   }) async {
     try {
-      // Repassando cpf e role para a cloud function
+      // Repassa as novas informações pra Cloud Function criar o user completo no Firebase
       await _functions.httpsCallable('registerUser').call({
         "email": email,
         "password": password,
@@ -82,7 +81,6 @@ class FirebaseAuthService implements AuthService {
       );
 
       if (result.user != null) {
-        // Retorna o usuário criado com os atributos já mapeados localmente
         return DataResult.success(
           UserModel(
             id: result.user!.uid,
@@ -131,7 +129,7 @@ class FirebaseAuthService implements AuthService {
       id: user.uid,
       cpf: null,
       password: null,
-      role: 'colaborador', // Perfil padrão por segurança
+      role: 'colaborador',
     );
   }
 
