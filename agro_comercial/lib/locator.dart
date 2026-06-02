@@ -1,5 +1,5 @@
-import 'package:agro_comercial/services/auth_service.dart';
-import 'package:agro_comercial/services/firebase_auth_service.dart';
+import 'package:agro_comercial/services/auth_service/auth_service.dart';
+import 'package:agro_comercial/services/auth_service/firebase_auth_service.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:financy_app/features/forgot_password/forgot_password_controller.dart';
 import 'package:firebase_auth/firebase_auth.dart';

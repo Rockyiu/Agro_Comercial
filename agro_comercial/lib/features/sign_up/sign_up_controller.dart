@@ -1,7 +1,7 @@
 import 'dart:developer';
 
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
-import 'package:agro_comercial/services/auth_service.dart';
+import 'package:agro_comercial/services/auth_service/auth_service.dart';
 import 'package:agro_comercial/services/secure_storage.dart';
 import 'package:flutter/foundation.dart';
 

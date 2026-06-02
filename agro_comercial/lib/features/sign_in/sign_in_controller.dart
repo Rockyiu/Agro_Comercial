@@ -1,13 +1,19 @@
-import 'package:agro_comercial/features/sign_in/sign_in_state.dart';
-import 'package:agro_comercial/services/auth_service.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import '../../services/services.dart';
+import 'sign_in_state.dart';
 
 class SignInController extends ChangeNotifier {
-  final AuthService _service;
+  SignInController({
+    required AuthService authService,
+    required SecureStorageService secureStorageService,
+  }) : _secureStorageService = secureStorageService,
+       _authService = authService;
 
-  SignInController(this._service);
+  final AuthService _authService;
+  final SecureStorageService _secureStorageService;
 
-  SignInState _state = SingInStateInitial();
+  SignInState _state = SignInStateInitial();
 
   SignInState get state => _state;
 
@@ -16,14 +22,23 @@ class SignInController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> SignUp({required String email, required String password}) async {
+  Future<void> signIn({required String email, required String password}) async {
     _changeState(SignInStateLoading());
 
-    try {
-      await _service.signIn(email: email, password: password);
-      _changeState(SignInStateSuccess());
-    } catch (e) {
-      _changeState(SignInStateError(e.toString()));
-    }
+    final result = await _authService.signIn(email: email, password: password);
+
+    result.fold((error) => _changeState(SignInStateError(error.message)), (
+      data,
+    ) async {
+      await _secureStorageService.write(
+        key: "CURRENT_USER",
+        value: data.toJson(),
+      );
+
+      result.fold(
+        (error) => _changeState(SignInStateError(error.message)),
+        (_) => _changeState(SignInStateSuccess()),
+      );
+    });
   }
 }

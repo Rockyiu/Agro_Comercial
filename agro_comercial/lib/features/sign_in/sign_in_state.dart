@@ -1,6 +1,6 @@
 abstract class SignInState {}
 
-class SingInStateInitial extends SignInState {}
+class SignInStateInitial extends SignInState {}
 
 class SignInStateLoading extends SignInState {}
 

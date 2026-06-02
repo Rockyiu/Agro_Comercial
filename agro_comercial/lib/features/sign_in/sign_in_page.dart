@@ -1,20 +1,14 @@
 import 'dart:developer';
 
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/common/utils/uppercase_text_formatter.dart';
-import 'package:agro_comercial/common/utils/validator.dart';
-import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
-import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
-import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
-import 'package:agro_comercial/common/widgets/multi_text_button.dart';
-import 'package:agro_comercial/common/widgets/password_form_field.dart';
-import 'package:agro_comercial/common/widgets/primary_button.dart';
-import 'package:agro_comercial/features/sign_in/sign_in_controller.dart';
-import 'package:agro_comercial/features/sign_in/sign_in_state.dart';
-import 'package:agro_comercial/locator.dart';
-import 'package:agro_comercial/services/mock_auth_service.dart';
 import 'package:flutter/material.dart';
+
+import '../../common/constants/constants.dart';
+import '../../common/utils/utils.dart';
+import '../../common/widgets/widgets.dart';
+import '../../locator.dart';
+import '../../services/sync_service/sync_service.dart';
+import 'sign_in_controller.dart';
+import 'sign_in_state.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -23,89 +17,136 @@ class SignInPage extends StatefulWidget {
   State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage> {
+class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _controller = locator.get<SignInController>();
+  final _signInController = locator.get<SignInController>();
+  final _syncController = locator.get<SyncController>();
 
-  // Caso esta função não exista no seu código ainda, deixei ela criada vazia para não dar erro no botão
-  void _onSignInButtonPressed() {
-    // Lógica de cadastro vai aqui
+  @override
+  void initState() {
+    super.initState();
+    _signInController.addListener(_handleSignInStateChange);
+    _syncController.addListener(_handleSyncStateChange);
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _signInController.dispose();
+    _syncController.dispose();
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() {
-      if (_controller.state is SignInStateLoading) {
+  void _handleSignInStateChange() {
+    switch (_signInController.state.runtimeType) {
+      case SignInStateLoading:
         showDialog(
           context: context,
           builder: (context) => const CustomCircularProgressIndicator(),
         );
-      }
-      if (_controller.state is SignInStateSuccess) {
+        break;
+      case SignInStateSuccess:
+        _syncController.syncFromServer();
+        break;
+      case SignInStateError:
         Navigator.pop(context);
-        Navigator.push(
+        showCustomModalBottomSheet(
+          context: context,
+          content: (_signInController.state as SignInStateError).message,
+          buttonText: "Try again",
+        );
+        break;
+    }
+  }
+
+  void _handleSyncStateChange() {
+    switch (_syncController.state.runtimeType) {
+      case DownloadedDataFromServer:
+        _syncController.syncToServer();
+        break;
+      case UploadedDataToServer:
+        Navigator.pushNamedAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                Scaffold(body: Center(child: Text("Nova Tela"))),
+          NamedRoute.home,
+          (route) => false,
+        );
+        break;
+      case SyncStateError:
+      case UploadDataToServerError:
+      case DownloadDataFromServerError:
+        Navigator.pop(context);
+        showCustomModalBottomSheet(
+          context: context,
+          content: (_syncController.state as SyncStateError).message,
+          buttonText: "Try again",
+          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+            context,
+            NamedRoute.signIn,
+            (route) => false,
           ),
         );
-      }
-      if (_controller.state is SignInStateError) {
-        final error = _controller.state as SignInStateError;
-        Navigator.pop(context);
-        customModalBottomSheet(
-          context,
-          content: error.message,
-          buttonText: "Tentar novamente",
-        );
-      }
-    });
+        break;
+    }
+  }
+
+  void _onSignInButtonPressed() {
+    final valid =
+        _formKey.currentState != null && _formKey.currentState!.validate();
+    if (valid) {
+      _signInController.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+    } else {
+      log("erro ao logar");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView(
+        key: Keys.signInListView,
         children: [
           Text(
-            'Bem Vindo de Volta!',
+            'Welcome Back!',
             textAlign: TextAlign.center,
-            style: AppTextStyles.midText36.copyWith(
-              color: AppColors.greenlightOne,
+            style: AppTextStyles.mediumText36.copyWith(
+              color: AppColors.greenOne,
             ),
           ),
+          Image.asset('assets/images/sign_in_image.png'),
           Form(
             key: _formKey,
             child: Column(
               children: [
                 CustomTextFormField(
+                  key: Keys.signInEmailField,
                   controller: _emailController,
-                  labelText: "seu email",
-                  hintText: "email@email.com",
+                  labelText: "your email",
+                  hintText: "john@email.com",
                   validator: Validator.validateEmail,
                 ),
                 PasswordFormField(
+                  key: Keys.signInPasswordField,
                   controller: _passwordController,
-                  labelText: "Escolha a sua senha",
-                  hintText: "*******",
+                  labelText: "your password",
+                  hintText: "*********",
                   validator: Validator.validatePassword,
-                  helperText:
-                      "Sua senha deve ter no minimo 8 caracteres, um caracter especial, numero e letra maiscula",
+                  onEditingComplete: _onSignInButtonPressed,
                 ),
-              ], // <-- Fechamento corrigido dos filhos da Column
-            ), // <-- Fechamento da Column
-          ), // <-- Fechamento do Form
+              ],
+            ),
+          ),
+          TextButton(
+            key: Keys.forgotPasswordButton,
+            onPressed: () =>
+                Navigator.popAndPushNamed(context, NamedRoute.forgotPassword),
+            child: const Text('Forgot Password?'),
+          ),
           Padding(
             padding: const EdgeInsets.only(
               left: 32.0,
@@ -114,30 +155,30 @@ class _SignInPageState extends State<SignInPage> {
               bottom: 4.0,
             ),
             child: PrimaryButton(
-              // key: Keys.SignInButton, // Descomente se tiver as chaves configuradas
-              text: 'Sign Ip',
+              key: Keys.signInButton,
+              text: 'Sign In',
               onPressed: _onSignInButtonPressed,
             ),
           ),
           MultiTextButton(
-            // key: Keys.SignInAlreadyHaveAccountButton, // Descomente se tiver as chaves configuradas
-            // Substitua '/sign_in' por NamedRoute.signIn se tiver configurado suas rotas nomeadas
-            onPressed: () => Navigator.popAndPushNamed(context, '/sign_in'),
+            key: Keys.signInDontHaveAccountButton,
+            onPressed: () =>
+                Navigator.popAndPushNamed(context, NamedRoute.signUp),
             children: [
               Text(
-                'Ja tem uma conta? ',
+                'Don\'t have account? ',
                 style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
               ),
               Text(
-                'Sign In ',
+                'Sign Up',
                 style: AppTextStyles.smallText.copyWith(
-                  color: AppColors.greenlightOne,
+                  color: AppColors.greenOne,
                 ),
               ),
             ],
           ),
         ],
-      ), // Fechamento do ListView
-    ); // Fechamento do Scaffold que estava faltando!
+      ),
+    );
   }
 }
