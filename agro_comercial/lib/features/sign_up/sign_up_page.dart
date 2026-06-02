@@ -13,7 +13,7 @@ import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/sign_up/sign_up_controller.dart';
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:agro_comercial/services/mock_auth_service.dart';
+
 import 'package:flutter/material.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -29,11 +29,24 @@ class _SignUpPageState extends State<SignUpPage> {
   final _emailController = TextEditingController();
   final _cpfController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _signUpController = locator.get<SignUpController>()
 
-  // Caso esta função não exista no seu código ainda, deixei ela criada vazia para não dar erro no botão
+  // Corrigido a falta de ponto e vírgula
+  final _signUpController = locator.get<SignUpController>();
+
+  // Variável para armazenar o tipo de usuário selecionado
+  String _selectedRole = 'admin';
+
   void _onSignUpButtonPressed() {
-    // Lógica de cadastro vai aqui
+    // Valida todos os campos do Form antes de chamar o Controller
+    if (_formKey.currentState?.validate() ?? false) {
+      _signUpController.SignUp(
+        name: _nameController.text,
+        email: _emailController.text,
+        cpf: _cpfController.text,
+        password: _passwordController.text,
+        role: _selectedRole,
+      );
+    }
   }
 
   @override
@@ -48,26 +61,28 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() {
-      if (_controller.state is SignUpLoadingState) {
+    // Corrigida a referência da variável do controller (de _controller para _signUpController)
+    _signUpController.addListener(() {
+      if (_signUpController.state is SignUpLoadingState) {
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (context) => const CustomCircularProgressIndicator(),
         );
       }
-      if (_controller.state is SignUpSuccessState) {
-        Navigator.pop(context);
-        Navigator.push(
+      if (_signUpController.state is SignUpSuccessState) {
+        Navigator.pop(context); // Remove o loading
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (context) =>
-                Scaffold(body: Center(child: Text("Nova Tela"))),
+                const Scaffold(body: Center(child: Text("Home Page"))),
           ),
         );
       }
-      if (_controller.state is SignUpErrorState) {
-        final error = _controller.state as SignUpErrorState;
-        Navigator.pop(context);
+      if (_signUpController.state is SignUpErrorState) {
+        final error = _signUpController.state as SignUpErrorState;
+        Navigator.pop(context); // Remove o loading
         customModalBottomSheet(
           context,
           content: error.message,
@@ -81,6 +96,7 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
         children: [
           Text(
             'Insira seus dados!',
@@ -89,23 +105,64 @@ class _SignUpPageState extends State<SignUpPage> {
               color: AppColors.greenlightOne,
             ),
           ),
+          const SizedBox(height: 24),
           Form(
             key: _formKey,
             child: Column(
               children: [
                 CustomTextFormField(
                   controller: _nameController,
-                  labelText: "seu nome",
+                  labelText: "Seu nome",
                   hintText: "Nome Completo",
                   inputFormatters: [UpperCaseTextInputFormatter()],
                   validator: Validator.validateName,
                 ),
                 CustomTextFormField(
+                  controller: _cpfController,
+                  labelText: "Seu CPF",
+                  hintText: "Apenas números",
+                  keyboardType: TextInputType.number,
+                  validator: Validator.validateCPF,
+                ),
+                CustomTextFormField(
                   controller: _emailController,
-                  labelText: "seu email",
+                  labelText: "Seu e-mail",
                   hintText: "email@email.com",
+                  keyboardType: TextInputType.emailAddress,
                   validator: Validator.validateEmail,
                 ),
+
+                // Dropdown para seleção de Perfil
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedRole,
+                    decoration: InputDecoration(
+                      labelText: "Selecione o seu Perfil",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'admin',
+                        child: Text('Proprietário (Admin)'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'colaborador',
+                        child: Text('Colaborador'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedRole = value;
+                        });
+                      }
+                    },
+                  ),
+                ),
+
                 PasswordFormField(
                   controller: _passwordController,
                   labelText: "Escolha a sua senha",
@@ -122,33 +179,30 @@ class _SignUpPageState extends State<SignUpPage> {
                     value,
                   ),
                 ),
-              ], // <-- Fechamento corrigido dos filhos da Column
-            ), // <-- Fechamento da Column
-          ), // <-- Fechamento do Form
+              ],
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(
               left: 32.0,
               right: 32.0,
-              top: 16.0,
+              top: 24.0,
               bottom: 4.0,
             ),
             child: PrimaryButton(
-              // key: Keys.signUpButton, // Descomente se tiver as chaves configuradas
               text: 'Sign Up',
               onPressed: _onSignUpButtonPressed,
             ),
           ),
           MultiTextButton(
-            // key: Keys.signUpAlreadyHaveAccountButton, // Descomente se tiver as chaves configuradas
-            // Substitua '/sign_in' por NamedRoute.signIn se tiver configurado suas rotas nomeadas
             onPressed: () => Navigator.popAndPushNamed(context, '/sign_in'),
             children: [
               Text(
-                'Ja tem uma conta? ',
+                'Já tem uma conta? ',
                 style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
               ),
               Text(
-                'Sign In ',
+                'Sign In',
                 style: AppTextStyles.smallText.copyWith(
                   color: AppColors.greenlightOne,
                 ),
@@ -156,7 +210,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ],
           ),
         ],
-      ), // Fechamento do ListView
-    ); // Fechamento do Scaffold que estava faltando!
+      ),
+    );
   }
 }

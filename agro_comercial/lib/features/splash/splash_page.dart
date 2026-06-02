@@ -1,8 +1,9 @@
+import 'package:agro_comercial/common/constants/app_colors.dart';
+import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/routes.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:flutter/material.dart';
 
-import '../../common/constants/constants.dart';
-import '../../common/extensions/extensions.dart';
-import '../../common/widgets/widgets.dart';
 import '../../locator.dart';
 import '../../services/sync_service/sync_service.dart';
 import 'splash_controller.dart';
@@ -94,7 +95,7 @@ class _SplashPageState extends State<SplashPage> with CustomModalSheetMixin {
           children: [
             Text(
               'financy',
-              style: AppTextStyles.bigText50.copyWith(color: AppColors.white),
+              style: AppTextStyles.bigText.copyWith(color: AppColors.white),
             ),
             Text(
               'Syncing data...',

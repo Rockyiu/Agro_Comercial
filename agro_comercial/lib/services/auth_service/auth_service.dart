@@ -5,6 +5,8 @@ abstract class AuthService {
     String? name,
     required String email,
     required String password,
+    required String cpf,
+    required String role,
   });
 
   Future<DataResult<UserModel>> signIn({

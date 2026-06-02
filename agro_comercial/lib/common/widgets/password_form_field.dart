@@ -10,15 +10,20 @@ class PasswordFormField extends StatefulWidget {
   final String? labelText;
   final FormFieldValidator<String>? validator;
   final String? helperText;
+  final VoidCallback? onEditingComplete; // Propriedade adicionada
+  final TextInputAction?
+  textInputAction; // Propriedade adicionada para o teclado
 
   const PasswordFormField({
-    super.key,
+    super.key, // Sintaxe moderna já aplicada
     this.controller,
     this.padding,
     this.hintText,
     this.labelText,
-    this.validator, 
+    this.validator,
     this.helperText,
+    this.onEditingComplete,
+    this.textInputAction,
   });
 
   @override
@@ -38,11 +43,14 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
       padding: widget.padding,
       hintText: widget.hintText,
       labelText: widget.labelText,
+      // Repassando as novas propriedades para o CustomTextFormField
+      onEditingComplete: widget.onEditingComplete,
+      textInputAction: widget.textInputAction ?? TextInputAction.done,
       suffixIcon: InkWell(
         borderRadius: BorderRadius.circular(23.0),
         child: Icon(isHidden ? Icons.visibility : Icons.visibility_off),
         onTap: () {
-          log("pressione");
+          log("Visibilidade da senha alterada");
           setState(() {
             isHidden = !isHidden;
           });

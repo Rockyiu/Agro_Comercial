@@ -30,15 +30,12 @@ class SignInController extends ChangeNotifier {
     result.fold((error) => _changeState(SignInStateError(error.message)), (
       data,
     ) async {
+      // Agora sim, apenas salva localmente e avança!
       await _secureStorageService.write(
         key: "CURRENT_USER",
         value: data.toJson(),
       );
-
-      result.fold(
-        (error) => _changeState(SignInStateError(error.message)),
-        (_) => _changeState(SignInStateSuccess()),
-      );
+      _changeState(SignInStateSuccess());
     });
   }
 }

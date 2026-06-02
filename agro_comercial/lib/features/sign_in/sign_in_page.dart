@@ -1,10 +1,17 @@
 import 'dart:developer';
 
+import 'package:agro_comercial/common/constants/app_colors.dart';
+import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/keys.dart';
+import 'package:agro_comercial/common/constants/routes.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/multi_text_button.dart';
+import 'package:agro_comercial/common/widgets/password_form_field.dart';
+import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 
-import '../../common/constants/constants.dart';
-import '../../common/utils/utils.dart';
-import '../../common/widgets/widgets.dart';
 import '../../locator.dart';
 import '../../services/sync_service/sync_service.dart';
 import 'sign_in_controller.dart';
@@ -45,6 +52,7 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
       case SignInStateLoading:
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (context) => const CustomCircularProgressIndicator(),
         );
         break;
@@ -52,11 +60,11 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
         _syncController.syncFromServer();
         break;
       case SignInStateError:
-        Navigator.pop(context);
+        Navigator.pop(context); // Remove o loading
         showCustomModalBottomSheet(
           context: context,
           content: (_signInController.state as SignInStateError).message,
-          buttonText: "Try again",
+          buttonText: "Tentar novamente",
         );
         break;
     }
@@ -77,11 +85,11 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
       case SyncStateError:
       case UploadDataToServerError:
       case DownloadDataFromServerError:
-        Navigator.pop(context);
+        Navigator.pop(context); // Remove o loading
         showCustomModalBottomSheet(
           context: context,
           content: (_syncController.state as SyncStateError).message,
-          buttonText: "Try again",
+          buttonText: "Tentar novamente",
           onPressed: () => Navigator.pushNamedAndRemoveUntil(
             context,
             NamedRoute.signIn,
@@ -93,15 +101,14 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
   }
 
   void _onSignInButtonPressed() {
-    final valid =
-        _formKey.currentState != null && _formKey.currentState!.validate();
+    final valid = _formKey.currentState?.validate() ?? false;
     if (valid) {
       _signInController.signIn(
         email: _emailController.text,
         password: _passwordController.text,
       );
     } else {
-      log("erro ao logar");
+      log("Erro de validação ao logar");
     }
   }
 
@@ -110,15 +117,19 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
     return Scaffold(
       body: ListView(
         key: Keys.signInListView,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
         children: [
+          const SizedBox(height: 48), // Espaço para não colar no topo
           Text(
-            'Welcome Back!',
+            'Bem-vindo de volta!',
             textAlign: TextAlign.center,
-            style: AppTextStyles.mediumText36.copyWith(
-              color: AppColors.greenOne,
+            style: AppTextStyles.midText36.copyWith(
+              color: AppColors.greenlightOne,
             ),
           ),
-          Image.asset('assets/images/sign_in_image.png'),
+          // Se tiver a imagem descomente abaixo, mas recomendo ajustar a altura
+          // Image.asset('assets/images/sign_in_image.png', height: 200),
+          const SizedBox(height: 32),
           Form(
             key: _formKey,
             child: Column(
@@ -126,14 +137,15 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
                 CustomTextFormField(
                   key: Keys.signInEmailField,
                   controller: _emailController,
-                  labelText: "your email",
-                  hintText: "john@email.com",
+                  labelText: "Seu e-mail",
+                  hintText: "email@email.com",
+                  keyboardType: TextInputType.emailAddress,
                   validator: Validator.validateEmail,
                 ),
                 PasswordFormField(
                   key: Keys.signInPasswordField,
                   controller: _passwordController,
-                  labelText: "your password",
+                  labelText: "Sua senha",
                   hintText: "*********",
                   validator: Validator.validatePassword,
                   onEditingComplete: _onSignInButtonPressed,
@@ -141,11 +153,14 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
               ],
             ),
           ),
-          TextButton(
-            key: Keys.forgotPasswordButton,
-            onPressed: () =>
-                Navigator.popAndPushNamed(context, NamedRoute.forgotPassword),
-            child: const Text('Forgot Password?'),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              key: Keys.forgotPasswordButton,
+              onPressed: () =>
+                  Navigator.popAndPushNamed(context, NamedRoute.forgotPassword),
+              child: const Text('Esqueceu a senha?'),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(
@@ -156,7 +171,7 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
             ),
             child: PrimaryButton(
               key: Keys.signInButton,
-              text: 'Sign In',
+              text: 'Entrar',
               onPressed: _onSignInButtonPressed,
             ),
           ),
@@ -166,13 +181,13 @@ class _SignInPageState extends State<SignInPage> with CustomModalSheetMixin {
                 Navigator.popAndPushNamed(context, NamedRoute.signUp),
             children: [
               Text(
-                'Don\'t have account? ',
+                'Não tem uma conta? ',
                 style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
               ),
               Text(
-                'Sign Up',
+                'Cadastre-se',
                 style: AppTextStyles.smallText.copyWith(
-                  color: AppColors.greenOne,
+                  color: AppColors.greenlightOne,
                 ),
               ),
             ],

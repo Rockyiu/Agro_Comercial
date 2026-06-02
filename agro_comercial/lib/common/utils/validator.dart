@@ -47,4 +47,49 @@ class Validator {
     }
     return null;
   }
+
+  static String? validateCPF(String? value) {
+    if (value == null || value.isEmpty) {
+      return "Esse campo não pode ser vazio";
+    }
+
+    // Remove caracteres não numéricos
+    String numbers = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (numbers.length != 11) {
+      return "CPF deve conter 11 dígitos";
+    }
+
+    // Verifica CPFs com números iguais (ex: 111.111.111-11)
+    if (RegExp(r'^(\d)\1*$').hasMatch(numbers)) {
+      return "CPF inválido";
+    }
+
+    // Cálculo dos dígitos verificadores
+    List<int> digits = numbers.split('').map(int.parse).toList();
+
+    int calc1 = 0;
+    for (int i = 0; i < 9; i++) {
+      calc1 += digits[i] * (10 - i);
+    }
+    calc1 = (calc1 * 10) % 11;
+    if (calc1 == 10) calc1 = 0;
+
+    if (calc1 != digits[9]) {
+      return "CPF inválido";
+    }
+
+    int calc2 = 0;
+    for (int i = 0; i < 10; i++) {
+      calc2 += digits[i] * (11 - i);
+    }
+    calc2 = (calc2 * 10) % 11;
+    if (calc2 == 10) calc2 = 0;
+
+    if (calc2 != digits[10]) {
+      return "CPF inválido";
+    }
+
+    return null;
+  }
 }

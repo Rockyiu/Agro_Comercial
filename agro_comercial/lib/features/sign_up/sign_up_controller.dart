@@ -24,6 +24,7 @@ class SignUpController extends ChangeNotifier {
     required String email,
     required String cpf,
     required String password,
+    required String role, // Parâmetro adicionado
   }) async {
     final secureStorage = SecureStorageService();
     _changeState(SignUpLoadingState());
@@ -33,7 +34,8 @@ class SignUpController extends ChangeNotifier {
         name: name,
         email: email,
         cpf: cpf,
-        passwword: password,
+        password: password,
+        role: role, // Repassando para o service
       );
 
       if (user.id != null) {

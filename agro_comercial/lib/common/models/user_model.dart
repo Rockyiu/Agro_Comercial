@@ -7,6 +7,7 @@ class UserModel {
   final String? email;
   final String? cpf;
   final String? password;
+  final String? role; // Novo campo para gerenciar as permissões
 
   UserModel({
     required this.id,
@@ -14,6 +15,7 @@ class UserModel {
     required this.email,
     required this.cpf,
     required this.password,
+    required this.role,
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class UserModel {
       'email': email,
       'cpf': cpf,
       'password': password,
+      'role': role,
     };
   }
 
@@ -33,6 +36,7 @@ class UserModel {
       email: map['email'] != null ? map['email'] as String : null,
       cpf: map['cpf'] != null ? map['cpf'] as String : null,
       password: map['password'] != null ? map['password'] as String : null,
+      role: map['role'] != null ? map['role'] as String : null,
     );
   }
 
