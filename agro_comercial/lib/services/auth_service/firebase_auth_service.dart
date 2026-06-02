@@ -1,8 +1,9 @@
+import 'package:agro_comercial/common/data/data_result.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
+import 'package:agro_comercial/common/models/app_exception.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:agro_comercial/services/services.dart';
 
 import 'auth_service.dart';
 
@@ -28,7 +29,6 @@ class FirebaseAuthService implements AuthService {
       );
 
       if (result.user != null) {
-        // Busca os dados adicionais no banco Firestore para pegar o 'role' e 'cpf'
         final doc = await _firestore
             .collection('users')
             .doc(result.user!.uid)
@@ -66,7 +66,6 @@ class FirebaseAuthService implements AuthService {
     required String role,
   }) async {
     try {
-      // Repassa as novas informações pra Cloud Function criar o user completo no Firebase
       await _functions.httpsCallable('registerUser').call({
         "email": email,
         "password": password,

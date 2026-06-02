@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/utils/uppercase_text_formatter.dart';
@@ -10,6 +8,7 @@ import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
 import 'package:agro_comercial/features/sign_up/sign_up_controller.dart';
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
 import 'package:agro_comercial/locator.dart';
@@ -30,7 +29,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final _cpfController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Corrigido a falta de ponto e vírgula
   final _signUpController = locator.get<SignUpController>();
 
   // Variável para armazenar o tipo de usuário selecionado
@@ -39,7 +37,7 @@ class _SignUpPageState extends State<SignUpPage> {
   void _onSignUpButtonPressed() {
     // Valida todos os campos do Form antes de chamar o Controller
     if (_formKey.currentState?.validate() ?? false) {
-      _signUpController.SignUp(
+      _signUpController.signUp(
         name: _nameController.text,
         email: _emailController.text,
         cpf: _cpfController.text,
@@ -61,7 +59,6 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   void initState() {
     super.initState();
-    // Corrigida a referência da variável do controller (de _controller para _signUpController)
     _signUpController.addListener(() {
       if (_signUpController.state is SignUpLoadingState) {
         showDialog(
@@ -72,13 +69,19 @@ class _SignUpPageState extends State<SignUpPage> {
       }
       if (_signUpController.state is SignUpSuccessState) {
         Navigator.pop(context); // Remove o loading
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                const Scaffold(body: Center(child: Text("Home Page"))),
-          ),
-        );
+
+        // Verificação inteligente de Perfil
+        if (_selectedRole == 'admin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FarmRegistrationPage(),
+            ),
+          );
+        } else {
+          // Se for colaborador, vai direto pra Home
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
       if (_signUpController.state is SignUpErrorState) {
         final error = _signUpController.state as SignUpErrorState;
@@ -136,7 +139,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: DropdownButtonFormField<String>(
-                    value: _selectedRole,
+                    initialValue: _selectedRole,
                     decoration: InputDecoration(
                       labelText: "Selecione o seu Perfil",
                       border: OutlineInputBorder(
