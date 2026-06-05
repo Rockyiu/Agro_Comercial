@@ -2,13 +2,21 @@ class Validator {
   Validator._();
 
   static String? validateName(String? value) {
-    final condition = RegExp(r"((\ *)[\wáéíóúñ]+(\ *)+)+");
-    if (value != null && value.isEmpty) {
+    if (value == null || value.trim().isEmpty) {
       return "Esse campo não pode ser vazio";
     }
-    if (value != null && condition.hasMatch(value)) {
+
+    // Verifica se o usuário digitou pelo menos duas palavras (nome e sobrenome)
+    if (value.trim().split(RegExp(r'\s+')).length < 2) {
+      return "Digite seu nome e sobrenome";
+    }
+
+    // Aceita apenas letras (maiúsculas, minúsculas, acentos) e espaços
+    final condition = RegExp(r"^[a-zA-ZÀ-ÿ\s]+$");
+    if (!condition.hasMatch(value)) {
       return "Nome inválido. Digite um nome válido.";
     }
+
     return null;
   }
 
@@ -90,6 +98,20 @@ class Validator {
       return "CPF inválido";
     }
 
+    return null;
+  }
+
+  static String? validateNumber(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return "Esse campo não pode ser vazio";
+    }
+    // Troca a vírgula por ponto para o Dart conseguir interpretar a casa decimal
+    final sanitizedValue = value.replaceAll(',', '.');
+
+    // Tenta converter para número. Se o resultado for nulo, é porque tem letras.
+    if (double.tryParse(sanitizedValue) == null) {
+      return "Digite apenas números válidos";
+    }
     return null;
   }
 }

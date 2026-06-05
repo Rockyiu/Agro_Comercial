@@ -1,10 +1,12 @@
-import 'package:agro_comercial/common/constants/routes.dart';
-import 'package:agro_comercial/features/home/home_page.dart';
-import 'package:agro_comercial/features/onboarding/onboarding_page.dart';
-import 'package:agro_comercial/features/sign_in/sign_in_page.dart';
-import 'package:agro_comercial/features/sign_up/sign_up_page.dart';
-import 'package:agro_comercial/features/splash/splash_page.dart';
 import 'package:flutter/material.dart';
+
+// Importação das nossas telas
+import 'features/splash/splash_page.dart';
+import 'features/onboarding/onboarding_page.dart';
+import 'features/sign_in/sign_in_page.dart';
+import 'features/sign_up/sign_up_page.dart';
+import 'features/farm_registration/farm_registration_page.dart';
+import 'features/home/home_page.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -12,13 +14,18 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      initialRoute: NamedRoute.splash,
+      title: 'Gestão Rural',
+      debugShowCheckedModeBanner:
+          false, // Remove aquela faixa vermelha chata de "Debug"
+      initialRoute: '/', // A rota raiz, que sempre começa no Splash
+      // O "Mapa" de endereços do seu aplicativo
       routes: {
-        NamedRoute.initial: (context) => const OnboardingPage(),
-        NamedRoute.splash: (context) => const SplashPage(),
-        NamedRoute.signUp: (context) => const SignUpPage(),
-        NamedRoute.signIn: (context) => const SignInPage(),
-        NamedRoute.home: (context) => const HomePage(),
+        '/': (context) => const SplashPage(),
+        '/onboarding': (context) => const OnboardingPage(),
+        '/sign_in': (context) => const SignInPage(),
+        '/sign_up': (context) => const SignUpPage(),
+        '/farm_registration': (context) => const FarmRegistrationPage(),
+        '/home': (context) => const HomePage(),
       },
     );
   }

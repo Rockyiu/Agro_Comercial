@@ -31,11 +31,9 @@ class _SignUpPageState extends State<SignUpPage> {
 
   final _signUpController = locator.get<SignUpController>();
 
-  // Variável para armazenar o tipo de usuário selecionado
   String _selectedRole = 'admin';
 
   void _onSignUpButtonPressed() {
-    // Valida todos os campos do Form antes de chamar o Controller
     if (_formKey.currentState?.validate() ?? false) {
       _signUpController.signUp(
         name: _nameController.text,
@@ -68,9 +66,8 @@ class _SignUpPageState extends State<SignUpPage> {
         );
       }
       if (_signUpController.state is SignUpSuccessState) {
-        Navigator.pop(context); // Remove o loading
+        Navigator.pop(context);
 
-        // Verificação inteligente de Perfil
         if (_selectedRole == 'admin') {
           Navigator.pushReplacement(
             context,
@@ -79,13 +76,12 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           );
         } else {
-          // Se for colaborador, vai direto pra Home
           Navigator.pushReplacementNamed(context, '/home');
         }
       }
       if (_signUpController.state is SignUpErrorState) {
         final error = _signUpController.state as SignUpErrorState;
-        Navigator.pop(context); // Remove o loading
+        Navigator.pop(context);
         customModalBottomSheet(
           context,
           content: error.message,
@@ -98,121 +94,142 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
-        children: [
-          Text(
-            'Insira seus dados!',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.midText36.copyWith(
-              color: AppColors.greenlightOne,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                CustomTextFormField(
-                  controller: _nameController,
-                  labelText: "Seu nome",
-                  hintText: "Nome Completo",
-                  inputFormatters: [UpperCaseTextInputFormatter()],
-                  validator: Validator.validateName,
-                ),
-                CustomTextFormField(
-                  controller: _cpfController,
-                  labelText: "Seu CPF",
-                  hintText: "Apenas números",
-                  keyboardType: TextInputType.number,
-                  validator: Validator.validateCPF,
-                ),
-                CustomTextFormField(
-                  controller: _emailController,
-                  labelText: "Seu e-mail",
-                  hintText: "email@email.com",
-                  keyboardType: TextInputType.emailAddress,
-                  validator: Validator.validateEmail,
-                ),
-
-                // Dropdown para seleção de Perfil
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: DropdownButtonFormField<String>(
-                    initialValue: _selectedRole,
-                    decoration: InputDecoration(
-                      labelText: "Selecione o seu Perfil",
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'admin',
-                        child: Text('Proprietário (Admin)'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'colaborador',
-                        child: Text('Colaborador'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          _selectedRole = value;
-                        });
-                      }
-                    },
-                  ),
-                ),
-
-                PasswordFormField(
-                  controller: _passwordController,
-                  labelText: "Escolha a sua senha",
-                  hintText: "*******",
-                  validator: Validator.validatePassword,
-                  helperText:
-                      "Sua senha deve ter no minimo 8 caracteres, um caracter especial, numero e letra maiscula",
-                ),
-                PasswordFormField(
-                  labelText: "Confirme sua senha",
-                  hintText: "*******",
-                  validator: (value) => Validator.validateConfirmPassword(
-                    _passwordController.text,
-                    value,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 32.0,
-              right: 32.0,
-              top: 24.0,
-              bottom: 4.0,
-            ),
-            child: PrimaryButton(
-              text: 'Sign Up',
-              onPressed: _onSignUpButtonPressed,
-            ),
-          ),
-          MultiTextButton(
-            onPressed: () => Navigator.popAndPushNamed(context, '/sign_in'),
+      backgroundColor: AppColors.iceWhite,
+      // SafeArea garante que o app não invada a área da câmera/bateria
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Já tem uma conta? ',
-                style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
-              ),
-              Text(
-                'Sign In',
-                style: AppTextStyles.smallText.copyWith(
+                'Insira seus dados!',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.midText36.copyWith(
                   color: AppColors.greenlightOne,
                 ),
               ),
+              const SizedBox(height: 32),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    CustomTextFormField(
+                      controller: _nameController,
+                      labelText: "SEU NOME",
+                      hintText: "Nome Completo",
+                      inputFormatters: [UpperCaseTextInputFormatter()],
+                      validator: Validator
+                          .validateName, // <-- Voltou a usar o Validator global
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextFormField(
+                      controller: _cpfController,
+                      labelText: "SEU CPF",
+                      hintText: "Apenas números",
+                      keyboardType: TextInputType.number,
+                      validator: Validator.validateCPF,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextFormField(
+                      controller: _emailController,
+                      labelText: "SEU E-MAIL",
+                      hintText: "email@email.com",
+                      keyboardType: TextInputType.emailAddress,
+                      validator: Validator.validateEmail,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedRole,
+                      decoration: InputDecoration(
+                        labelText: "SELECIONE O SEU PERFIL",
+                        labelStyle: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 18,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide: const BorderSide(
+                            color: AppColors.greenlightOne,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                          borderSide: const BorderSide(
+                            color: AppColors.greenlightOne,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'admin',
+                          child: Text('Proprietário (Admin)'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'colaborador',
+                          child: Text('Colaborador'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _selectedRole = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    PasswordFormField(
+                      controller: _passwordController,
+                      labelText: "ESCOLHA A SUA SENHA",
+                      hintText: "*******",
+                      validator: Validator.validatePassword,
+                      helperText:
+                          "No mínimo 8 caracteres, um caracter especial, número e letra maiúscula",
+                    ),
+                    const SizedBox(height: 16),
+                    PasswordFormField(
+                      labelText: "CONFIRME SUA SENHA",
+                      hintText: "*******",
+                      validator: (value) => Validator.validateConfirmPassword(
+                        _passwordController.text,
+                        value,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+              PrimaryButton(
+                text: 'Cadastrar',
+                onPressed: _onSignUpButtonPressed,
+              ),
+              const SizedBox(height: 16),
+              MultiTextButton(
+                onPressed: () => Navigator.popAndPushNamed(context, '/sign_in'),
+                children: [
+                  Text(
+                    'Já tem uma conta? ',
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.grey,
+                    ),
+                  ),
+                  Text(
+                    'Entrar',
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.greenlightOne,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,7 +1,5 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/common/constants/keys.dart';
-import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
@@ -16,19 +14,26 @@ class OnboardingPage extends StatelessWidget {
       body: Column(
         children: [
           const SizedBox(height: 48.0),
+          // Aqui fica a logo ou imagem ilustrativa do aplicativo
           Expanded(child: Image.asset('assets/images/images.png')),
           Text(
-            'Organize seus dados',
+            'Gestão Rural',
             textAlign: TextAlign.center,
             style: AppTextStyles.midText36.copyWith(
               color: AppColors.greenlightOne,
             ),
           ),
-          Text(
-            'Controle seus custos',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.midText36.copyWith(
-              color: AppColors.greenlightOne,
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Text(
+              'O controle da sua fazenda na palma da mão.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.midText20.copyWith(
+                color: AppColors.greenlightOne,
+              ),
             ),
           ),
           Padding(
@@ -39,19 +44,21 @@ class OnboardingPage extends StatelessWidget {
               bottom: 4.0,
             ),
             child: PrimaryButton(
-              key: Keys.onboardingGetStartedButton,
               text: 'Começar',
               onPressed: () {
-                Navigator.pushNamed(context, NamedRoute.signUp);
+                // Navega direto para a tela de Cadastro
+                Navigator.pushNamed(context, '/sign_up');
               },
             ),
           ),
           MultiTextButton(
-            key: Keys.onboardingAlreadyHaveAccountButton,
-            onPressed: () => Navigator.pushNamed(context, NamedRoute.signIn),
+            onPressed: () => Navigator.pushNamed(
+              context,
+              '/sign_in',
+            ), // Navega direto para o Login
             children: [
               Text(
-                'Ja possui uma conta? ',
+                'Já possui uma conta? ',
                 style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
               ),
               Text(

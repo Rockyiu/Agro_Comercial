@@ -1,5 +1,6 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
@@ -166,10 +167,10 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                   controller: _areaController,
                   labelText: "Área Total (Alqueires ou Hectares)",
                   hintText: "Ex: 50",
-                  keyboardType: TextInputType.number,
-                  validator: (value) => value == null || value.isEmpty
-                      ? "A área não pode ser vazia"
-                      : null,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: Validator.validateNumber,
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(

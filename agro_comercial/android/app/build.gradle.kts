@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "dev.vinicius.agro_comercil.agro_comercial"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

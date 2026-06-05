@@ -29,6 +29,7 @@ class FirebaseAuthService implements AuthService {
       );
 
       if (result.user != null) {
+        // AQUI era onde o Firebase bloqueava e o app travava
         final doc = await _firestore
             .collection('users')
             .doc(result.user!.uid)
@@ -53,7 +54,11 @@ class FirebaseAuthService implements AuthService {
 
       return DataResult.failure(const GeneralException());
     } on FirebaseAuthException catch (e) {
+      // Captura erros de e-mail/senha
       return DataResult.failure(AuthException(code: e.code));
+    } catch (e) {
+      // MUDANÇA AQUI: Captura QUALQUER outro erro (como o do banco de dados) para a tela não travar infinitamente!
+      return DataResult.failure(const GeneralException());
     }
   }
 
@@ -66,24 +71,29 @@ class FirebaseAuthService implements AuthService {
     required String role,
   }) async {
     try {
-      await _functions.httpsCallable('registerUser').call({
-        "email": email,
-        "password": password,
-        "displayName": name,
-        "cpf": cpf,
-        "role": role,
-      });
-
-      final result = await _auth.signInWithEmailAndPassword(
+      // 1. Cria o usuário na aba Authentication (E-mail e Senha)
+      final result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (result.user != null) {
+        // 2. Salva os dados extras DIRETAMENTE no Firestore (Banco de Dados)
+        await _firestore.collection('users').doc(result.user!.uid).set({
+          'name': name,
+          'email': email,
+          'cpf': cpf,
+          'role': role,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // 3. Atualiza o nome no perfil de autenticação
+        await result.user!.updateDisplayName(name);
+
         return DataResult.success(
           UserModel(
             id: result.user!.uid,
-            name: name ?? result.user!.displayName,
+            name: name ?? '',
             email: email,
             cpf: cpf,
             password: password,
@@ -94,8 +104,6 @@ class FirebaseAuthService implements AuthService {
 
       return DataResult.failure(const GeneralException());
     } on FirebaseAuthException catch (e) {
-      return DataResult.failure(AuthException(code: e.code));
-    } on FirebaseFunctionsException catch (e) {
       return DataResult.failure(AuthException(code: e.code));
     } catch (e) {
       return DataResult.failure(const GeneralException());

@@ -1,3 +1,12 @@
+import 'package:agro_comercial/features/edit_machine/edit_machine_controller.dart';
+import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_controller.dart';
+import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
+import 'package:agro_comercial/features/register_machine/register_machine_controller.dart';
+import 'package:agro_comercial/features/register_warehouse/register_warehouse_controller.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_details_controller.dart';
+import 'package:agro_comercial/services/machine_service/machine_service.dart';
+import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:get_it/get_it.dart';
 
 // Importação dos Serviços
@@ -9,8 +18,6 @@ import 'services/secure_storage.dart';
 import 'features/splash/splash_controller.dart';
 import 'features/sign_in/sign_in_controller.dart';
 import 'features/sign_up/sign_up_controller.dart';
-
-import 'features/farm_registration/farm_registration_controller.dart';
 
 final locator = GetIt.instance;
 
@@ -24,6 +31,9 @@ void setupDependencies() {
   locator.registerFactory<SecureStorageService>(
     () => const SecureStorageService(),
   );
+
+  // RECUPERADO: O serviço do Armazém precisa existir para os controladores usarem!
+  locator.registerFactory<WarehouseService>(() => WarehouseService());
 
   // ==========================
   // Registro de Controllers
@@ -43,11 +53,41 @@ void setupDependencies() {
   );
 
   locator.registerFactory<SignUpController>(
-    // O SignUpController espera o AuthService como parâmetro posicional direto
     () => SignUpController(locator.get<AuthService>()),
   );
 
   locator.registerFactory<FarmRegistrationController>(
     () => FarmRegistrationController(),
+  );
+
+  // CORRIGIDO: Apenas UMA menção ao WarehouseController, usando o LazySingleton
+  locator.registerLazySingleton<WarehouseController>(
+    () => WarehouseController(locator.get<WarehouseService>()),
+  );
+
+  locator.registerFactory<RegisterWarehouseController>(
+    () => RegisterWarehouseController(locator.get<WarehouseService>()),
+  );
+
+  locator.registerFactory<MachineService>(() => MachineService());
+
+  // Na área de Controllers (Lembre de passar o MachineService E o WarehouseService):
+  locator.registerFactory<RegisterMachineController>(
+    () => RegisterMachineController(
+      locator.get<MachineService>(),
+      locator.get<WarehouseService>(),
+    ),
+  );
+
+  locator.registerFactory<WarehouseDetailsController>(
+    () => WarehouseDetailsController(locator.get<MachineService>()),
+  );
+
+  locator.registerFactory<EditMachineController>(
+    () => EditMachineController(locator.get<MachineService>()),
+  );
+
+  locator.registerFactory<EditWarehouseController>(
+    () => EditWarehouseController(locator.get<WarehouseService>()),
   );
 }

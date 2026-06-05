@@ -1,15 +1,16 @@
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
-import 'package:agro_comercial/services/auth_service/auth_service.dart';
-import 'package:agro_comercial/services/secure_storage.dart';
 import 'package:flutter/foundation.dart';
 
-class SignUpController extends ChangeNotifier {
-  final AuthService _service;
+import 'package:agro_comercial/services/auth_service/auth_service.dart';
 
-  SignUpController(this._service);
+class SignUpController extends ChangeNotifier {
+  // A variável que vai receber o serviço
+  final AuthService _authService;
+
+  // O construtor exigindo o serviço (Isso resolve o erro do locator.dart!)
+  SignUpController(this._authService);
 
   SingUpState _state = SignUpinitialState();
-
   SingUpState get state => _state;
 
   void _changeState(SingUpState newState) {
@@ -17,7 +18,6 @@ class SignUpController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Alterado de SignUp para signUp (padrão camelCase)
   Future<void> signUp({
     required String name,
     required String email,
@@ -25,26 +25,19 @@ class SignUpController extends ChangeNotifier {
     required String password,
     required String role,
   }) async {
-    final secureStorage = SecureStorageService();
     _changeState(SignUpLoadingState());
 
     try {
-      final result = await _service.signUp(
+      await _authService.signUp(
         name: name,
         email: email,
         cpf: cpf,
         password: password,
         role: role,
       );
-
-      // Usando o fold para desempacotar o DataResult
-      result.fold((error) => _changeState(SignUpErrorState(error.message)), (
-        user,
-      ) async {
-        await secureStorage.write(key: "CURRENT_USER", value: user.toJson());
-        _changeState(SignUpSuccessState());
-      });
+      _changeState(SignUpSuccessState());
     } catch (e) {
+      // Exibe o erro exato e real do Firebase na tela
       _changeState(SignUpErrorState(e.toString()));
     }
   }

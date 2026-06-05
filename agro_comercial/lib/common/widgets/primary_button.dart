@@ -1,42 +1,47 @@
+import 'package:agro_comercial/common/constants/app_colors.dart';
+import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
-import '../constants/app_colors.dart';
-import '../constants/app_text_styles.dart';
-
 class PrimaryButton extends StatelessWidget {
-  final VoidCallback? onPressed;
   final String text;
+  final VoidCallback? onPressed;
 
-  const PrimaryButton({super.key, this.onPressed, required this.text});
-
-  final BorderRadius _borderRadius = const BorderRadius.all(
-    Radius.circular(24.0),
-  );
+  const PrimaryButton({super.key, required this.text, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(38.0),
+      // Se o botão estiver desativado (onPressed == null), ele fica cinza
+      color: onPressed == null ? AppColors.lightkGrey : null,
       child: Ink(
-        height: 48.0,
         decoration: BoxDecoration(
-          borderRadius: _borderRadius,
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: onPressed != null
-                ? [AppColors.greenlightOne]
-                : [AppColors.grey],
-          ),
+          borderRadius: BorderRadius.circular(38.0),
+          // Garante que o degradê tenha exatamente as duas cores necessárias
+          gradient: onPressed != null
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.greenlightOne, // Cor principal
+                    Color(
+                      0xFF388E51,
+                    ), // Verde escuro para o efeito de sombra/terra
+                  ],
+                )
+              : null,
         ),
         child: InkWell(
-          borderRadius: _borderRadius,
+          borderRadius: BorderRadius.circular(38.0),
           onTap: onPressed,
-          child: Align(
+          child: Container(
+            alignment: Alignment.center,
+            height: 56.0, // Altura confortável para o toque no celular
             child: Text(
               text,
-              style: AppTextStyles.midText18.copyWith(
-                color: AppColors.titleColor,
+              style: AppTextStyles.midText20.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),

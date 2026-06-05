@@ -17,8 +17,8 @@ class CustomTextFormField extends StatefulWidget {
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
   final String? helperText;
-  final VoidCallback?
-  onEditingComplete; // 1. Declaração da variável adicionada aqui
+  final VoidCallback? onEditingComplete;
+  final FocusNode? focusNode; // 1. Declaração da variável adicionada aqui
 
   const CustomTextFormField({
     super.key,
@@ -35,7 +35,8 @@ class CustomTextFormField extends StatefulWidget {
     this.inputFormatters,
     this.validator,
     this.helperText,
-    this.onEditingComplete, // 2. Adicionado ao construtor
+    this.onEditingComplete,
+    this.focusNode, // 2. Adicionado ao construtor
   });
 
   @override
@@ -62,6 +63,7 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           widget.padding ??
           EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: TextFormField(
+        focusNode: widget.focusNode,
         onChanged: (value) {
           if (value.length == 1) {
             setState(() {
