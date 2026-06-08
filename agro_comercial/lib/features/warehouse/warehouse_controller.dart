@@ -1,9 +1,6 @@
-import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:agro_comercial/common/models/machine_model.dart';
-import 'package:agro_comercial/common/models/warehouse_model.dart';
-
+import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'warehouse_state.dart';
 
 class WarehouseController extends ChangeNotifier {
@@ -14,40 +11,39 @@ class WarehouseController extends ChangeNotifier {
   WarehouseState _state = WarehouseInitialState();
   WarehouseState get state => _state;
 
-  void _changeState(WarehouseState newState) {
-    _state = newState;
-    notifyListeners();
-  }
-
   Future<void> loadWarehouseData() async {
-    _changeState(WarehouseLoadingState());
-
+    _state = WarehouseLoadingState();
+    notifyListeners();
     try {
       final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final warehouses = await _warehouseService.getWarehouses(user.uid);
 
-      // MUDANÇA AQUI: Retiramos o fallback e exigimos o usuário logado
-      if (user == null) {
-        _changeState(
-          WarehouseErrorState("Sessão expirada. Faça o login novamente."),
+        // CORRIGIDO: Passando os parâmetros nomeados exigidos pelo WarehouseSuccessState
+        _state = WarehouseSuccessState(
+          warehouses: warehouses,
+          machines:
+              [], // Como a Home só lista os galpões, passamos vazio aqui safely
         );
-        return;
+      } else {
+        _state = WarehouseErrorState("Usuário não autenticado.");
       }
-
-      final String uid = user.uid;
-
-      // Busca os armazéns reais no Firebase
-      List<WarehouseModel> myWarehouses = await _warehouseService.getWarehouses(
-        uid,
-      );
-      List<MachineModel> myMachines = [];
-
-      _changeState(
-        WarehouseSuccessState(warehouses: myWarehouses, machines: myMachines),
-      );
+      notifyListeners();
     } catch (e) {
-      _changeState(
-        WarehouseErrorState("Erro ao carregar o armazém: ${e.toString()}"),
-      );
+      _state = WarehouseErrorState("Erro ao carregar armazéns.");
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteSelectedWarehouses(List<String> ids) async {
+    _state = WarehouseLoadingState();
+    notifyListeners();
+    try {
+      await _warehouseService.deleteMultipleWarehouses(ids);
+      await loadWarehouseData();
+    } catch (e) {
+      _state = WarehouseErrorState("Erro ao excluir armazéns.");
+      notifyListeners();
     }
   }
 }

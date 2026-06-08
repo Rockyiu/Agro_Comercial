@@ -48,7 +48,7 @@ class EditWarehouseController extends ChangeNotifier {
     _state = EditWarehouseLoadingState();
     notifyListeners();
     try {
-      await _warehouseService.deleteWarehouse(warehouseId);
+      await _warehouseService.deleteWarehouseAndContents(warehouseId);
       _state = EditWarehouseSuccessState();
       notifyListeners();
     } catch (e) {

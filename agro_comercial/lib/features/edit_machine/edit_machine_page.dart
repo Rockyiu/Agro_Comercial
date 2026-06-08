@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
@@ -6,11 +7,12 @@ import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'edit_machine_controller.dart';
 
 class EditMachinePage extends StatefulWidget {
-  final MachineModel machine; // Recebe a máquina clicada
+  final MachineModel machine;
 
   const EditMachinePage({super.key, required this.machine});
 
@@ -26,16 +28,15 @@ class _EditMachinePageState extends State<EditMachinePage> {
   late TextEditingController _powerController;
   late TextEditingController _hoursController;
 
-  // 1. CRIANDO OS OLHEIROS (FOCUS NODES)
   final _powerFocus = FocusNode();
   final _hoursFocus = FocusNode();
+  File? _newSelectedImage;
 
   final _controller = locator.get<EditMachineController>();
 
   @override
   void initState() {
     super.initState();
-    // Preenche os campos com os dados atuais da máquina
     _nameController = TextEditingController(text: widget.machine.name);
     _brandController = TextEditingController(text: widget.machine.brand);
     _modelController = TextEditingController(text: widget.machine.model);
@@ -46,9 +47,8 @@ class _EditMachinePageState extends State<EditMachinePage> {
 
     _controller.addListener(_handleStateChange);
 
-    // INTELIGÊNCIA DA POTÊNCIA: Esconde o "cv" e seleciona o texto
     _powerFocus.addListener(() {
-      setState(() {}); // Atualiza a tela para esconder/mostrar o "cv"
+      setState(() {});
       if (_powerFocus.hasFocus) {
         Future.microtask(() {
           _powerController.selection = TextSelection(
@@ -59,7 +59,6 @@ class _EditMachinePageState extends State<EditMachinePage> {
       }
     });
 
-    // INTELIGÊNCIA DAS HORAS: Seleciona o texto automaticamente
     _hoursFocus.addListener(() {
       if (_hoursFocus.hasFocus) {
         Future.microtask(() {
@@ -81,8 +80,8 @@ class _EditMachinePageState extends State<EditMachinePage> {
         builder: (context) => const CustomCircularProgressIndicator(),
       );
     } else if (state is EditMachineSuccessState) {
-      Navigator.pop(context); // Fecha o loading
-      Navigator.pop(context); // Volta pra tela do armazém
+      Navigator.pop(context);
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Máquina atualizada com sucesso!"),
@@ -90,19 +89,56 @@ class _EditMachinePageState extends State<EditMachinePage> {
         ),
       );
     } else if (state is EditMachineErrorState) {
-      Navigator.pop(context); // Fecha o loading
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(state.message), backgroundColor: Colors.red),
       );
     }
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Tirar Nova Foto'),
+              onTap: () async {
+                Navigator.pop(context);
+                final XFile? photo = await picker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 70,
+                );
+                if (photo != null)
+                  setState(() => _newSelectedImage = File(photo.path));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Escolher Nova da Galeria'),
+              onTap: () async {
+                Navigator.pop(context);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 70,
+                );
+                if (image != null)
+                  setState(() => _newSelectedImage = File(image.path));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
-    // 2. DESCARTANDO OS FOCUS NODES
     _powerFocus.dispose();
     _hoursFocus.dispose();
-
     _nameController.dispose();
     _brandController.dispose();
     _modelController.dispose();
@@ -132,10 +168,8 @@ class _EditMachinePageState extends State<EditMachinePage> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Fecha a caixinha
-              _controller.deleteMachineData(
-                widget.machine.id!,
-              ); // Exclui do banco
+              Navigator.pop(context);
+              _controller.deleteMachineData(widget.machine.id!);
             },
             child: const Text(
               "Sim, excluir",
@@ -173,7 +207,6 @@ class _EditMachinePageState extends State<EditMachinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Área da Foto
               Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
@@ -189,11 +222,32 @@ class _EditMachinePageState extends State<EditMachinePage> {
                           width: 2,
                         ),
                       ),
-                      child: const Icon(
-                        Icons.agriculture,
-                        size: 60,
-                        color: AppColors.lightkGrey,
-                      ),
+                      child: _newSelectedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(60),
+                              child: Image.file(
+                                _newSelectedImage!,
+                                height: 120,
+                                width: 120,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : (widget.machine.imageUrl != null &&
+                                widget.machine.imageUrl!.isNotEmpty)
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(60),
+                              child: Image.network(
+                                widget.machine.imageUrl!,
+                                height: 120,
+                                width: 120,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.agriculture,
+                              size: 60,
+                              color: AppColors.lightkGrey,
+                            ),
                     ),
                     CircleAvatar(
                       backgroundColor: AppColors.greenlightOne,
@@ -204,15 +258,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
                           color: Colors.white,
                           size: 20,
                         ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Alterar foto estará disponível em breve!",
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _pickImage,
                       ),
                     ),
                   ],
@@ -236,14 +282,12 @@ class _EditMachinePageState extends State<EditMachinePage> {
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
               ),
 
-              // 3. CAMPO DE POTÊNCIA VINCULADO AO FOCUS NODE
               CustomTextFormField(
                 controller: _powerController,
-                focusNode: _powerFocus, // Vinculando o FocusNode
+                focusNode: _powerFocus,
                 labelText: "POTÊNCIA",
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-                // A mágica que esconde o CV:
                 suffixIcon:
                     !_powerFocus.hasFocus && _powerController.text.isNotEmpty
                     ? Padding(
@@ -258,10 +302,9 @@ class _EditMachinePageState extends State<EditMachinePage> {
                     : null,
               ),
 
-              // 4. CAMPO DE HORAS VINCULADO AO FOCUS NODE
               CustomTextFormField(
                 controller: _hoursController,
-                focusNode: _hoursFocus, // Vinculando o FocusNode
+                focusNode: _hoursFocus,
                 labelText: "HORAS TRABALHADAS",
                 keyboardType: TextInputType.number,
               ),
@@ -271,7 +314,6 @@ class _EditMachinePageState extends State<EditMachinePage> {
                 text: 'Salvar Alterações',
                 onPressed: () {
                   if (_formKey.currentState?.validate() ?? false) {
-                    // Monta a máquina atualizada mantendo o ID original
                     final updatedMachine = MachineModel(
                       id: widget.machine.id,
                       name: _nameController.text.trim(),
@@ -285,7 +327,11 @@ class _EditMachinePageState extends State<EditMachinePage> {
                       imageUrl: widget.machine.imageUrl,
                     );
 
-                    _controller.updateMachineData(updatedMachine);
+                    // CORRIGIDO: Passando a nova imagem selecionada como segundo argumento
+                    _controller.updateMachineData(
+                      updatedMachine,
+                      _newSelectedImage,
+                    );
                   }
                 },
               ),

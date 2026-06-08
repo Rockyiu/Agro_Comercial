@@ -1,12 +1,13 @@
-import 'package:agro_comercial/features/edit_machine/edit_machine_controller.dart';
-import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_controller.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
-import 'package:agro_comercial/features/register_machine/register_machine_controller.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_details_controller.dart';
-import 'package:agro_comercial/services/machine_service/machine_service.dart';
+import 'package:agro_comercial/features/register_machine/register_machine_controller.dart';
+import 'package:agro_comercial/features/edit_machine/edit_machine_controller.dart';
+import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_controller.dart';
+import 'package:agro_comercial/services/product_service/product_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
+import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:get_it/get_it.dart';
 
 // Importação dos Serviços
@@ -27,13 +28,11 @@ void setupDependencies() {
   // ==========================
 
   locator.registerFactory<AuthService>(() => FirebaseAuthService());
-
   locator.registerFactory<SecureStorageService>(
     () => const SecureStorageService(),
   );
-
-  // RECUPERADO: O serviço do Armazém precisa existir para os controladores usarem!
   locator.registerFactory<WarehouseService>(() => WarehouseService());
+  locator.registerFactory<MachineService>(() => MachineService());
 
   // ==========================
   // Registro de Controllers
@@ -60,7 +59,6 @@ void setupDependencies() {
     () => FarmRegistrationController(),
   );
 
-  // CORRIGIDO: Apenas UMA menção ao WarehouseController, usando o LazySingleton
   locator.registerLazySingleton<WarehouseController>(
     () => WarehouseController(locator.get<WarehouseService>()),
   );
@@ -69,18 +67,15 @@ void setupDependencies() {
     () => RegisterWarehouseController(locator.get<WarehouseService>()),
   );
 
-  locator.registerFactory<MachineService>(() => MachineService());
+  locator.registerFactory<WarehouseDetailsController>(
+    () => WarehouseDetailsController(locator.get<MachineService>()),
+  );
 
-  // Na área de Controllers (Lembre de passar o MachineService E o WarehouseService):
   locator.registerFactory<RegisterMachineController>(
     () => RegisterMachineController(
       locator.get<MachineService>(),
       locator.get<WarehouseService>(),
     ),
-  );
-
-  locator.registerFactory<WarehouseDetailsController>(
-    () => WarehouseDetailsController(locator.get<MachineService>()),
   );
 
   locator.registerFactory<EditMachineController>(
@@ -90,4 +85,6 @@ void setupDependencies() {
   locator.registerFactory<EditWarehouseController>(
     () => EditWarehouseController(locator.get<WarehouseService>()),
   );
+
+  locator.registerFactory<ProductService>(() => ProductService());
 }

@@ -4,6 +4,7 @@ import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
 
 import 'register_machine_state.dart';
 
@@ -24,7 +25,6 @@ class RegisterMachineController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Busca os armazéns para preencher a caixinha de seleção (Dropdown)
   Future<void> loadWarehouses() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -46,7 +46,7 @@ class RegisterMachineController extends ChangeNotifier {
     required String power,
     required String workingHoursStr,
     required String warehouseId,
-    String? imageUrl,
+    required File? imageFile,
   }) async {
     _changeState(RegisterMachineLoadingState());
 
@@ -57,7 +57,6 @@ class RegisterMachineController extends ChangeNotifier {
         return;
       }
 
-      // LÓGICA DE NEGÓCIO: Se o campo de horas estiver vazio, vira 0!
       int hours = 0;
       if (workingHoursStr.trim().isNotEmpty) {
         hours = int.tryParse(workingHoursStr.trim()) ?? 0;
@@ -71,10 +70,10 @@ class RegisterMachineController extends ChangeNotifier {
         workingHours: hours,
         warehouseId: warehouseId,
         farmId: user.uid,
-        imageUrl: imageUrl,
+        imageUrl: null, // CORRIGIDO: Removido o erro da variável solta
       );
 
-      await _machineService.createMachine(newMachine);
+      await _machineService.createMachine(newMachine, imageFile);
       _changeState(RegisterMachineSuccessState());
     } catch (e) {
       _changeState(RegisterMachineErrorState("Erro ao salvar máquina."));

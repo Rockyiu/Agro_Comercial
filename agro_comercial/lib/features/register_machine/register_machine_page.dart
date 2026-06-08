@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
@@ -6,6 +7,7 @@ import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'register_machine_controller.dart';
 import 'register_machine_state.dart';
@@ -26,13 +28,14 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
   final _hoursController = TextEditingController();
 
   WarehouseModel? _selectedWarehouse;
+  File? _selectedImage;
   final _controller = locator.get<RegisterMachineController>();
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_handleStateChange);
-    _controller.loadWarehouses(); // Carrega os galpões ao abrir a tela
+    _controller.loadWarehouses();
   }
 
   void _handleStateChange() {
@@ -58,6 +61,45 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
         SnackBar(content: Text(state.message), backgroundColor: Colors.red),
       );
     }
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Tirar Foto (Câmera)'),
+              onTap: () async {
+                Navigator.pop(context);
+                final XFile? photo = await picker.pickImage(
+                  source: ImageSource.camera,
+                  imageQuality: 70,
+                );
+                if (photo != null)
+                  setState(() => _selectedImage = File(photo.path));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Escolher da Galeria'),
+              onTap: () async {
+                Navigator.pop(context);
+                final XFile? image = await picker.pickImage(
+                  source: ImageSource.gallery,
+                  imageQuality: 70,
+                );
+                if (image != null)
+                  setState(() => _selectedImage = File(image.path));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -104,7 +146,6 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Área da Foto (Estrutura visual pronta para o futuro)
                   Center(
                     child: Stack(
                       alignment: Alignment.bottomRight,
@@ -120,11 +161,21 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                               width: 2,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.agriculture,
-                            size: 60,
-                            color: AppColors.lightkGrey,
-                          ),
+                          child: _selectedImage != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(60),
+                                  child: Image.file(
+                                    _selectedImage!,
+                                    height: 120,
+                                    width: 120,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.agriculture,
+                                  size: 60,
+                                  color: AppColors.lightkGrey,
+                                ),
                         ),
                         CircleAvatar(
                           backgroundColor: AppColors.greenlightOne,
@@ -135,15 +186,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                               color: Colors.white,
                               size: 20,
                             ),
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Adicionar foto estará disponível em breve!",
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: _pickImage,
                           ),
                         ),
                       ],
@@ -151,7 +194,6 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Dropdown (Caixa de Seleção) do Armazém
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: DropdownButtonFormField<WarehouseModel>(
@@ -204,7 +246,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   CustomTextFormField(
                     controller: _powerController,
                     labelText: "POTÊNCIA",
-                    hintText: "Ex: 75 CV",
+                    hintText: "Ex: 75",
                     keyboardType: TextInputType.number,
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                   ),
@@ -212,8 +254,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                     controller: _hoursController,
                     labelText: "HORAS TRABALHADAS (Opcional)",
                     hintText: "Ex: 50 (Fica 0 se vazio)",
-                    keyboardType:
-                        TextInputType.number, // Abre só o teclado de números
+                    keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 32),
 
@@ -228,6 +269,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                           power: _powerController.text,
                           workingHoursStr: _hoursController.text,
                           warehouseId: _selectedWarehouse!.id!,
+                          imageFile: _selectedImage,
                         );
                       }
                     },

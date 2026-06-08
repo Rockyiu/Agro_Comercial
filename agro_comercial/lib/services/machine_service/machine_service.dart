@@ -1,12 +1,29 @@
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 
 class MachineService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  // Função para salvar a máquina no banco de dados
-  Future<void> createMachine(MachineModel machine) async {
+  Future<String?> _uploadImage(String machineId, File file) async {
+    try {
+      final ref = _storage.ref().child('machines').child('$machineId.jpg');
+      await ref.putFile(file);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> createMachine(MachineModel machine, File? imageFile) async {
     final docRef = _firestore.collection('machines').doc();
+    String? imageUrl;
+
+    if (imageFile != null) {
+      imageUrl = await _uploadImage(docRef.id, imageFile);
+    }
 
     final machineWithId = MachineModel(
       id: docRef.id,
@@ -15,7 +32,7 @@ class MachineService {
       brand: machine.brand,
       power: machine.power,
       workingHours: machine.workingHours,
-      imageUrl: machine.imageUrl,
+      imageUrl: imageUrl,
       warehouseId: machine.warehouseId,
       farmId: machine.farmId,
     );
@@ -26,17 +43,6 @@ class MachineService {
     await docRef.set(map);
   }
 
-  Future<void> updateMachine(MachineModel machine) async {
-    await _firestore.collection('machines').doc(machine.id).update({
-      'name': machine.name,
-      'model': machine.model,
-      'brand': machine.brand,
-      'power': machine.power,
-      'workingHours': machine.workingHours,
-    });
-  }
-
-  // Futuramente usaremos esta função para mostrar as máquinas dentro do galpão
   Future<List<MachineModel>> getMachinesByWarehouse(String warehouseId) async {
     final snapshot = await _firestore
         .collection('machines')
@@ -48,7 +54,42 @@ class MachineService {
         .toList();
   }
 
+  Future<void> updateMachine(MachineModel machine, File? newImageFile) async {
+    String? imageUrl = machine.imageUrl;
+
+    if (newImageFile != null) {
+      imageUrl = await _uploadImage(machine.id!, newImageFile);
+    }
+
+    await _firestore.collection('machines').doc(machine.id).update({
+      'name': machine.name,
+      'model': machine.model,
+      'brand': machine.brand,
+      'power': machine.power,
+      'workingHours': machine.workingHours,
+      'imageUrl': imageUrl,
+    });
+  }
+
   Future<void> deleteMachine(String machineId) async {
     await _firestore.collection('machines').doc(machineId).delete();
+    try {
+      await _storage.ref().child('machines').child('$machineId.jpg').delete();
+    } catch (_) {}
+  }
+
+  Future<void> deleteMultipleMachines(List<String> machineIds) async {
+    final batch = _firestore.batch();
+
+    for (String id in machineIds) {
+      final docRef = _firestore.collection('machines').doc(id);
+      batch.delete(docRef);
+
+      try {
+        await _storage.ref().child('machines').child('$id.jpg').delete();
+      } catch (_) {}
+    }
+
+    await batch.commit();
   }
 }

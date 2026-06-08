@@ -48,7 +48,57 @@ class WarehouseService {
     });
   }
 
-  Future<void> deleteWarehouse(String warehouseId) async {
-    await _firestore.collection('warehouses').doc(warehouseId).delete();
+  Future<void> deleteWarehouseAndContents(String warehouseId) async {
+    final batch = _firestore.batch();
+
+    // 1. Deleta o Armazém
+    batch.delete(_firestore.collection('warehouses').doc(warehouseId));
+
+    // 2. Busca e deleta as Máquinas do armazém
+    final machines = await _firestore
+        .collection('machines')
+        .where('warehouseId', isEqualTo: warehouseId)
+        .get();
+    for (var doc in machines.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // 3. NOVO: Busca e deleta os Produtos do armazém
+    final products = await _firestore
+        .collection('products')
+        .where('warehouseId', isEqualTo: warehouseId)
+        .get();
+    for (var doc in products.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
+  }
+
+  // Função nova para excluir vários armazéns de uma vez (Seleção Múltipla)
+  Future<void> deleteMultipleWarehouses(List<String> warehouseIds) async {
+    final batch = _firestore.batch();
+
+    for (String id in warehouseIds) {
+      batch.delete(_firestore.collection('warehouses').doc(id));
+
+      final machines = await _firestore
+          .collection('machines')
+          .where('warehouseId', isEqualTo: id)
+          .get();
+      for (var doc in machines.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // NOVO: Cascata de múltiplos armazéns para produtos
+      final products = await _firestore
+          .collection('products')
+          .where('warehouseId', isEqualTo: id)
+          .get();
+      for (var doc in products.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+    await batch.commit();
   }
 }

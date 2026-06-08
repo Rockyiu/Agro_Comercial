@@ -3,7 +3,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
-import 'package:agro_comercial/features/warehouse/warehouse_details_page.dart'; // <-- IMPORT NOVO AQUI
+import 'package:agro_comercial/features/warehouse/warehouse_details_page.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -20,10 +20,60 @@ class WarehousePage extends StatefulWidget {
 class _WarehousePageState extends State<WarehousePage> {
   final _controller = locator.get<WarehouseController>();
 
+  // Lista que guarda o ID dos armazéns selecionados
+  Set<String> selectedIds = {};
+
   @override
   void initState() {
     super.initState();
     _controller.loadWarehouseData();
+  }
+
+  // Função que seleciona ou desmarca um item
+  void _toggleSelection(String id) {
+    setState(() {
+      if (selectedIds.contains(id)) {
+        selectedIds.remove(id);
+      } else {
+        selectedIds.add(id);
+      }
+    });
+  }
+
+  void _showDeleteMultipleDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          "Excluir Selecionados",
+          style: AppTextStyles.midText20.copyWith(
+            color: AppColors.greenlightOne,
+          ),
+        ),
+        content: Text(
+          "Tem certeza que deseja excluir ${selectedIds.length} armazém(ns)? Todas as máquinas neles também serão apagadas!",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _controller.deleteSelectedWarehouses(selectedIds.toList());
+              setState(
+                () => selectedIds.clear(),
+              ); // Limpa a seleção após excluir
+            },
+            child: const Text(
+              "Sim, excluir",
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -42,12 +92,9 @@ class _WarehousePageState extends State<WarehousePage> {
 
           if (state is WarehouseErrorState) {
             return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  state.message,
-                  style: const TextStyle(color: Colors.red),
-                ),
+              child: Text(
+                state.message,
+                style: const TextStyle(color: Colors.red),
               ),
             );
           }
@@ -56,7 +103,52 @@ class _WarehousePageState extends State<WarehousePage> {
             if (state.warehouses.isEmpty) {
               return _buildEmptyState();
             }
-            return _buildFilledState(state);
+            return Column(
+              children: [
+                // BARRA DE SELEÇÃO: Só aparece se houver itens selecionados!
+                if (selectedIds.isNotEmpty)
+                  Container(
+                    color: AppColors.greenlightOne.withOpacity(0.1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${selectedIds.length} selecionado(s)",
+                          style: AppTextStyles.inputText.copyWith(
+                            color: AppColors.greenlightOne,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.close,
+                                color: AppColors.grey,
+                              ),
+                              onPressed: () => setState(
+                                () => selectedIds.clear(),
+                              ), // Cancela a seleção
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed:
+                                  _showDeleteMultipleDialog, // Chama a exclusão
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // LISTA DE ARMAZÉNS
+                Expanded(child: _buildFilledState(state)),
+              ],
+            );
           }
 
           return const SizedBox.shrink();
@@ -83,13 +175,6 @@ class _WarehousePageState extends State<WarehousePage> {
               style: AppTextStyles.midText20.copyWith(
                 color: AppColors.greenlightOne,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Para registrar tratores ou produtos, você precisa criar um armazém primeiro.',
-              style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
-              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
             PrimaryButton(
@@ -110,38 +195,56 @@ class _WarehousePageState extends State<WarehousePage> {
     );
   }
 
-  // --- NOVA LISTA VERTICAL BASEADA NA SUA IMAGEM ---
   Widget _buildFilledState(WarehouseSuccessState state) {
     return ListView.builder(
       padding: const EdgeInsets.only(
-        top: 24.0,
+        top: 16.0,
         left: 16.0,
         right: 16.0,
         bottom: 80.0,
-      ), // Margem extra no bottom pelo botão flutuante
+      ),
       itemCount: state.warehouses.length,
       itemBuilder: (context, index) {
         final warehouse = state.warehouses[index];
+        final isSelected = selectedIds.contains(
+          warehouse.id,
+        ); // Verifica se este galpão está selecionado
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: InkWell(
-            onTap: () {
-              // Navega para a tela de detalhes passando o armazém clicado!
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      WarehouseDetailsPage(warehouse: warehouse),
-                ),
-              );
-            },
             borderRadius: BorderRadius.circular(16),
+            onLongPress: () => _toggleSelection(
+              warehouse.id!,
+            ), // CLIQUE LONGO: Ativa a seleção
+            onTap: () {
+              // Se tiver selecionando, o clique normal também seleciona. Se não, abre a tela!
+              if (selectedIds.isNotEmpty) {
+                _toggleSelection(warehouse.id!);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        WarehouseDetailsPage(warehouse: warehouse),
+                  ),
+                );
+              }
+            },
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                // MUDANÇA DE COR VISUAL: Fica verdinho se estiver selecionado
+                color: isSelected
+                    ? AppColors.greenlightOne.withOpacity(0.05)
+                    : Colors.white,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.greenlightOne
+                      : Colors.transparent,
+                  width: 2,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.03),
@@ -152,21 +255,24 @@ class _WarehousePageState extends State<WarehousePage> {
               ),
               child: Row(
                 children: [
-                  // Ícone na esquerda com fundo clarinho
+                  // ÍCONE DINÂMICO: Mostra o galpão ou um 'Check' se selecionado
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.greenlightOne.withOpacity(0.1),
+                      color: isSelected
+                          ? AppColors.greenlightOne
+                          : AppColors.greenlightOne.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
-                      Icons.warehouse_outlined,
-                      color: AppColors.greenlightOne,
+                    child: Icon(
+                      isSelected ? Icons.check : Icons.warehouse_outlined,
+                      color: isSelected
+                          ? Colors.white
+                          : AppColors.greenlightOne,
                     ),
                   ),
                   const SizedBox(width: 16),
 
-                  // Textos no meio
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,32 +286,13 @@ class _WarehousePageState extends State<WarehousePage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Toque para ver o estoque',
+                          'Toque longo para selecionar',
                           style: AppTextStyles.smallText.copyWith(
                             color: AppColors.grey,
                             fontSize: 12,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-
-                  // Botãozinho estilo "Pay" na direita
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.greenlightOne.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Abrir',
-                      style: AppTextStyles.smallText.copyWith(
-                        color: AppColors.greenlightOne,
-                        fontWeight: FontWeight.bold,
-                      ),
                     ),
                   ),
                 ],

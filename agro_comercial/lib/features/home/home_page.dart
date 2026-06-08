@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
+import 'package:agro_comercial/features/register_product/register_product_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart'; // Import necessário
 import 'package:flutter/material.dart';
@@ -97,6 +98,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   onTap: () => Navigator.pop(context),
                 ),
+                // Procure o ListTile da Mercadoria/Produto e altere o onTap para:
                 ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: Colors.white,
@@ -106,16 +108,24 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   title: Text(
-                    'Cadastrar Mercadoria',
+                    'Cadastrar Produto',
                     style: AppTextStyles.inputText,
-                  ),
+                  ), // Nome alterado de mercadoria para produto
                   subtitle: Text(
-                    'Insumos, sementes, agrotóxicos',
+                    'Insumos, sementes, defensivos, peças',
                     style: AppTextStyles.smallText.copyWith(
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Navigator.pop(context); // Fecha menu inferior
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterProductPage(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -222,7 +232,16 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () => Navigator.pop(context),
+                  // MUDANÇA AQUI: Agora ele fecha o menu e abre a tela de cadastro de produto
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterProductPage(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
