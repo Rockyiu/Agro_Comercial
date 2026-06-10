@@ -1,5 +1,6 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
@@ -293,6 +294,23 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+            ),
+            // ADICIONADO: Opção Vistorias ligada com o Lançamento de Campo
+            ListTile(
+              leading: const Icon(
+                Icons.assignment_turned_in_outlined,
+                color: AppColors.greenlightOne,
+              ),
+              title: const Text('Vistorias'),
+              onTap: () {
+                Navigator.pop(context); // Fecha o drawer lateral
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RegisterFieldOperationPage(),
+                  ),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(

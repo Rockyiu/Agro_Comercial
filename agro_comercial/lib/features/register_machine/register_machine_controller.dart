@@ -46,6 +46,7 @@ class RegisterMachineController extends ChangeNotifier {
     required String power,
     required String workingHoursStr,
     required String warehouseId,
+    required bool isMotorized,
     required File? imageFile,
   }) async {
     _changeState(RegisterMachineLoadingState());
@@ -70,6 +71,7 @@ class RegisterMachineController extends ChangeNotifier {
         workingHours: hours,
         warehouseId: warehouseId,
         farmId: user.uid,
+        isMotorized: isMotorized,
         imageUrl: null, // CORRIGIDO: Removido o erro da variável solta
       );
 

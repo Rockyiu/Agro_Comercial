@@ -8,17 +8,18 @@ class ProductService {
   Future<void> createProduct(ProductModel product, File? imageFile) async {
     final docRef = _firestore.collection('products').doc();
 
-    // NOTA: Upload de imagem desativado temporariamente devido ao plano Spark do Storage
+    // CORRIGIDO: Agora repassamos o 'measure' para a instância do ProductModel
     final productWithId = ProductModel(
       id: docRef.id,
       name: product.name,
       brand: product.brand,
       quantity: product.quantity,
+      measure: product.measure, // <--- ADICIONADO AQUI PARA RESOLVER O ERRO
       unit: product.unit,
       category: product.category,
       warehouseId: product.warehouseId,
       farmId: product.farmId,
-      imageUrl: null,
+      imageUrl: null, // Upload desativado temporariamente devido ao plano Spark
       attributes: product.attributes,
     );
 
@@ -42,6 +43,8 @@ class ProductService {
       'name': product.name,
       'brand': product.brand,
       'quantity': product.quantity,
+      'measure': product
+          .measure, // <--- ADICIONADO: Mantém o banco atualizado se houver edição
       'unit': product.unit,
       'category': product.category,
       'attributes': product.attributes,
@@ -72,6 +75,6 @@ class ProductService {
         .where('brand', isEqualTo: brand)
         .get();
 
-    return snapshot.docs.isNotEmpty; // Retorna true se achar algum igual
+    return snapshot.docs.isNotEmpty;
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
@@ -7,7 +6,6 @@ import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import 'register_machine_controller.dart';
 import 'register_machine_state.dart';
@@ -28,7 +26,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
   final _hoursController = TextEditingController();
 
   WarehouseModel? _selectedWarehouse;
-  File? _selectedImage;
+  bool _isMotorized = true; // NOVA VARIÁVEL DE ESTADO
   final _controller = locator.get<RegisterMachineController>();
 
   @override
@@ -61,45 +59,6 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
         SnackBar(content: Text(state.message), backgroundColor: Colors.red),
       );
     }
-  }
-
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Tirar Foto (Câmera)'),
-              onTap: () async {
-                Navigator.pop(context);
-                final XFile? photo = await picker.pickImage(
-                  source: ImageSource.camera,
-                  imageQuality: 70,
-                );
-                if (photo != null)
-                  setState(() => _selectedImage = File(photo.path));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Escolher da Galeria'),
-              onTap: () async {
-                Navigator.pop(context);
-                final XFile? image = await picker.pickImage(
-                  source: ImageSource.gallery,
-                  imageQuality: 70,
-                );
-                if (image != null)
-                  setState(() => _selectedImage = File(image.path));
-              },
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -161,21 +120,11 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                               width: 2,
                             ),
                           ),
-                          child: _selectedImage != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(60),
-                                  child: Image.file(
-                                    _selectedImage!,
-                                    height: 120,
-                                    width: 120,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.agriculture,
-                                  size: 60,
-                                  color: AppColors.lightkGrey,
-                                ),
+                          child: const Icon(
+                            Icons.agriculture,
+                            size: 60,
+                            color: AppColors.lightkGrey,
+                          ),
                         ),
                         CircleAvatar(
                           backgroundColor: AppColors.greenlightOne,
@@ -186,7 +135,15 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                               color: Colors.white,
                               size: 20,
                             ),
-                            onPressed: _pickImage,
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Adicionar foto estará disponível em breve!",
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -202,18 +159,18 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                         labelStyle: AppTextStyles.inputLabelText.copyWith(
                           color: AppColors.lightkGrey,
                         ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
                             color: AppColors.greenlightOne,
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: const BorderSide(
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(
                             color: AppColors.greenlightOne,
                           ),
                         ),
                       ),
-                      value: _selectedWarehouse,
+                      initialValue: _selectedWarehouse,
                       items: _controller.warehouses.map((w) {
                         return DropdownMenuItem(value: w, child: Text(w.name));
                       }).toList(),
@@ -246,16 +203,38 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   CustomTextFormField(
                     controller: _powerController,
                     labelText: "POTÊNCIA",
-                    hintText: "Ex: 75",
+                    hintText: "Ex: 75 CV",
                     keyboardType: TextInputType.number,
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                   ),
-                  CustomTextFormField(
-                    controller: _hoursController,
-                    labelText: "HORAS TRABALHADAS (Opcional)",
-                    hintText: "Ex: 50 (Fica 0 se vazio)",
-                    keyboardType: TextInputType.number,
+                  const SizedBox(height: 16),
+
+                  // ADICIONADO: CHAVE SELETORA DE MOTOR
+                  SwitchListTile(
+                    title: Text(
+                      "Possui motor / Horímetro?",
+                      style: AppTextStyles.inputText.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Text(
+                      "Desmarque para implementos manuais, aplicadores costais, etc.",
+                      style: AppTextStyles.smallText,
+                    ),
+                    activeColor: AppColors.greenlightOne,
+                    value: _isMotorized,
+                    onChanged: (val) => setState(() => _isMotorized = val),
                   ),
+                  const SizedBox(height: 16),
+
+                  // ADICIONADO: SÓ MOSTRA SE FOR MOTORIZADO
+                  if (_isMotorized)
+                    CustomTextFormField(
+                      controller: _hoursController,
+                      labelText: "HORAS TRABALHADAS (Opcional)",
+                      hintText: "Ex: 50 (Fica 0 se vazio)",
+                      keyboardType: TextInputType.number,
+                    ),
                   const SizedBox(height: 32),
 
                   PrimaryButton(
@@ -267,9 +246,13 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                           brand: _brandController.text,
                           model: _modelController.text,
                           power: _powerController.text,
-                          workingHoursStr: _hoursController.text,
+                          // Se não for motorized, envia vazio para salvar como 0
+                          workingHoursStr: _isMotorized
+                              ? _hoursController.text
+                              : "",
                           warehouseId: _selectedWarehouse!.id!,
-                          imageFile: _selectedImage,
+                          isMotorized: _isMotorized,
+                          imageFile: null,
                         );
                       }
                     },

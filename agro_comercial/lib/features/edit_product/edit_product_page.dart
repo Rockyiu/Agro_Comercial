@@ -77,7 +77,10 @@ class _EditProductPageState extends State<EditProductPage> {
                       },
                       child: const Text(
                         "Excluir",
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
@@ -110,6 +113,27 @@ class _EditProductPageState extends State<EditProductPage> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              // ADICIONADO: Texto informativo exibindo a medida da embalagem
+              Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.greenlightOne.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "Medida por Embalagem: ${widget.product.measure} ${widget.product.unit}",
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.greenlightOne,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
               CustomTextFormField(
                 controller: _nameController,
@@ -123,7 +147,7 @@ class _EditProductPageState extends State<EditProductPage> {
               ),
               CustomTextFormField(
                 controller: _quantityController,
-                labelText: "QUANTIDADE EM ESTOQUE",
+                labelText: "QUANTIDADE EM ESTOQUE (Embalagens)",
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? "Obrigatório" : null,
               ),
@@ -142,8 +166,9 @@ class _EditProductPageState extends State<EditProductPage> {
                     Map<String, dynamic> updatedAttrs = Map.from(
                       widget.product.attributes,
                     );
-                    if (updatedAttrs.containsKey('campo_extra_1'))
+                    if (updatedAttrs.containsKey('campo_extra_1')) {
                       updatedAttrs['campo_extra_1'] = _extra1Controller.text;
+                    }
 
                     final updatedProduct = ProductModel(
                       id: widget.product.id,
@@ -151,6 +176,9 @@ class _EditProductPageState extends State<EditProductPage> {
                       brand: _brandController.text.trim(),
                       quantity:
                           double.tryParse(_quantityController.text) ?? 0.0,
+                      measure: widget
+                          .product
+                          .measure, // CORRIGIDO: Agora o measure é mantido corretamente!
                       unit: widget.product.unit,
                       category: widget.product.category,
                       warehouseId: widget.product.warehouseId,

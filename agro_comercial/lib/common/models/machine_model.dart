@@ -2,52 +2,58 @@ import 'dart:convert';
 
 class MachineModel {
   final String? id;
-  final String name; // Ex: Trator 1, Colhedora
+  final String name;
+  final String brand;
   final String model;
-  final String brand; // Marca
-  final String power; // Potência
-  final int workingHours; // Horas trabalhadas
-  final String? imageUrl; // Link da foto no Firebase Storage
-  final String warehouseId; // Em qual armazém ela está
-  final String farmId; // De qual fazenda ela é
+  final String power;
+  final int workingHours;
+  final String warehouseId;
+  final String farmId;
+  final String? imageUrl;
+  final bool isMotorized; // <--- NOVA FLAG AQUI
 
   MachineModel({
     this.id,
     required this.name,
-    required this.model,
     required this.brand,
+    required this.model,
     required this.power,
     required this.workingHours,
-    this.imageUrl,
     required this.warehouseId,
     required this.farmId,
+    this.imageUrl,
+    this.isMotorized = true, // Por padrão, assumimos que tem motor
   });
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'id': id,
+    return {
+      if (id != null) 'id': id,
       'name': name,
-      'model': model,
       'brand': brand,
+      'model': model,
       'power': power,
       'workingHours': workingHours,
-      'imageUrl': imageUrl,
       'warehouseId': warehouseId,
       'farmId': farmId,
+      'imageUrl': imageUrl,
+      'isMotorized': isMotorized, // Salva no banco
     };
   }
 
   factory MachineModel.fromMap(Map<String, dynamic> map) {
     return MachineModel(
-      id: map['id'] != null ? map['id'] as String : null,
-      name: map['name'] as String,
-      model: map['model'] as String,
-      brand: map['brand'] as String,
-      power: map['power'] as String,
-      workingHours: map['workingHours'] as int,
-      imageUrl: map['imageUrl'] != null ? map['imageUrl'] as String : null,
-      warehouseId: map['warehouseId'] as String,
-      farmId: map['farmId'] as String,
+      id: map['id'],
+      name: map['name'] ?? '',
+      brand: map['brand'] ?? '',
+      model: map['model'] ?? '',
+      power: map['power'] ?? '',
+      workingHours: map['workingHours'] ?? 0,
+      warehouseId: map['warehouseId'] ?? '',
+      farmId: map['farmId'] ?? '',
+      imageUrl: map['imageUrl'],
+      isMotorized:
+          map['isMotorized'] ??
+          true, // Lê do banco (evita quebrar máquinas antigas)
     );
   }
 
