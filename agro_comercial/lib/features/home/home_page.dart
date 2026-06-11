@@ -4,7 +4,8 @@ import 'package:agro_comercial/features/field_operations/register_field_operatio
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
-import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart'; // Import necessário
+import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
+import 'package:agro_comercial/features/operation/operation_page.dart'; // NOVO IMPORT DA PÁGINA DE OPERAÇÕES
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
@@ -71,7 +72,6 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  // MUDANÇA AQUI: Agora o botão da Home também leva para o cadastro!
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -97,9 +97,13 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _currentIndex = 3; // Joga para a aba de operações
+                    });
+                  },
                 ),
-                // Procure o ListTile da Mercadoria/Produto e altere o onTap para:
                 ListTile(
                   leading: const CircleAvatar(
                     backgroundColor: Colors.white,
@@ -111,7 +115,7 @@ class _HomePageState extends State<HomePage> {
                   title: Text(
                     'Cadastrar Produto',
                     style: AppTextStyles.inputText,
-                  ), // Nome alterado de mercadoria para produto
+                  ),
                   subtitle: Text(
                     'Insumos, sementes, defensivos, peças',
                     style: AppTextStyles.smallText.copyWith(
@@ -136,7 +140,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Menu da Aba Armazém
   // Menu da Aba Armazém
   void _showWarehouseAddMenu() {
     showModalBottomSheet(
@@ -177,19 +180,14 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  // MUDANÇA AQUI: Adicionamos o 'async'
                   onTap: () async {
-                    Navigator.pop(context); // Fecha o menu inferior
-
-                    // MUDANÇA AQUI: Adicionamos o 'await' para o aplicativo aguardar a tela de cadastro
+                    Navigator.pop(context);
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterWarehousePage(),
                       ),
                     );
-
-                    // MUDANÇA AQUI: Após voltar da tela de cadastro, força a atualização da lista
                     locator.get<WarehouseController>().loadWarehouseData();
                   },
                 ),
@@ -233,7 +231,6 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  // MUDANÇA AQUI: Agora ele fecha o menu e abre a tela de cadastro de produto
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.push(
@@ -295,7 +292,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            // ADICIONADO: Opção Vistorias ligada com o Lançamento de Campo
             ListTile(
               leading: const Icon(
                 Icons.assignment_turned_in_outlined,
@@ -310,6 +306,20 @@ class _HomePageState extends State<HomePage> {
                     builder: (context) => const RegisterFieldOperationPage(),
                   ),
                 );
+              },
+            ),
+            // ADICIONADO: Opção Operações Campo logo abaixo de Vistorias
+            ListTile(
+              leading: const Icon(
+                Icons.assignment_outlined,
+                color: AppColors.greenlightOne,
+              ),
+              title: const Text('Operações'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(
+                  () => _currentIndex = 3,
+                ); // Joga direto para a aba de histórico de operações!
               },
             ),
             ListTile(
@@ -331,7 +341,7 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 2)
           ? FloatingActionButton(
               backgroundColor: AppColors.greenlightOne,
-              onPressed: _handleFabPressed, // Chama a função inteligente
+              onPressed: _handleFabPressed,
               elevation: 4,
               child: const Icon(Icons.add, color: Colors.white, size: 36),
             )
@@ -363,10 +373,11 @@ class _HomePageState extends State<HomePage> {
                 index: 2,
                 label: 'Armazém',
               ),
+              // ATUALIZADO: O item 3 do menu inferior agora direciona para as Operações
               _buildTabItem(
                 icon: Icons.assignment_outlined,
                 index: 3,
-                label: 'Vistorias',
+                label: 'Operações',
               ),
             ],
           ),
@@ -416,6 +427,9 @@ class _HomePageState extends State<HomePage> {
       );
     } else if (_currentIndex == 2) {
       return const WarehousePage();
+    } else if (_currentIndex == 3) {
+      // ADICIONADO: Ao selecionar a aba 3 (ou clicar no drawer), renderiza o OperationPage
+      return const OperationPage();
     } else {
       return Center(
         child: Column(

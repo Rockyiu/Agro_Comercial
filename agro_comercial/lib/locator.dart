@@ -1,5 +1,6 @@
 import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
+import 'package:agro_comercial/features/operation/operation_controller.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_details_controller.dart';
@@ -7,6 +8,7 @@ import 'package:agro_comercial/features/register_machine/register_machine_contro
 import 'package:agro_comercial/features/edit_machine/edit_machine_controller.dart';
 import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_controller.dart';
 import 'package:agro_comercial/services/field_operation_service/field_operation_service.dart';
+import 'package:agro_comercial/services/operation_service/operation_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
@@ -95,6 +97,17 @@ void setupDependencies() {
   locator.registerFactory<FieldOperationController>(
     () => FieldOperationController(
       locator.get<FieldOperationService>(),
+      locator.get<MachineService>(),
+      locator.get<WarehouseService>(),
+      locator.get<ProductService>(),
+    ),
+  );
+
+  locator.registerFactory<OperationService>(() => OperationService());
+
+  locator.registerFactory<OperationController>(
+    () => OperationController(
+      locator.get<OperationService>(),
       locator.get<MachineService>(),
       locator.get<WarehouseService>(),
       locator.get<ProductService>(),
