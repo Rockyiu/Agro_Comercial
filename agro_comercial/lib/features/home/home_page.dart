@@ -1,14 +1,20 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
+import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
-import 'package:agro_comercial/features/operation/operation_page.dart'; // NOVO IMPORT DA PÁGINA DE OPERAÇÕES
+import 'package:agro_comercial/features/operation/operation_page.dart';
+import 'package:agro_comercial/features/operation/register_operation_page.dart';
+import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+// CORRIGIDO: Agora puxando da pasta sign_in correta!
+import 'package:agro_comercial/features/sign_in/sign_in_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,7 +26,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  // Função que decide qual menu abrir dependendo da aba selecionada
   void _handleFabPressed() {
     if (_currentIndex == 0) {
       _showHomeAddMenu();
@@ -29,7 +34,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Menu da Aba Início
   void _showHomeAddMenu() {
     showModalBottomSheet(
       context: context,
@@ -99,9 +103,12 @@ class _HomePageState extends State<HomePage> {
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() {
-                      _currentIndex = 3; // Joga para a aba de operações
-                    });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const RegisterOperationPage(),
+                      ),
+                    );
                   },
                 ),
                 ListTile(
@@ -123,7 +130,7 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   onTap: () {
-                    Navigator.pop(context); // Fecha menu inferior
+                    Navigator.pop(context);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -140,7 +147,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Menu da Aba Armazém
   void _showWarehouseAddMenu() {
     showModalBottomSheet(
       context: context,
@@ -278,66 +284,117 @@ class _HomePageState extends State<HomePage> {
       ),
       drawer: Drawer(
         backgroundColor: AppColors.iceWhite,
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: AppColors.greenlightOne),
-              child: Text(
-                'Menu Gestão Rural',
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  const DrawerHeader(
+                    decoration: BoxDecoration(color: AppColors.greenlightOne),
+                    child: Text(
+                      'Menu Gestão Rural',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.assignment_turned_in_outlined,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Vistorias'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FieldOperationPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.assignment_outlined,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Operações'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const OperationPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.person_outline,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Meu Perfil'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfilePage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.settings,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Configurações'),
+                    onTap: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text(
+                'Sair',
                 style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
+                  color: Colors.redAccent,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.assignment_turned_in_outlined,
-                color: AppColors.greenlightOne,
-              ),
-              title: const Text('Vistorias'),
-              onTap: () {
-                Navigator.pop(context); // Fecha o drawer lateral
-                Navigator.push(
+              onTap: () async {
+                Navigator.pop(context);
+
+                await FirebaseAuth.instance.signOut();
+
+                if (!context.mounted) {
+                  return;
+                }
+
+                // CORRIGIDO: Redireciona corretamente para a SignInPage
+                Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const RegisterFieldOperationPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const SignInPage()),
+                  (route) => false,
                 );
               },
             ),
-            // ADICIONADO: Opção Operações Campo logo abaixo de Vistorias
-            ListTile(
-              leading: const Icon(
-                Icons.assignment_outlined,
-                color: AppColors.greenlightOne,
-              ),
-              title: const Text('Operações'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(
-                  () => _currentIndex = 3,
-                ); // Joga direto para a aba de histórico de operações!
-              },
-            ),
-            ListTile(
-              leading: const Icon(
-                Icons.settings,
-                color: AppColors.greenlightOne,
-              ),
-              title: const Text('Configurações'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
       body: _buildBody(),
 
-      // O Botão agora só aparece se estivermos na aba Home (0) ou Armazém (2)
       floatingActionButton: (_currentIndex == 0 || _currentIndex == 2)
           ? FloatingActionButton(
               backgroundColor: AppColors.greenlightOne,
@@ -373,11 +430,10 @@ class _HomePageState extends State<HomePage> {
                 index: 2,
                 label: 'Armazém',
               ),
-              // ATUALIZADO: O item 3 do menu inferior agora direciona para as Operações
               _buildTabItem(
-                icon: Icons.assignment_outlined,
+                icon: Icons.bar_chart_outlined,
                 index: 3,
-                label: 'Operações',
+                label: 'Relatório',
               ),
             ],
           ),
@@ -411,7 +467,7 @@ class _HomePageState extends State<HomePage> {
           _buildSummaryCard(
             title: 'Última Operação',
             value: 'Trator Massey 95',
-            subtitle: 'Operou por 5 horas - Talhão 02',
+            subtitle: 'Operou por 5 hours - Talhão 02',
             icon: Icons.agriculture,
             color: Colors.orange,
           ),
@@ -428,8 +484,25 @@ class _HomePageState extends State<HomePage> {
     } else if (_currentIndex == 2) {
       return const WarehousePage();
     } else if (_currentIndex == 3) {
-      // ADICIONADO: Ao selecionar a aba 3 (ou clicar no drawer), renderiza o OperationPage
-      return const OperationPage();
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.bar_chart_rounded,
+              size: 64,
+              color: AppColors.lightkGrey.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Relatórios em construção',
+              style: AppTextStyles.midText20.copyWith(
+                color: AppColors.lightkGrey,
+              ),
+            ),
+          ],
+        ),
+      );
     } else {
       return Center(
         child: Column(
@@ -438,7 +511,7 @@ class _HomePageState extends State<HomePage> {
             Icon(
               Icons.construction,
               size: 64,
-              color: AppColors.lightkGrey.withOpacity(0.5),
+              color: AppColors.lightkGrey.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -470,7 +543,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: color.withOpacity(0.15),
+              backgroundColor: color.withValues(alpha: 0.15),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(width: 16),

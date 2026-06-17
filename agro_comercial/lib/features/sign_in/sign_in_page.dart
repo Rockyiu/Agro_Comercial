@@ -11,6 +11,7 @@ import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ADICIONADO: Para guardar a preferência de sessão
 
 import '../../locator.dart';
 import 'sign_in_controller.dart';
@@ -28,6 +29,8 @@ class _SignInPageState extends State<SignInPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _signInController = locator.get<SignInController>();
+
+  bool _keepConnected = true; // ADICIONADO: Variável da caixa de seleção
 
   @override
   void initState() {
@@ -55,11 +58,12 @@ class _SignInPageState extends State<SignInPage> {
     } else if (state is SignInStateSuccess) {
       Navigator.pop(context); // Remove o loading
 
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        '/home', // Rota em string para evitar erro de classe não definida
-        (route) => false,
-      );
+      // GUARDA A ESCOLHA DO UTILIZADOR NA MEMÓRIA DO DISPOSITIVO
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setBool('keepConnected', _keepConnected);
+      });
+
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } else if (state is SignInStateError) {
       Navigator.pop(context); // Remove o loading
       customModalBottomSheet(
@@ -118,6 +122,36 @@ class _SignInPageState extends State<SignInPage> {
                   validator: Validator.validatePassword,
                   onEditingComplete: _onSignInButtonPressed,
                 ),
+                // ADICIONADO: Caixa de "Manter-me conectado"
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _keepConnected,
+                      onChanged: (value) {
+                        setState(() {
+                          _keepConnected = value ?? true;
+                        });
+                      },
+                      activeColor: AppColors.greenlightOne,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _keepConnected = !_keepConnected;
+                        });
+                      },
+                      child: Text(
+                        "Manter-me conectado",
+                        style: AppTextStyles.smallText.copyWith(
+                          color: AppColors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -125,10 +159,8 @@ class _SignInPageState extends State<SignInPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               key: Keys.forgotPasswordButton,
-              onPressed: () => Navigator.popAndPushNamed(
-                context,
-                '/forgot_password',
-              ), // Rota corrigida
+              onPressed: () =>
+                  Navigator.popAndPushNamed(context, '/forgot_password'),
               child: const Text('Esqueceu a senha?'),
             ),
           ),
@@ -147,10 +179,7 @@ class _SignInPageState extends State<SignInPage> {
           ),
           MultiTextButton(
             key: Keys.signInDontHaveAccountButton,
-            onPressed: () => Navigator.popAndPushNamed(
-              context,
-              '/sign_up',
-            ), // Rota corrigida
+            onPressed: () => Navigator.popAndPushNamed(context, '/sign_up'),
             children: [
               Text(
                 'Não tem uma conta? ',

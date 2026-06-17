@@ -1,23 +1,23 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
-import 'package:agro_comercial/features/operation/operation_details_page.dart';
-import 'package:agro_comercial/features/operation/register_operation_page.dart';
+import 'package:agro_comercial/features/field_operations/field_operation_details_page.dart';
+import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
-import 'operation_controller.dart';
-import 'operation_state.dart';
+import 'field_operation_controller.dart';
+import 'field_operation_state.dart';
 
-class OperationPage extends StatefulWidget {
-  const OperationPage({super.key});
+class FieldOperationPage extends StatefulWidget {
+  const FieldOperationPage({super.key});
 
   @override
-  State<OperationPage> createState() => _OperationPageState();
+  State<FieldOperationPage> createState() => _FieldOperationPageState();
 }
 
-class _OperationPageState extends State<OperationPage> {
-  final _controller = locator.get<OperationController>();
+class _FieldOperationPageState extends State<FieldOperationPage> {
+  final _controller = locator.get<FieldOperationController>();
   Set<String> selectedIds = {};
 
   @override
@@ -47,7 +47,7 @@ class _OperationPageState extends State<OperationPage> {
           ),
         ),
         content: Text(
-          "Tem certeza que deseja apagar as ${selectedIds.length} operações selecionadas do histórico?",
+          "Deseja apagar as ${selectedIds.length} operações de campo?",
         ),
         actions: [
           TextButton(
@@ -77,7 +77,7 @@ class _OperationPageState extends State<OperationPage> {
       // ADICIONADO: A barra superior com o botão de voltar!
       appBar: AppBar(
         title: Text(
-          "Histórico de Operações",
+          "Vistorias e Aplicações",
           style: AppTextStyles.midText20.copyWith(color: Colors.white),
         ),
         backgroundColor: AppColors.greenlightOne,
@@ -88,11 +88,11 @@ class _OperationPageState extends State<OperationPage> {
         builder: (context, child) {
           final state = _controller.state;
 
-          if (state is OperationLoadingState ||
-              state is OperationInitialState) {
+          if (state is FieldOperationLoadingState ||
+              state is FieldOperationInitialState) {
             return const Center(child: CustomCircularProgressIndicator());
           }
-          if (state is OperationErrorState) {
+          if (state is FieldOperationErrorState) {
             return Center(
               child: Text(
                 state.message,
@@ -100,19 +100,17 @@ class _OperationPageState extends State<OperationPage> {
               ),
             );
           }
-
-          if (state is OperationSuccessState) {
+          if (state is FieldOperationSuccessState) {
             if (state.operations.isEmpty) {
               return Center(
                 child: Text(
-                  "Nenhuma operação registrada ainda.",
+                  "Nenhuma vistoria registrada.",
                   style: AppTextStyles.midText20.copyWith(
                     color: AppColors.lightkGrey,
                   ),
                 ),
               );
             }
-
             return Column(
               children: [
                 if (selectedIds.isNotEmpty)
@@ -185,7 +183,7 @@ class _OperationPageState extends State<OperationPage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      OperationDetailsPage(operation: op),
+                                      FieldOperationDetailsPage(operation: op),
                                 ),
                               );
                               _controller.loadOperationsData();
@@ -196,20 +194,23 @@ class _OperationPageState extends State<OperationPage> {
                               backgroundColor: AppColors.greenlightOne
                                   .withValues(alpha: 0.1),
                               child: Icon(
-                                op.usedProducts
-                                    ? Icons.opacity
-                                    : Icons.assignment_outlined,
+                                op.type == 'Vistoria'
+                                    ? Icons.search
+                                    : Icons.opacity,
                                 color: AppColors.greenlightOne,
                               ),
                             ),
                             title: Text(
-                              op.title,
+                              "${op.type} - ${op.plotName}",
                               style: AppTextStyles.inputText.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                             subtitle: Text(
-                              op.description,
+                              op.observations ??
+                                  (op.productName != null
+                                      ? "Insumo: ${op.productName}"
+                                      : "Talhão em análise"),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -235,12 +236,11 @@ class _OperationPageState extends State<OperationPage> {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const RegisterOperationPage(),
+              builder: (context) => const RegisterFieldOperationPage(),
             ),
           );
           _controller.loadOperationsData();
         },
-        elevation: 4,
         child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
     );

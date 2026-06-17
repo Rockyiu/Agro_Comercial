@@ -7,7 +7,9 @@ class UserModel {
   final String? email;
   final String? cpf;
   final String? password;
-  final String? role; // Novo campo para gerenciar as permissões
+  final String? role;
+  final String? phone; // ADICIONADO: Telefone do perfil
+  final String? imageUrl; // ADICIONADO: Foto de perfil
 
   UserModel({
     required this.id,
@@ -16,6 +18,8 @@ class UserModel {
     required this.cpf,
     required this.password,
     required this.role,
+    this.phone,
+    this.imageUrl,
   });
 
   Map<String, dynamic> toMap() {
@@ -24,8 +28,10 @@ class UserModel {
       'name': name,
       'email': email,
       'cpf': cpf,
-      'password': password,
+      //'password': password,
       'role': role,
+      'phone': phone,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -34,9 +40,12 @@ class UserModel {
       id: map['id'] != null ? map['id'] as String : null,
       name: map['name'] != null ? map['name'] as String : null,
       email: map['email'] != null ? map['email'] as String : null,
-      cpf: map['cpf'] != null ? map['cpf'] as String : null,
+      // MUDANÇA AQUI: Agora ele tenta achar 'cpf', 'CPF' ou 'Cpf'
+      cpf: (map['cpf'] ?? map['CPF'] ?? map['Cpf']) as String?,
       password: map['password'] != null ? map['password'] as String : null,
       role: map['role'] != null ? map['role'] as String : null,
+      phone: map['phone'] != null ? map['phone'] as String : null,
+      imageUrl: map['imageUrl'] != null ? map['imageUrl'] as String : null,
     );
   }
 

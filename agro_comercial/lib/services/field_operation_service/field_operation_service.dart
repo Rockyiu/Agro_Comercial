@@ -6,8 +6,7 @@ class FieldOperationService {
 
   Future<void> saveFieldOperation(FieldOperationModel operation) async {
     final docRef = _firestore.collection('field_operations').doc();
-
-    final operationWithId = FieldOperationModel(
+    final opWithId = FieldOperationModel(
       id: docRef.id,
       type: operation.type,
       plotName: operation.plotName,
@@ -21,8 +20,38 @@ class FieldOperationService {
       dosageUnit: operation.dosageUnit,
       machineId: operation.machineId,
       machineName: operation.machineName,
+      machineHours: operation.machineHours,
     );
+    await docRef.set(opWithId.toMap());
+  }
 
-    await docRef.set(operationWithId.toMap());
+  Future<List<FieldOperationModel>> getFieldOperations(String farmId) async {
+    final snapshot = await _firestore
+        .collection('field_operations')
+        .where('farmId', isEqualTo: farmId)
+        .orderBy('dateTimestamp', descending: true)
+        .get();
+    return snapshot.docs
+        .map((doc) => FieldOperationModel.fromMap(doc.data()))
+        .toList();
+  }
+
+  Future<void> updateFieldOperation(FieldOperationModel operation) async {
+    await _firestore
+        .collection('field_operations')
+        .doc(operation.id)
+        .update(operation.toMap());
+  }
+
+  Future<void> deleteFieldOperation(String id) async {
+    await _firestore.collection('field_operations').doc(id).delete();
+  }
+
+  Future<void> deleteMultipleFieldOperations(List<String> ids) async {
+    final batch = _firestore.batch();
+    for (String id in ids) {
+      batch.delete(_firestore.collection('field_operations').doc(id));
+    }
+    await batch.commit();
   }
 }

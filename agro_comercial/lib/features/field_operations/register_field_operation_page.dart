@@ -1,8 +1,6 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
-import 'package:agro_comercial/common/models/machine_model.dart';
-import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -25,69 +23,38 @@ class _RegisterFieldOperationPageState
   final _formKey = GlobalKey<FormState>();
   final _plotController = TextEditingController();
   final _obsController = TextEditingController();
+  final _dosageController = TextEditingController();
 
   final _controller = locator.get<FieldOperationController>();
 
+  bool _isProcessing = false;
   String _selectedType = 'Vistoria';
   String? _selectedCondition;
-  MachineModel? _selectedMachine;
 
-  // GERENCIAMENTO DA CALDA DE MISTURA (1 a 10 Itens)
-  int _productsCount = 1;
-  final List<ProductModel?> _selectedProducts = List.generate(10, (_) => null);
-  final List<TextEditingController> _dosageControllers = List.generate(
-    10,
-    (_) => TextEditingController(),
-  );
-  final List<String> _selectedDosageUnits = List.generate(10, (_) => 'ml');
+  // Utilizando IDs para blindar o Dropdown contra o AssertionError
+  String? _selectedProductId;
+  String? _selectedMachineId;
+  String _selectedDosageUnit = 'L';
 
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
 
   final List<String> _conditions = ['Excelente', 'Atenção', 'Crítico'];
-  final List<String> _dosageUnits = ['L', 'ml', 'kg', 'g', 'un'];
+  final List<String> _dosageUnits = [
+    'L',
+    'ml',
+    'kg',
+    'g',
+    'un',
+    'mg',
+    'saco',
+    'tambor',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(_handleStateChange);
     _controller.loadFarmResources();
-  }
-
-  void _handleStateChange() {
-    final state = _controller.state;
-    if (state is FieldOperationLoadingState) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const CustomCircularProgressIndicator(),
-      );
-    } else if (state is FieldOperationSuccessState) {
-      Navigator.pop(context);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Atividade lançada com sucesso!"),
-          backgroundColor: AppColors.greenlightOne,
-        ),
-      );
-    } else if (state is FieldOperationErrorState) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _plotController.dispose();
-    _obsController.dispose();
-    for (var c in _dosageControllers) {
-      c.dispose();
-    }
-    _controller.dispose();
-    super.dispose();
   }
 
   Future<void> _selectTime(bool isStart) async {
@@ -97,12 +64,21 @@ class _RegisterFieldOperationPageState
     );
     if (picked != null) {
       setState(() {
-        if (isStart)
+        if (isStart) {
           _startTime = picked;
-        else
+        } else {
           _endTime = picked;
+        }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _plotController.dispose();
+    _obsController.dispose();
+    _dosageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -120,7 +96,7 @@ class _RegisterFieldOperationPageState
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_controller.isLoadingResources) {
+          if (_controller.isLoadingResources || _isProcessing) {
             return const Center(child: CustomCircularProgressIndicator());
           }
 
@@ -154,7 +130,9 @@ class _RegisterFieldOperationPageState
                     ],
                     selected: {_selectedType},
                     onSelectionChanged: (Set<String> newSelection) {
-                      setState(() => _selectedType = newSelection.first);
+                      setState(() {
+                        _selectedType = newSelection.first;
+                      });
                     },
                     style: SegmentedButton.styleFrom(
                       selectedBackgroundColor: AppColors.greenlightOne,
@@ -166,8 +144,8 @@ class _RegisterFieldOperationPageState
                   CustomTextFormField(
                     controller: _plotController,
                     labelText: "IDENTIFICAÇÃO DO TALHÃO",
-                    hintText: "Ex: Talhão 01",
-                    validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                    hintText: "Ex: Talhão 01, Área Norte",
+                    validator: (v) => v!.isEmpty ? "Informe o talhão" : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -178,39 +156,45 @@ class _RegisterFieldOperationPageState
                   const SizedBox(height: 32),
                   PrimaryButton(
                     text: "Confirmar Lançamento",
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState?.validate() ?? false) {
+                        String? machName;
+                        bool needsTime = false;
+
                         if (_selectedType == 'Aplicação' &&
-                            _selectedMachine != null &&
-                            _selectedMachine!.isMotorized &&
+                            _selectedMachineId != null) {
+                          try {
+                            final m = _controller.machines.firstWhere(
+                              (mach) => mach.id == _selectedMachineId,
+                            );
+                            machName = m.name;
+                            needsTime = m.isMotorized;
+                          } catch (_) {}
+                        }
+
+                        if (_selectedType == 'Aplicação' &&
+                            needsTime &&
                             (_startTime == null || _endTime == null)) {
+                          // ADICIONADO: Libera o ecrã para tentar de novo
+                          setState(() => _isProcessing = false);
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text(
-                                "Selecione os horários da máquina!",
-                              ),
+                              content: Text("Defina os horários do trator!"),
                               backgroundColor: Colors.red,
                             ),
                           );
                           return;
                         }
 
-                        List<Map<String, dynamic>> appliedProductsList = [];
-                        if (_selectedType == 'Aplicação') {
-                          for (int i = 0; i < _productsCount; i++) {
-                            if (_selectedProducts[i] != null) {
-                              appliedProductsList.add({
-                                'productId': _selectedProducts[i]!.id,
-                                'productName': _selectedProducts[i]!.name,
-                                'dosage':
-                                    double.tryParse(
-                                      _dosageControllers[i].text,
-                                    ) ??
-                                    0.0,
-                                'dosageUnit': _selectedDosageUnits[i],
-                              });
-                            }
-                          }
+                        String? prodName;
+                        if (_selectedType == 'Aplicação' &&
+                            _selectedProductId != null) {
+                          try {
+                            prodName = _controller.products
+                                .firstWhere((p) => p.id == _selectedProductId)
+                                .name;
+                          } catch (_) {}
                         }
 
                         final operation = FieldOperationModel(
@@ -222,20 +206,53 @@ class _RegisterFieldOperationPageState
                               ? _selectedCondition
                               : null,
                           observations: _obsController.text.trim(),
+                          productId: _selectedType == 'Aplicação'
+                              ? _selectedProductId
+                              : null,
+                          productName: _selectedType == 'Aplicação'
+                              ? prodName
+                              : null,
+                          dosage: _selectedType == 'Aplicação'
+                              ? double.tryParse(_dosageController.text)
+                              : null,
+                          dosageUnit: _selectedType == 'Aplicação'
+                              ? _selectedDosageUnit
+                              : null,
                           machineId: _selectedType == 'Aplicação'
-                              ? _selectedMachine?.id
+                              ? _selectedMachineId
                               : null,
                           machineName: _selectedType == 'Aplicação'
-                              ? _selectedMachine?.name
+                              ? machName
                               : null,
                         );
 
-                        _controller.launchOperation(
+                        setState(() => _isProcessing = true);
+
+                        await _controller.launchOperation(
                           operation,
-                          appliedProductsList,
                           startTime: _startTime,
                           endTime: _endTime,
                         );
+
+                        if (!context.mounted) {
+                          return;
+                        }
+
+                        if (_controller.state is FieldOperationErrorState) {
+                          setState(() => _isProcessing = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                (_controller.state as FieldOperationErrorState)
+                                    .message,
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        Navigator.pop(context);
                       }
                     },
                   ),
@@ -252,7 +269,7 @@ class _RegisterFieldOperationPageState
     return [
       DropdownButtonFormField<String>(
         decoration: const InputDecoration(
-          labelText: "CONDIÇÃO ATUAL",
+          labelText: "CONDIÇÃO ATUAL DO TALHÃO",
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.greenlightOne),
           ),
@@ -262,198 +279,158 @@ class _RegisterFieldOperationPageState
             .map((c) => DropdownMenuItem(value: c, child: Text(c)))
             .toList(),
         onChanged: (v) => setState(() => _selectedCondition = v),
-        validator: (v) =>
-            _selectedType == 'Vistoria' && v == null ? "Selecione" : null,
+        validator: (v) => _selectedType == 'Vistoria' && v == null
+            ? "Selecione a condição"
+            : null,
       ),
       const SizedBox(height: 16),
       CustomTextFormField(
         controller: _obsController,
         labelText: "OBSERVAÇÕES E DIAGNÓSTICO",
+        hintText:
+            "Ex: Presença de lagarta do cartucho identificada em nível leve.",
       ),
     ];
   }
 
   List<Widget> _buildApplicationFields() {
-    List<Widget> fields = [
-      DropdownButtonFormField<int>(
+    return [
+      DropdownButtonFormField<String>(
         decoration: const InputDecoration(
-          labelText: "QUANTIDADE DE INSUMOS NA CALDA",
+          labelText: "PRODUTO / INSUMO UTILIZADO",
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.greenlightOne),
           ),
         ),
-        value: _productsCount,
-        items: List.generate(10, (index) => index + 1)
-            .map(
-              (n) =>
-                  DropdownMenuItem<int>(value: n, child: Text("$n insumo(s)")),
-            )
-            .toList(),
+        initialValue: _selectedProductId,
+        items: _controller.products.map((p) {
+          return DropdownMenuItem<String>(
+            value: p.id,
+            child: Text(
+              "${p.name} (${p.category}) - ${p.quantity * p.measure} ${p.unit}",
+            ),
+          );
+        }).toList(),
         onChanged: (v) => setState(() {
-          if (v != null) _productsCount = v;
+          _selectedProductId = v;
+          if (v != null) {
+            try {
+              final prod = _controller.products.firstWhere((p) => p.id == v);
+              _selectedDosageUnit = (prod.unit == 'L' || prod.unit == 'ml')
+                  ? 'ml'
+                  : (prod.unit == 'kg' || prod.unit == 'g')
+                  ? 'g'
+                  : prod.unit;
+            } catch (_) {}
+          }
         }),
+        validator: (v) => _selectedType == 'Aplicação' && v == null
+            ? "Selecione o produto aplicado"
+            : null,
       ),
-      const SizedBox(height: 20),
-    ];
-
-    for (int i = 0; i < _productsCount; i++) {
-      fields.add(
-        Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          color: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: AppColors.greenlightOne.withOpacity(0.2)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "INSUMO #${i + 1}",
-                  style: AppTextStyles.smallText.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.greenlightOne,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<ProductModel>(
-                  decoration: const InputDecoration(
-                    labelText: "PRODUTO",
-                    border: OutlineInputBorder(),
-                  ),
-                  value: _selectedProducts[i],
-                  items: _controller.products.map((p) {
-                    double totalVolume = p.quantity * p.measure;
-                    bool isEsgotado = totalVolume <= 0;
-                    return DropdownMenuItem(
-                      value: isEsgotado ? null : p,
-                      enabled: !isEsgotado,
-                      child: Text(
-                        "${p.name} - ${isEsgotado ? '(ESGOTADO)' : '${totalVolume.toStringAsFixed(1)} ${p.unit}'}",
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (v) => setState(() {
-                    _selectedProducts[i] = v;
-                    if (v != null)
-                      _selectedDosageUnits[i] =
-                          (v.unit == 'L' || v.unit == 'ml')
-                          ? 'ml'
-                          : (v.unit == 'kg' || v.unit == 'g')
-                          ? 'g'
-                          : v.unit;
-                  }),
-                  validator: (v) => _selectedType == 'Aplicação' && v == null
-                      ? "Selecione o produto"
-                      : null,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: CustomTextFormField(
-                        controller: _dosageControllers[i],
-                        labelText: "QUANTIDADE TOTAL UTILIZADA",
-                        keyboardType: TextInputType.number,
-                        validator: (v) =>
-                            _selectedType == 'Aplicação' && v!.isEmpty
-                            ? "Obrigatório"
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: "UNIDADE",
-                          border: OutlineInputBorder(),
-                        ),
-                        value: _selectedDosageUnits[i],
-                        items: _dosageUnits
-                            .map(
-                              (u) => DropdownMenuItem(value: u, child: Text(u)),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => _selectedDosageUnits[i] = v!),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      const SizedBox(height: 16),
+      Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: CustomTextFormField(
+              controller: _dosageController,
+              labelText: "DOSAGEM COBERTURA",
+              keyboardType: TextInputType.number,
+              validator: (v) => _selectedType == 'Aplicação' && v!.isEmpty
+                  ? "Informe a dosagem"
+                  : null,
             ),
           ),
-        ),
-      );
-    }
-
-    fields.addAll([
-      const SizedBox(height: 8),
-      DropdownButtonFormField<MachineModel>(
+          const SizedBox(width: 16),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                labelText: "UNIDADE",
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.greenlightOne),
+                ),
+              ),
+              initialValue: _selectedDosageUnit,
+              items: _dosageUnits
+                  .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedDosageUnit = v!),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+      DropdownButtonFormField<String>(
         decoration: const InputDecoration(
           labelText: "MAQUINÁRIO UTILIZADO (Opcional)",
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(color: AppColors.greenlightOne),
           ),
         ),
-        value: _selectedMachine,
+        initialValue: _selectedMachineId,
         items: _controller.machines
             .map(
-              (m) => DropdownMenuItem(
-                value: m,
+              (m) => DropdownMenuItem<String>(
+                value: m.id,
                 child: Text("${m.name} • ${m.brand}"),
               ),
             )
             .toList(),
-        onChanged: (v) => setState(() => _selectedMachine = v),
+        onChanged: (v) => setState(() => _selectedMachineId = v),
       ),
-      if (_selectedMachine != null && _selectedMachine!.isMotorized) ...[
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(true),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA INÍCIO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    _startTime?.format(context) ?? "Selecionar",
-                    style: TextStyle(
-                      color: _startTime == null ? Colors.grey : Colors.black,
+      if (_selectedMachineId != null) ...[
+        Builder(
+          builder: (context) {
+            bool isMotorized = false;
+            try {
+              isMotorized = _controller.machines
+                  .firstWhere((m) => m.id == _selectedMachineId)
+                  .isMotorized;
+            } catch (_) {}
+
+            if (isMotorized) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _selectTime(true),
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: "HORA INÍCIO",
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(
+                            _startTime?.format(context) ?? "Selecionar",
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(false),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA TÉRMINO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(
-                    _endTime?.format(context) ?? "Selecionar",
-                    style: TextStyle(
-                      color: _endTime == null ? Colors.grey : Colors.black,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _selectTime(false),
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: "HORA TÉRMINO",
+                            border: OutlineInputBorder(),
+                          ),
+                          child: Text(
+                            _endTime?.format(context) ?? "Selecionar",
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ),
-          ],
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
       ],
-    ]);
-
-    return fields;
+    ];
   }
 }

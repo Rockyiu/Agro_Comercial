@@ -1,21 +1,21 @@
 class FieldOperationModel {
   final String? id;
   final String type; // 'Vistoria' ou 'Aplicação'
-  final String plotName; // Nome/Número do Talhão (Ex: Talhão 01)
-  final int dateTimestamp; // Data da operação
+  final String plotName; // Nome/Número do Talhão
+  final int dateTimestamp;
   final String farmId;
 
-  // Campos específicos para Vistoria
-  final String? condition; // Excelente, Atenção, Crítico
+  final String? condition;
   final String? observations;
 
-  // Campos específicos para Aplicação
   final String? productId;
   final String? productName;
   final double? dosage;
-  final String? dosageUnit; // L/ha, kg/ha, etc.
+  final String? dosageUnit;
+
   final String? machineId;
   final String? machineName;
+  final double? machineHours; // ADICIONADO: Para podermos estornar depois
 
   FieldOperationModel({
     this.id,
@@ -31,23 +31,19 @@ class FieldOperationModel {
     this.dosageUnit,
     this.machineId,
     this.machineName,
+    this.machineHours, // ADICIONADO
   });
 
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
-      'type': type,
-      'plotName': plotName,
-      'dateTimestamp': dateTimestamp,
-      'farmId': farmId,
-      'condition': condition,
-      'observations': observations,
-      'productId': productId,
-      'productName': productName,
-      'dosage': dosage,
+      'type': type, 'plotName': plotName, 'dateTimestamp': dateTimestamp,
+      'farmId': farmId, 'condition': condition, 'observations': observations,
+      'productId': productId, 'productName': productName, 'dosage': dosage,
       'dosageUnit': dosageUnit,
       'machineId': machineId,
       'machineName': machineName,
+      'machineHours': machineHours, // ADICIONADO
     };
   }
 
@@ -67,6 +63,7 @@ class FieldOperationModel {
       dosageUnit: map['dosageUnit'],
       machineId: map['machineId'],
       machineName: map['machineName'],
+      machineHours: (map['machineHours'] as num?)?.toDouble(), // ADICIONADO
     );
   }
 }
