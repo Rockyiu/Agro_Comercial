@@ -24,12 +24,14 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
 
   final _controller = locator.get<OperationController>();
 
-  bool _isProcessing = false; // Evita duplo clique no botão salvar
+  final _initialHorimeterController = TextEditingController();
+  final _finalHorimeterController = TextEditingController();
+
+  bool _isProcessing = false;
   String? _selectedTitle;
   bool _usedMachine = false;
   bool _usedProducts = false;
 
-  // CORREÇÃO: Agora guardamos apenas o ID (String) para evitar erros de memória
   String? _selectedMachineId;
   MachineModel? get _selectedMachine {
     if (_selectedMachineId == null) return null;
@@ -40,11 +42,7 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
     }
   }
 
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
-
   int _productsCount = 1;
-  // CORREÇÃO: Guardamos a lista de IDs dos produtos
   final List<String?> _selectedProductIds = List.generate(10, (_) => null);
 
   ProductModel? _getSelectedProduct(int index) {
@@ -111,20 +109,15 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
     _controller.loadFarmResources();
   }
 
-  Future<void> _selectTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startTime = picked;
-        } else {
-          _endTime = picked;
-        }
-      });
+  @override
+  void dispose() {
+    _descController.dispose();
+    _initialHorimeterController.dispose();
+    _finalHorimeterController.dispose();
+    for (var c in _dosageControllers) {
+      c.dispose();
     }
+    super.dispose();
   }
 
   @override
@@ -225,17 +218,57 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
                     text: "Salvar Operação",
                     onPressed: () async {
                       if (_formKey.currentState?.validate() ?? false) {
+                        double? initHori;
+                        double? finalHori;
+
                         if (_usedMachine &&
                             _selectedMachine != null &&
-                            _selectedMachine!.isMotorized &&
-                            (_startTime == null || _endTime == null)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Defina os horários do trator!"),
-                              backgroundColor: Colors.red,
+                            _selectedMachine!.isMotorized) {
+                          initHori = double.tryParse(
+                            _initialHorimeterController.text.replaceAll(
+                              ',',
+                              '.',
                             ),
                           );
-                          return;
+                          finalHori = double.tryParse(
+                            _finalHorimeterController.text.replaceAll(',', '.'),
+                          );
+
+                          if (initHori == null || finalHori == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Preencha o horímetro!"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // OPÇÃO 1: BLOQUEIO RIGOROSO
+                          if (initHori.toInt() !=
+                              _selectedMachine!.workingHours) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Atenção: Horímetro inicial ($initHori) não confere com o sistema (${_selectedMachine!.workingHours}h).",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (finalHori < initHori) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Horímetro final deve ser maior que o inicial!",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
                         }
 
                         List<Map<String, dynamic>> appliedProductsList = [];
@@ -272,12 +305,11 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
                         );
 
                         setState(() => _isProcessing = true);
-
                         await _controller.saveOperation(
                           operation,
                           appliedProductsList,
-                          startTime: _startTime,
-                          endTime: _endTime,
+                          initialHorimeter: initHori,
+                          finalHorimeter: finalHori,
                         );
 
                         if (!context.mounted) return;
@@ -297,7 +329,6 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
   List<Widget> _buildMachineSection() {
     return [
       DropdownButtonFormField<String>(
-        // Alterado para String (ID)
         decoration: const InputDecoration(
           labelText: "SELECIONE O MAQUINÁRIO",
           border: OutlineInputBorder(),
@@ -306,7 +337,7 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
         items: _controller.machines
             .map(
               (m) => DropdownMenuItem<String>(
-                value: m.id!, // Vinculado ao ID
+                value: m.id!,
                 child: Text("${m.name} • ${m.brand}"),
               ),
             )
@@ -319,27 +350,21 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(true),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA INÍCIO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(_startTime?.format(context) ?? "Selecionar"),
+              child: CustomTextFormField(
+                controller: _initialHorimeterController,
+                labelText: "HORÍMETRO INICIAL",
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(false),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA TÉRMINO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(_endTime?.format(context) ?? "Selecionar"),
+              child: CustomTextFormField(
+                controller: _finalHorimeterController,
+                labelText: "HORÍMETRO FINAL",
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
             ),
@@ -354,7 +379,7 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
     List<Widget> blocks = [
       DropdownButtonFormField<int>(
         decoration: const InputDecoration(
-          labelText: "QUANTIDADE DE PRODUTOS UTILIZADOS",
+          labelText: "QUANTIDADE DE PRODUTOS",
           border: OutlineInputBorder(),
         ),
         initialValue: _productsCount,
@@ -384,7 +409,6 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
             child: Column(
               children: [
                 DropdownButtonFormField<String>(
-                  // Alterado para String (ID)
                   decoration: InputDecoration(
                     labelText: "PRODUTO #${i + 1}",
                     border: const OutlineInputBorder(),
@@ -393,7 +417,7 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
                   items: _controller.products
                       .map(
                         (p) => DropdownMenuItem<String>(
-                          value: p.id!, // Vinculado ao ID
+                          value: p.id!,
                           child: Text(
                             "${p.name} (${p.category}) - ${p.quantity * p.measure} ${p.unit}",
                           ),
@@ -436,7 +460,6 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
                           border: OutlineInputBorder(),
                         ),
                         initialValue: _selectedDosageUnits[i],
-                        // LISTA COMPLETA DE UNIDADES PARA NÃO DAR ERRO!
                         items:
                             [
                                   'L',

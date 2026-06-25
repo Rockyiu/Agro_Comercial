@@ -25,19 +25,18 @@ class _RegisterFieldOperationPageState
   final _obsController = TextEditingController();
   final _dosageController = TextEditingController();
 
+  final _initialHorimeterController = TextEditingController();
+  final _finalHorimeterController = TextEditingController();
+
   final _controller = locator.get<FieldOperationController>();
 
   bool _isProcessing = false;
   String _selectedType = 'Vistoria';
   String? _selectedCondition;
 
-  // Utilizando IDs para blindar o Dropdown contra o AssertionError
   String? _selectedProductId;
   String? _selectedMachineId;
   String _selectedDosageUnit = 'L';
-
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
 
   final List<String> _conditions = ['Excelente', 'Atenção', 'Crítico'];
   final List<String> _dosageUnits = [
@@ -57,27 +56,13 @@ class _RegisterFieldOperationPageState
     _controller.loadFarmResources();
   }
 
-  Future<void> _selectTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startTime = picked;
-        } else {
-          _endTime = picked;
-        }
-      });
-    }
-  }
-
   @override
   void dispose() {
     _plotController.dispose();
     _obsController.dispose();
     _dosageController.dispose();
+    _initialHorimeterController.dispose();
+    _finalHorimeterController.dispose();
     super.dispose();
   }
 
@@ -161,6 +146,9 @@ class _RegisterFieldOperationPageState
                         String? machName;
                         bool needsTime = false;
 
+                        double? initHori;
+                        double? finalHori;
+
                         if (_selectedType == 'Aplicação' &&
                             _selectedMachineId != null) {
                           try {
@@ -172,19 +160,56 @@ class _RegisterFieldOperationPageState
                           } catch (_) {}
                         }
 
-                        if (_selectedType == 'Aplicação' &&
-                            needsTime &&
-                            (_startTime == null || _endTime == null)) {
-                          // ADICIONADO: Libera o ecrã para tentar de novo
-                          setState(() => _isProcessing = false);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Defina os horários do trator!"),
-                              backgroundColor: Colors.red,
+                        if (_selectedType == 'Aplicação' && needsTime) {
+                          initHori = double.tryParse(
+                            _initialHorimeterController.text.replaceAll(
+                              ',',
+                              '.',
                             ),
                           );
-                          return;
+                          finalHori = double.tryParse(
+                            _finalHorimeterController.text.replaceAll(',', '.'),
+                          );
+
+                          if (initHori == null || finalHori == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Preencha o horímetro inicial e final!",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // OPÇÃO 1: BLOQUEIO RIGOROSO
+                          final m = _controller.machines.firstWhere(
+                            (mach) => mach.id == _selectedMachineId,
+                          );
+                          if (initHori.toInt() != m.workingHours) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Atenção: Horímetro inicial ($initHori) não confere com o sistema (${m.workingHours}h).",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (finalHori < initHori) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Erro: O horímetro final deve ser maior que o inicial!",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
                         }
 
                         String? prodName;
@@ -230,8 +255,8 @@ class _RegisterFieldOperationPageState
 
                         await _controller.launchOperation(
                           operation,
-                          startTime: _startTime,
-                          endTime: _endTime,
+                          initialHorimeter: initHori,
+                          finalHorimeter: finalHori,
                         );
 
                         if (!context.mounted) {
@@ -395,31 +420,21 @@ class _RegisterFieldOperationPageState
                 child: Row(
                   children: [
                     Expanded(
-                      child: InkWell(
-                        onTap: () => _selectTime(true),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: "HORA INÍCIO",
-                            border: OutlineInputBorder(),
-                          ),
-                          child: Text(
-                            _startTime?.format(context) ?? "Selecionar",
-                          ),
+                      child: CustomTextFormField(
+                        controller: _initialHorimeterController,
+                        labelText: "HORÍMETRO INICIAL",
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: InkWell(
-                        onTap: () => _selectTime(false),
-                        child: InputDecorator(
-                          decoration: const InputDecoration(
-                            labelText: "HORA TÉRMINO",
-                            border: OutlineInputBorder(),
-                          ),
-                          child: Text(
-                            _endTime?.format(context) ?? "Selecionar",
-                          ),
+                      child: CustomTextFormField(
+                        controller: _finalHorimeterController,
+                        labelText: "HORÍMETRO FINAL",
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
                         ),
                       ),
                     ),

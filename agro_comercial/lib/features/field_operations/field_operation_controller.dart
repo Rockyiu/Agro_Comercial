@@ -7,6 +7,8 @@ import 'package:agro_comercial/services/field_operation_service/field_operation_
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
+import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'field_operation_state.dart';
 
 class FieldOperationController extends ChangeNotifier {
@@ -33,12 +35,12 @@ class FieldOperationController extends ChangeNotifier {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final ops = await _operationService.getFieldOperations(user.uid);
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId != null) {
+        final ops = await _operationService.getFieldOperations(activeFarmId);
         _state = FieldOperationSuccessState(operations: ops);
       } else {
-        _state = FieldOperationErrorState("Usuário não autenticado.");
+        _state = FieldOperationErrorState("Nenhuma fazenda ativa selecionada.");
       }
     } catch (e) {
       _state = FieldOperationErrorState("Erro ao carregar operações.");
@@ -48,12 +50,14 @@ class FieldOperationController extends ChangeNotifier {
 
   Future<void> loadFarmResources() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) return;
+
       isLoadingResources = true;
       notifyListeners();
 
-      final warehouses = await _warehouseService.getWarehouses(user.uid);
+      // Carrega os armazéns da fazenda selecionada
+      final warehouses = await _warehouseService.getWarehouses(activeFarmId);
       machines.clear();
       products.clear();
 
@@ -86,14 +90,6 @@ class FieldOperationController extends ChangeNotifier {
     if (productUnit == 'L' && usedUnit == 'mg') return appliedQty / 1000000.0;
     if (productUnit == 'kg' && usedUnit == 'mg') return appliedQty / 1000000.0;
     return appliedQty;
-  }
-
-  double calculateDuration(TimeOfDay start, TimeOfDay end) {
-    double startDouble = start.hour + (start.minute / 60.0);
-    double endDouble = end.hour + (end.minute / 60.0);
-    return endDouble >= startDouble
-        ? endDouble - startDouble
-        : (24.0 - startDouble) + endDouble;
   }
 
   Future<void> _rollbackOperation(FieldOperationModel op) async {
@@ -156,15 +152,15 @@ class FieldOperationController extends ChangeNotifier {
 
   Future<void> launchOperation(
     FieldOperationModel operation, {
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
+    double? initialHorimeter,
+    double? finalHorimeter,
   }) async {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _state = FieldOperationErrorState("Usuário não logado.");
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) {
+        _state = FieldOperationErrorState("Nenhuma fazenda ativa selecionada.");
         notifyListeners();
         return;
       }
@@ -209,13 +205,14 @@ class FieldOperationController extends ChangeNotifier {
         }
 
         if (operation.machineId != null &&
-            startTime != null &&
-            endTime != null) {
+            initialHorimeter != null &&
+            finalHorimeter != null) {
           final machine = machines.firstWhere(
             (m) => m.id == operation.machineId,
           );
           if (machine.isMotorized) {
-            calculatedHours = calculateDuration(startTime, endTime);
+            calculatedHours = finalHorimeter - initialHorimeter;
+
             final updatedMachine = MachineModel(
               id: machine.id,
               name: machine.name,
@@ -233,12 +230,12 @@ class FieldOperationController extends ChangeNotifier {
         }
       }
 
-      // CORRIGIDO: Injeta o ID da fazenda e o tempo exato trabalhado
       final completeOp = FieldOperationModel(
         type: operation.type,
         plotName: operation.plotName,
         dateTimestamp: operation.dateTimestamp,
-        farmId: user.uid,
+        farmId:
+            activeFarmId, // <- Vinculado corretamente ao ID da fazenda ativa
         condition: operation.condition,
         observations: operation.observations,
         productId: operation.productId,
@@ -261,14 +258,14 @@ class FieldOperationController extends ChangeNotifier {
   Future<void> updateFullOperation(
     FieldOperationModel oldOp,
     FieldOperationModel newOp, {
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
+    double? initialHorimeter,
+    double? finalHorimeter,
   }) async {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) return;
 
       await _rollbackOperation(oldOp);
 
@@ -308,10 +305,13 @@ class FieldOperationController extends ChangeNotifier {
           await _productService.updateProduct(updatedProduct, null);
         }
 
-        if (newOp.machineId != null && startTime != null && endTime != null) {
+        if (newOp.machineId != null &&
+            initialHorimeter != null &&
+            finalHorimeter != null) {
           final machine = machines.firstWhere((m) => m.id == newOp.machineId);
           if (machine.isMotorized) {
-            calculatedHours = calculateDuration(startTime, endTime);
+            calculatedHours = finalHorimeter - initialHorimeter;
+
             final updatedMachine = MachineModel(
               id: machine.id,
               name: machine.name,
@@ -334,7 +334,8 @@ class FieldOperationController extends ChangeNotifier {
         type: newOp.type,
         plotName: newOp.plotName,
         dateTimestamp: oldOp.dateTimestamp,
-        farmId: user.uid,
+        farmId:
+            activeFarmId, // <- Vinculado corretamente ao ID da fazenda ativa
         condition: newOp.condition,
         observations: newOp.observations,
         productId: newOp.productId,
@@ -371,9 +372,9 @@ class FieldOperationController extends ChangeNotifier {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final ops = await _operationService.getFieldOperations(user.uid);
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId != null) {
+        final ops = await _operationService.getFieldOperations(activeFarmId);
         for (var id in ids) {
           try {
             final op = ops.firstWhere((o) => o.id == id);

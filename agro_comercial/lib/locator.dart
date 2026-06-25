@@ -1,3 +1,5 @@
+import 'package:agro_comercial/features/employee/employee_controller.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
 import 'package:agro_comercial/features/operation/operation_controller.dart';
@@ -8,6 +10,8 @@ import 'package:agro_comercial/features/warehouse/warehouse_details_controller.d
 import 'package:agro_comercial/features/register_machine/register_machine_controller.dart';
 import 'package:agro_comercial/features/edit_machine/edit_machine_controller.dart';
 import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_controller.dart';
+import 'package:agro_comercial/services/employee_service/employee_service.dart';
+import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'package:agro_comercial/services/field_operation_service/field_operation_service.dart';
 import 'package:agro_comercial/services/operation_service/operation_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
@@ -59,10 +63,6 @@ void setupDependencies() {
 
   locator.registerFactory<SignUpController>(
     () => SignUpController(locator.get<AuthService>()),
-  );
-
-  locator.registerFactory<FarmRegistrationController>(
-    () => FarmRegistrationController(),
   );
 
   locator.registerLazySingleton<WarehouseController>(
@@ -121,5 +121,21 @@ void setupDependencies() {
   // No bloco de "Registro de Controllers":
   locator.registerFactory<ProfileController>(
     () => ProfileController(locator.get<ProfileService>()),
+  );
+
+  locator.registerFactory<EmployeeService>(() => EmployeeService());
+
+  locator.registerFactory<EmployeeController>(
+    () => EmployeeController(locator.get<EmployeeService>()),
+  );
+
+  locator.registerFactory<FarmService>(() => FarmService());
+
+  locator.registerFactory<FarmRegistrationController>(
+    () => FarmRegistrationController(locator.get<FarmService>()),
+  );
+
+  locator.registerLazySingleton<FarmController>(
+    () => FarmController(locator.get<FarmService>()),
   );
 }

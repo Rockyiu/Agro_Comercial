@@ -7,6 +7,8 @@ import 'package:agro_comercial/services/operation_service/operation_service.dart
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
+import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'operation_state.dart';
 
 class OperationController extends ChangeNotifier {
@@ -34,11 +36,16 @@ class OperationController extends ChangeNotifier {
     notifyListeners();
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final operations = await _operationService.getOperations(user.uid);
+      // FILTRO MULTI-FAZENDA
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+
+      if (user != null && activeFarmId != null) {
+        final operations = await _operationService.getOperations(activeFarmId);
         _state = OperationSuccessState(operations);
       } else {
-        _state = OperationErrorState("Usuário não autenticado.");
+        _state = OperationErrorState(
+          "Usuário não autenticado ou sem fazenda ativa.",
+        );
       }
       notifyListeners();
     } catch (e) {
@@ -49,12 +56,15 @@ class OperationController extends ChangeNotifier {
 
   Future<void> loadFarmResources() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      // FILTRO MULTI-FAZENDA: Pega os recursos (máquinas e produtos) da fazenda selecionada
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) return;
+
       isLoadingResources = true;
       notifyListeners();
 
-      final warehouses = await _warehouseService.getWarehouses(user.uid);
+      // Busca os galpões (armazéns) da fazenda atual
+      final warehouses = await _warehouseService.getWarehouses(activeFarmId);
       machines.clear();
       products.clear();
 
@@ -89,17 +99,7 @@ class OperationController extends ChangeNotifier {
     return appliedQty;
   }
 
-  double calculateDuration(TimeOfDay start, TimeOfDay end) {
-    double startDouble = start.hour + (start.minute / 60.0);
-    double endDouble = end.hour + (end.minute / 60.0);
-    return endDouble >= startDouble
-        ? endDouble - startDouble
-        : (24.0 - startDouble) + endDouble;
-  }
-
-  // --- O CORAÇÃO DO ERP: ESTORNO INTELIGENTE ---
   Future<void> _rollbackOperation(OperationModel operation) async {
-    // 1. Devolve produtos ao estoque
     if (operation.usedProducts) {
       for (var p in operation.appliedProducts) {
         try {
@@ -111,10 +111,8 @@ class OperationController extends ChangeNotifier {
             p['dosageUnit'],
             product.unit,
           );
-
-          double currentTotalStock = product.quantity * product.measure;
           double restoredTotalStock =
-              currentTotalStock + convertedQty; // SOMA DE VOLTA
+              (product.quantity * product.measure) + convertedQty;
 
           final updatedProduct = ProductModel(
             id: product.id,
@@ -132,15 +130,13 @@ class OperationController extends ChangeNotifier {
           await _productService.updateProduct(updatedProduct, null);
 
           int index = products.indexWhere((prod) => prod.id == product.id);
-          if (index != -1)
-            products[index] = updatedProduct; // Atualiza memória local
+          if (index != -1) products[index] = updatedProduct;
         } catch (e) {
-          debugPrint("Produto ignorado no estorno (já deletado).");
+          debugPrint("Produto ignorado no estorno.");
         }
       }
     }
 
-    // 2. Subtrai as horas do trator
     if (operation.usedMachine &&
         operation.machineId != null &&
         operation.machineHours != null) {
@@ -148,7 +144,7 @@ class OperationController extends ChangeNotifier {
         final machine = machines.firstWhere((m) => m.id == operation.machineId);
         if (machine.isMotorized) {
           int newHours = machine.workingHours - operation.machineHours!.round();
-          if (newHours < 0) newHours = 0; // Previne horas negativas
+          if (newHours < 0) newHours = 0;
 
           final updatedMachine = MachineModel(
             id: machine.id,
@@ -165,11 +161,10 @@ class OperationController extends ChangeNotifier {
           await _machineService.updateMachine(updatedMachine, null);
 
           int index = machines.indexWhere((m) => m.id == machine.id);
-          if (index != -1)
-            machines[index] = updatedMachine; // Atualiza memória local
+          if (index != -1) machines[index] = updatedMachine;
         }
       } catch (e) {
-        debugPrint("Máquina ignorada no estorno (já deletada).");
+        debugPrint("Máquina ignorada no estorno.");
       }
     }
   }
@@ -177,26 +172,25 @@ class OperationController extends ChangeNotifier {
   Future<void> saveOperation(
     OperationModel operation,
     List<Map<String, dynamic>> appliedProductsList, {
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
+    double? initialHorimeter,
+    double? finalHorimeter,
   }) async {
     _state = OperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      // VINCULAÇÃO MULTI-FAZENDA
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) return;
 
       if (operation.usedProducts) {
         for (var appliedProduct in appliedProductsList) {
-          final String productId = appliedProduct['productId'];
-          final double dosage = appliedProduct['dosage'];
-          final String dosageUnit = appliedProduct['dosageUnit'];
-
-          final product = products.firstWhere((p) => p.id == productId);
+          final product = products.firstWhere(
+            (p) => p.id == appliedProduct['productId'],
+          );
           double totalStockInProductUnit = product.quantity * product.measure;
           double convertedAppliedQty = convertQuantity(
-            dosage,
-            dosageUnit,
+            appliedProduct['dosage'],
+            appliedProduct['dosageUnit'],
             product.unit,
           );
 
@@ -208,12 +202,13 @@ class OperationController extends ChangeNotifier {
             return;
           }
 
-          double newTotalStock = totalStockInProductUnit - convertedAppliedQty;
           final updatedProduct = ProductModel(
             id: product.id,
             name: product.name,
             brand: product.brand,
-            quantity: newTotalStock / product.measure,
+            quantity:
+                (totalStockInProductUnit - convertedAppliedQty) /
+                product.measure,
             measure: product.measure,
             unit: product.unit,
             category: product.category,
@@ -226,16 +221,17 @@ class OperationController extends ChangeNotifier {
         }
       }
 
+      double? duration;
       if (operation.usedMachine &&
           operation.machineId != null &&
-          startTime != null &&
-          endTime != null) {
+          initialHorimeter != null &&
+          finalHorimeter != null) {
         final machine = machines.firstWhere((m) => m.id == operation.machineId);
         if (machine.isMotorized) {
-          double duration = calculateDuration(startTime, endTime);
+          duration = finalHorimeter - initialHorimeter;
           final updatedMachine = MachineModel(
             id: machine.id,
-            name: machine.name,
+            name: operation.machineName ?? 'Máquina',
             brand: machine.brand,
             model: machine.model,
             power: machine.power,
@@ -249,17 +245,16 @@ class OperationController extends ChangeNotifier {
         }
       }
 
+      // Salva a operação contendo o ID da fazenda ativa
       final completeOperation = OperationModel(
         title: operation.title,
         description: operation.description,
-        farmId: user.uid,
+        farmId: activeFarmId, // <- AQUI O ISOLAMENTO OCORRE
         dateTimestamp: DateTime.now().millisecondsSinceEpoch,
         usedMachine: operation.usedMachine,
         machineId: operation.machineId,
         machineName: operation.machineName,
-        machineHours: (startTime != null && endTime != null)
-            ? calculateDuration(startTime, endTime)
-            : null,
+        machineHours: duration,
         usedProducts: operation.usedProducts,
         appliedProducts: appliedProductsList,
       );
@@ -272,24 +267,19 @@ class OperationController extends ChangeNotifier {
     }
   }
 
-  // ATUALIZAÇÃO SEGURA: Estorna o antigo e grava o novo por cima
   Future<void> updateFullOperation(
     OperationModel oldOp,
     OperationModel newOp,
     List<Map<String, dynamic>> appliedProductsList, {
-    TimeOfDay? startTime,
-    TimeOfDay? endTime,
+    double? initialHorimeter,
+    double? finalHorimeter,
   }) async {
     _state = OperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeFarmId == null) return await _rollbackOperation(oldOp);
 
-      // 1. Desfaz a operação antiga (Devolve pro galpão)
-      await _rollbackOperation(oldOp);
-
-      // 2. Aplica as regras de estoque e horas na nova configuração
       if (newOp.usedProducts) {
         for (var appliedProduct in appliedProductsList) {
           final product = products.firstWhere(
@@ -310,12 +300,13 @@ class OperationController extends ChangeNotifier {
             return;
           }
 
-          double newTotalStock = totalStockInProductUnit - convertedAppliedQty;
           final updatedProduct = ProductModel(
             id: product.id,
             name: product.name,
             brand: product.brand,
-            quantity: newTotalStock / product.measure,
+            quantity:
+                (totalStockInProductUnit - convertedAppliedQty) /
+                product.measure,
             measure: product.measure,
             unit: product.unit,
             category: product.category,
@@ -328,16 +319,17 @@ class OperationController extends ChangeNotifier {
         }
       }
 
+      double? duration;
       if (newOp.usedMachine &&
           newOp.machineId != null &&
-          startTime != null &&
-          endTime != null) {
+          initialHorimeter != null &&
+          finalHorimeter != null) {
         final machine = machines.firstWhere((m) => m.id == newOp.machineId);
         if (machine.isMotorized) {
-          double duration = calculateDuration(startTime, endTime);
+          duration = finalHorimeter - initialHorimeter;
           final updatedMachine = MachineModel(
             id: machine.id,
-            name: machine.name,
+            name: newOp.machineName ?? 'Máquina',
             brand: machine.brand,
             model: machine.model,
             power: machine.power,
@@ -352,17 +344,15 @@ class OperationController extends ChangeNotifier {
       }
 
       final completeOperation = OperationModel(
-        id: oldOp.id, // MANTÉM O MESMO ID PARA ATUALIZAR
+        id: oldOp.id,
         title: newOp.title,
         description: newOp.description,
-        farmId: user.uid,
-        dateTimestamp: oldOp.dateTimestamp, // MANTÉM A MESMA DATA DE CRIAÇÃO
+        farmId: activeFarmId, // <- AQUI O ISOLAMENTO OCORRE
+        dateTimestamp: oldOp.dateTimestamp,
         usedMachine: newOp.usedMachine,
         machineId: newOp.machineId,
         machineName: newOp.machineName,
-        machineHours: (startTime != null && endTime != null)
-            ? calculateDuration(startTime, endTime)
-            : null,
+        machineHours: duration,
         usedProducts: newOp.usedProducts,
         appliedProducts: appliedProductsList,
       );
@@ -392,14 +382,14 @@ class OperationController extends ChangeNotifier {
     _state = OperationLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final ops = await _operationService.getOperations(user.uid);
+      final activeId = locator.get<FarmController>().selectedFarm?.id;
+      if (activeId != null) {
+        final ops = await _operationService.getOperations(activeId);
         for (var id in ids) {
           try {
             final op = ops.firstWhere((o) => o.id == id);
             await _rollbackOperation(op);
-          } catch (e) {} // Se der erro em um, continua o resto
+          } catch (e) {}
         }
       }
       await _operationService.deleteMultipleOperations(ids);

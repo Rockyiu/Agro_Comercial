@@ -1,5 +1,8 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/features/employee/employee_page.dart';
+import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart';
@@ -8,6 +11,7 @@ import 'package:agro_comercial/features/register_warehouse/register_warehouse_pa
 import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/operation/register_operation_page.dart';
 import 'package:agro_comercial/features/profile/profile_page.dart';
+import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
@@ -25,6 +29,95 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+
+  final _farmService = locator.get<FarmService>();
+
+  FarmModel? _fazendaAtiva;
+
+  Future<void> _mostrarSeletorDeFazendas(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    // Mostra um indicador de carregamento enquanto busca no Firebase
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppColors.greenlightOne),
+      ),
+    );
+
+    try {
+      final fazendas = await _farmService.getFarmsByOwner(user.uid);
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Fecha o loading
+
+      if (fazendas.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Nenhuma fazenda cadastrada. Cadastre uma propriedade primeiro!",
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Abre o diálogo de seleção
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Selecione a Fazenda"),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: fazendas.length,
+                itemBuilder: (context, index) {
+                  final fazenda = fazendas[index];
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.home_work,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: Text(fazenda.name),
+                    subtitle: Text(
+                      'Área: ${fazenda.area} | Talhões: ${fazenda.numberOfPlots}',
+                    ),
+                    onTap: () {
+                      setState(() {
+                        _fazendaAtiva = fazenda;
+                      });
+                      Navigator.pop(context); // Fecha o seletor
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            "Fazenda alterada para: ${fazenda.name}",
+                          ),
+                          backgroundColor: AppColors.greenlightOne,
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      Navigator.pop(context); // Fecha o loading em caso de erro
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Erro ao carregar as fazendas. Tente novamente."),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   void _handleFabPressed() {
     if (_currentIndex == 0) {
@@ -263,7 +356,10 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: AppColors.greenlightOne,
         elevation: 0,
         title: Text(
-          'Gestão Rural',
+          // ATUALIZADO: Apresenta o nome da fazenda ativa na barra superior
+          _fazendaAtiva != null
+              ? 'Fazenda: ${_fazendaAtiva!.name}'
+              : 'Gestão Rural',
           style: AppTextStyles.midText20.copyWith(color: Colors.white),
         ),
         centerTitle: true,
@@ -290,14 +386,35 @@ class _HomePageState extends State<HomePage> {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  const DrawerHeader(
-                    decoration: BoxDecoration(color: AppColors.greenlightOne),
-                    child: Text(
-                      'Menu Gestão Rural',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                  DrawerHeader(
+                    decoration: const BoxDecoration(
+                      color: AppColors.greenlightOne,
+                    ),
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Menu Gestão Rural',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (_fazendaAtiva != null) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'CAD/PRO: ${_fazendaAtiva!.cadPro}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
@@ -335,6 +452,22 @@ class _HomePageState extends State<HomePage> {
                   ),
                   ListTile(
                     leading: const Icon(
+                      Icons.people_outline,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Minha Equipe'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EmployeePage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
                       Icons.person_outline,
                       color: AppColors.greenlightOne,
                     ),
@@ -359,6 +492,36 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pop(context);
                     },
                   ),
+                  const Divider(),
+                  // --- ADICIONADO: Opção de cadastrar mais uma fazenda ---
+                  ListTile(
+                    leading: const Icon(
+                      Icons.add_home_work,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Cadastrar Nova Fazenda'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const FarmRegistrationPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  // --- ADICIONADO: Opção para troca de fazenda via método ---
+                  ListTile(
+                    leading: const Icon(
+                      Icons.swap_horiz,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Trocar de Fazenda'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _mostrarSeletorDeFazendas(context);
+                    },
+                  ),
                 ],
               ),
             ),
@@ -381,7 +544,6 @@ class _HomePageState extends State<HomePage> {
                   return;
                 }
 
-                // CORRIGIDO: Redireciona corretamente para a SignInPage
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const SignInPage()),

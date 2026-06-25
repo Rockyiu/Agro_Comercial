@@ -28,6 +28,10 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
   late TextEditingController _descController;
   final _controller = locator.get<OperationController>();
 
+  // ADICIONADO: Controladores para o horímetro
+  final _initialHorimeterController = TextEditingController();
+  final _finalHorimeterController = TextEditingController();
+
   String? _selectedTitle;
   bool _usedMachine = false;
   bool _usedProducts = false;
@@ -41,9 +45,6 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
       return null;
     }
   }
-
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
 
   int _productsCount = 1;
   final List<String?> _selectedProductIds = List.generate(10, (_) => null);
@@ -134,20 +135,15 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
     }
   }
 
-  Future<void> _selectTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          _startTime = picked;
-        } else {
-          _endTime = picked;
-        }
-      });
+  @override
+  void dispose() {
+    _descController.dispose();
+    _initialHorimeterController.dispose();
+    _finalHorimeterController.dispose();
+    for (var c in _dosageControllers) {
+      c.dispose();
     }
+    super.dispose();
   }
 
   @override
@@ -182,7 +178,6 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
               onPressed: () {
                 showDialog(
                   context: context,
-                  // CORREÇÃO AQUI: Nomeamos o contexto interno como dialogContext
                   builder: (dialogContext) => AlertDialog(
                     title: const Text("Excluir Lançamento"),
                     content: const Text(
@@ -195,17 +190,12 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
                       ),
                       TextButton(
                         onPressed: () async {
-                          // 1. Fecha apenas a janelinha de confirmação
                           Navigator.pop(dialogContext);
-
                           setState(() => _isProcessing = true);
-
-                          // 2. Vai ao banco de dados excluir e estornar
                           await _controller.deleteSingleOperation(
                             widget.operation,
                           );
 
-                          // 3. Verifica se o CONTEXTO DA TELA PRINCIPAL está montado
                           if (!context.mounted) return;
 
                           if (_controller.state is OperationErrorState) {
@@ -221,8 +211,6 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
                             );
                             return;
                           }
-
-                          // 4. Se deu tudo certo, volta para o histórico de operações
                           Navigator.pop(context);
                         },
                         child: const Text(
@@ -403,17 +391,45 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
                       text: "Salvar Alterações",
                       onPressed: () async {
                         if (_formKey.currentState?.validate() ?? false) {
+                          double? initHori;
+                          double? finalHori;
+
                           if (_usedMachine &&
                               _selectedMachine != null &&
-                              _selectedMachine!.isMotorized &&
-                              (_startTime == null || _endTime == null)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Defina os horários do trator!"),
-                                backgroundColor: Colors.red,
+                              _selectedMachine!.isMotorized) {
+                            initHori = double.tryParse(
+                              _initialHorimeterController.text.replaceAll(
+                                ',',
+                                '.',
                               ),
                             );
-                            return;
+                            finalHori = double.tryParse(
+                              _finalHorimeterController.text.replaceAll(
+                                ',',
+                                '.',
+                              ),
+                            );
+
+                            if (initHori == null || finalHori == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Preencha o horímetro!"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                            if (finalHori < initHori) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Horímetro final deve ser maior que o inicial!",
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
                           }
 
                           List<Map<String, dynamic>> appliedProductsList = [];
@@ -453,12 +469,13 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
 
                           setState(() => _isProcessing = true);
 
+                          // CHAMADA CORRIGIDA PARA USAR O HORÍMETRO
                           await _controller.updateFullOperation(
                             widget.operation,
                             newOperation,
                             appliedProductsList,
-                            startTime: _startTime,
-                            endTime: _endTime,
+                            initialHorimeter: initHori,
+                            finalHorimeter: finalHori,
                           );
 
                           if (!context.mounted) return;
@@ -514,27 +531,21 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         Row(
           children: [
             Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(true),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA INÍCIO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(_startTime?.format(context) ?? "Selecionar"),
+              child: CustomTextFormField(
+                controller: _initialHorimeterController,
+                labelText: "HORÍMETRO INICIAL",
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: InkWell(
-                onTap: () => _selectTime(false),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: "HORA TÉRMINO",
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(_endTime?.format(context) ?? "Selecionar"),
+              child: CustomTextFormField(
+                controller: _finalHorimeterController,
+                labelText: "HORÍMETRO FINAL",
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
               ),
             ),

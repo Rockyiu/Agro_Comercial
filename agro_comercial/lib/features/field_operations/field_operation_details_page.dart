@@ -30,14 +30,14 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
   late TextEditingController _obsController;
   late TextEditingController _dosageController;
 
+  final _initialHorimeterController = TextEditingController();
+  final _finalHorimeterController = TextEditingController();
+
   String _selectedType = 'Vistoria';
   String? _selectedCondition;
   String? _selectedProductId;
   String? _selectedMachineId;
   String _selectedDosageUnit = 'L';
-
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
 
   final List<String> _conditions = ['Excelente', 'Atenção', 'Crítico'];
   final List<String> _dosageUnits = [
@@ -70,18 +70,14 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
     _selectedDosageUnit = widget.operation.dosageUnit ?? 'L';
   }
 
-  Future<void> _selectTime(bool isStart) async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null)
-      setState(() {
-        if (isStart)
-          _startTime = picked;
-        else
-          _endTime = picked;
-      });
+  @override
+  void dispose() {
+    _plotController.dispose();
+    _obsController.dispose();
+    _dosageController.dispose();
+    _initialHorimeterController.dispose();
+    _finalHorimeterController.dispose();
+    super.dispose();
   }
 
   @override
@@ -166,8 +162,9 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_controller.isLoadingResources || _isProcessing)
+          if (_controller.isLoadingResources || _isProcessing) {
             return const Center(child: CustomCircularProgressIndicator());
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -404,34 +401,24 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectTime(true),
-                                        child: InputDecorator(
-                                          decoration: const InputDecoration(
-                                            labelText: "HORA INÍCIO",
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          child: Text(
-                                            _startTime?.format(context) ??
-                                                "Selecionar",
-                                          ),
-                                        ),
+                                      child: CustomTextFormField(
+                                        controller: _initialHorimeterController,
+                                        labelText: "HORÍMETRO INICIAL",
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
                                       ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
-                                      child: InkWell(
-                                        onTap: () => _selectTime(false),
-                                        child: InputDecorator(
-                                          decoration: const InputDecoration(
-                                            labelText: "HORA TÉRMINO",
-                                            border: OutlineInputBorder(),
-                                          ),
-                                          child: Text(
-                                            _endTime?.format(context) ??
-                                                "Selecionar",
-                                          ),
-                                        ),
+                                      child: CustomTextFormField(
+                                        controller: _finalHorimeterController,
+                                        labelText: "HORÍMETRO FINAL",
+                                        keyboardType:
+                                            const TextInputType.numberWithOptions(
+                                              decimal: true,
+                                            ),
                                       ),
                                     ),
                                   ],
@@ -450,6 +437,9 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
                         if (_formKey.currentState?.validate() ?? false) {
                           String? machName;
                           bool needsTime = false;
+                          double? initHori;
+                          double? finalHori;
+
                           if (_selectedMachineId != null) {
                             final m = _controller.machines.firstWhere(
                               (mach) => mach.id == _selectedMachineId,
@@ -458,16 +448,40 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
                             needsTime = m.isMotorized;
                           }
 
-                          if (_selectedType == 'Aplicação' &&
-                              needsTime &&
-                              (_startTime == null || _endTime == null)) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Defina os horários do trator!"),
-                                backgroundColor: Colors.red,
+                          if (_selectedType == 'Aplicação' && needsTime) {
+                            initHori = double.tryParse(
+                              _initialHorimeterController.text.replaceAll(
+                                ',',
+                                '.',
                               ),
                             );
-                            return;
+                            finalHori = double.tryParse(
+                              _finalHorimeterController.text.replaceAll(
+                                ',',
+                                '.',
+                              ),
+                            );
+
+                            if (initHori == null || finalHori == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Preencha o horímetro!"),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
+                            if (finalHori < initHori) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Horímetro final deve ser maior que o inicial!",
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                              return;
+                            }
                           }
 
                           String? prodName;
@@ -511,8 +525,8 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
                           await _controller.updateFullOperation(
                             widget.operation,
                             newOperation,
-                            startTime: _startTime,
-                            endTime: _endTime,
+                            initialHorimeter: initHori,
+                            finalHorimeter: finalHori,
                           );
 
                           if (!context.mounted) return;

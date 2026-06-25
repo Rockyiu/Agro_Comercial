@@ -21,6 +21,8 @@ class FarmRegistrationPage extends StatefulWidget {
 class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _cadProController =
+      TextEditingController(); // ADICIONADO: Controlador do CAD/PRO
   final _addressController = TextEditingController();
   final _areaController = TextEditingController();
 
@@ -99,9 +101,10 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
         return;
       }
 
-      // Chama o controller em vez de navegar direto
+      // Chama o controller passando o cadPro
       _farmController.saveFarm(
         name: _nameController.text,
+        cadPro: _cadProController.text, // ADICIONADO: Envio do CAD/PRO
         address: _addressController.text,
         area: _areaController.text,
         numberOfPlots: _numberOfPlots,
@@ -113,6 +116,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _cadProController
+        .dispose(); // ADICIONADO: Liberação do controller do CAD/PRO
     _addressController.dispose();
     _areaController.dispose();
     _farmController.dispose();
@@ -155,6 +160,17 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       ? "O nome não pode ser vazio"
                       : null,
                 ),
+                // --- CAMPO ADICIONADO ---
+                CustomTextFormField(
+                  controller: _cadProController,
+                  labelText: "CAD/PRO (Inscrição Estadual)",
+                  hintText: "Apenas números",
+                  keyboardType: TextInputType.number,
+                  validator: (value) => value == null || value.isEmpty
+                      ? "O CAD/PRO não pode ser vazio"
+                      : null,
+                ),
+                // ------------------------
                 CustomTextFormField(
                   controller: _addressController,
                   labelText: "Endereço da Propriedade",
