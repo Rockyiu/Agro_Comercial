@@ -17,19 +17,16 @@ class WarehouseController extends ChangeNotifier {
     _state = WarehouseLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      // FILTRO MULTI-FAZENDA: Pega o ID da fazenda selecionada na tela principal
+      // CORREÇÃO: Pegar o ID da fazenda selecionada no menu
       final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
 
-      if (user != null && activeFarmId != null) {
-        // Busca os armazéns filtrando pelo farmId (ID da fazenda) em vez de user.uid
+      if (activeFarmId != null) {
+        // CORREÇÃO: Buscar no banco usando o ID da fazenda (activeFarmId) e não o user.uid
         final warehouses = await _warehouseService.getWarehouses(activeFarmId);
 
         _state = WarehouseSuccessState(warehouses: warehouses, machines: []);
       } else {
-        _state = WarehouseErrorState(
-          "Usuário não autenticado ou sem fazenda selecionada.",
-        );
+        _state = WarehouseErrorState("Nenhuma fazenda ativa.");
       }
       notifyListeners();
     } catch (e) {

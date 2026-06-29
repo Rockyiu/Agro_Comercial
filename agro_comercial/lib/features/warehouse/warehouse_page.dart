@@ -26,7 +26,11 @@ class _WarehousePageState extends State<WarehousePage> {
   @override
   void initState() {
     super.initState();
-    _controller.loadWarehouseData();
+    // Garante que o carregamento só inicie após a tela estar 100% desenhada
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller
+          .loadWarehouseData(); // ou loadOperationsData() nas outras páginas
+    });
   }
 
   // Função que seleciona ou desmarca um item

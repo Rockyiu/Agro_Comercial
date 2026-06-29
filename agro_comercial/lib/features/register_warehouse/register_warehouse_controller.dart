@@ -2,6 +2,8 @@ import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
+import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'register_warehouse_state.dart';
 
 class RegisterWarehouseController extends ChangeNotifier {
@@ -23,7 +25,6 @@ class RegisterWarehouseController extends ChangeNotifier {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
-      // MUDANÇA AQUI: Retiramos o fallback. Se não tiver usuário, barra a operação!
       if (user == null) {
         _changeState(
           RegisterWarehouseErrorState("Você precisa estar logado para salvar."),
@@ -31,12 +32,21 @@ class RegisterWarehouseController extends ChangeNotifier {
         return;
       }
 
-      final String uid = user.uid;
+      // CORREÇÃO: Pegando o ID da Fazenda Ativa
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
 
-      // 1. Busca os armazéns que o usuário já tem cadastrados
-      final existingWarehouses = await _warehouseService.getWarehouses(uid);
+      if (activeFarmId == null) {
+        _changeState(
+          RegisterWarehouseErrorState("Nenhuma fazenda ativa selecionada."),
+        );
+        return;
+      }
 
-      // 2. Verifica se algum tem o nome EXATAMENTE igual (ignorando espaços e maiúsculas/minúsculas)
+      // Busca os armazéns apenas da fazenda ativa
+      final existingWarehouses = await _warehouseService.getWarehouses(
+        activeFarmId,
+      );
+
       final bool alreadyExists = existingWarehouses.any(
         (w) => w.name.trim().toLowerCase() == name.trim().toLowerCase(),
       );
@@ -44,14 +54,17 @@ class RegisterWarehouseController extends ChangeNotifier {
       if (alreadyExists) {
         _changeState(
           RegisterWarehouseErrorState(
-            "Você já possui um armazém com este nome.",
+            "Você já possui um armazém com este nome nesta fazenda.",
           ),
         );
         return;
       }
 
-      // 3. Se for um nome novo, cria o modelo
-      final newWarehouse = WarehouseModel(name: name.trim(), farmId: uid);
+      // Salvando com o ID DA FAZENDA (activeFarmId)
+      final newWarehouse = WarehouseModel(
+        name: name.trim(),
+        farmId: activeFarmId,
+      );
 
       await _warehouseService.createWarehouse(newWarehouse);
 

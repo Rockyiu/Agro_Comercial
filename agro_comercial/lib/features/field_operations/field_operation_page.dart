@@ -23,7 +23,10 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
   @override
   void initState() {
     super.initState();
-    _controller.loadOperationsData();
+    // Garante que o carregamento só inicie após a tela estar 100% desenhada
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.loadOperationsData();
+    });
   }
 
   void _toggleSelection(String id) {

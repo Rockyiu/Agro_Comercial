@@ -8,6 +8,7 @@ import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_state.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -356,6 +357,24 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                                 .trim();
                           }
 
+                          // --- INÍCIO DA ALTERAÇÃO ---
+                          final activeFarmId = locator
+                              .get<FarmController>()
+                              .selectedFarm
+                              ?.id;
+
+                          if (activeFarmId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Erro: Nenhuma fazenda selecionada!",
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
                           final newProduct = ProductModel(
                             name: _nameController.text.trim(),
                             brand: _brandController.text.trim(),
@@ -363,14 +382,15 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                                 double.tryParse(_quantityController.text) ??
                                 0.0,
                             measure:
-                                double.tryParse(_measureController.text) ??
-                                1.0, // ADICIONADO
+                                double.tryParse(_measureController.text) ?? 1.0,
                             unit: _selectedUnit,
                             category: _selectedCategory!,
                             warehouseId: _selectedWarehouse!.id!,
-                            farmId: FirebaseAuth.instance.currentUser!.uid,
+                            farmId:
+                                activeFarmId, // CORRIGIDO: Usa o ID da Fazenda
                             attributes: extraAttributes,
                           );
+                          // --- FIM DA ALTERAÇÃO ---
 
                           await locator.get<ProductService>().createProduct(
                             newProduct,

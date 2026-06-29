@@ -5,6 +5,7 @@ import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -63,9 +64,13 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
       );
     } else if (state is FarmRegistrationSuccessState) {
       Navigator.pop(context); // Fecha o loading
+
+      // ADICIONADO: Avisa o aplicativo para recarregar as fazendas e ativar a nova!
+      locator.get<FarmController>().loadFarms();
+
       Navigator.pushReplacementNamed(context, '/home'); // Vai pra Home!
     } else if (state is FarmRegistrationErrorState) {
-      Navigator.pop(context); // Fecha o loading
+      Navigator.pop(context);
       customModalBottomSheet(
         context,
         content: state.message,

@@ -1,6 +1,10 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
+import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
+import 'package:agro_comercial/features/operation/operation_controller.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/employee/employee_page.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
@@ -14,10 +18,8 @@ import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-// CORRIGIDO: Agora puxando da pasta sign_in correta!
 import 'package:agro_comercial/features/sign_in/sign_in_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -34,11 +36,35 @@ class _HomePageState extends State<HomePage> {
 
   FarmModel? _fazendaAtiva;
 
+  // ADICIONADO: Inicialização automática da fazenda ao abrir o App!
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _inicializarFazendaAtiva();
+    });
+  }
+
+  // Busca a última fazenda usada no SharedPreferences via FarmController
+  Future<void> _inicializarFazendaAtiva() async {
+    final farmController = locator.get<FarmController>();
+    await farmController.loadFarms();
+
+    if (farmController.selectedFarm != null) {
+      setState(() {
+        _fazendaAtiva = farmController.selectedFarm;
+      });
+      // Avisa os outros módulos para carregarem os dados desta fazenda
+      locator.get<WarehouseController>().loadWarehouseData();
+      locator.get<OperationController>().loadOperationsData();
+      locator.get<FieldOperationController>().loadOperationsData();
+    }
+  }
+
   Future<void> _mostrarSeletorDeFazendas(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    // Mostra um indicador de carregamento enquanto busca no Firebase
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -65,7 +91,6 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      // Abre o diálogo de seleção
       showDialog(
         context: context,
         builder: (context) {
@@ -87,11 +112,27 @@ class _HomePageState extends State<HomePage> {
                     subtitle: Text(
                       'Área: ${fazenda.area} | Talhões: ${fazenda.numberOfPlots}',
                     ),
-                    onTap: () {
+                    onTap: () async {
+                      // 1. Atualiza o visual da Home
                       setState(() {
                         _fazendaAtiva = fazenda;
                       });
+
+                      // 2. Avisa o Controlador Global qual é a fazenda ativa
+                      await locator.get<FarmController>().changeActiveFarm(
+                        fazenda,
+                      );
+
+                      // 3. Força as abas a buscarem os dados no Firebase usando a nova fazenda!
+                      locator.get<WarehouseController>().loadWarehouseData();
+                      locator.get<OperationController>().loadOperationsData();
+                      locator
+                          .get<FieldOperationController>()
+                          .loadOperationsData();
+
+                      if (!context.mounted) return;
                       Navigator.pop(context); // Fecha o seletor
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
@@ -356,7 +397,6 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: AppColors.greenlightOne,
         elevation: 0,
         title: Text(
-          // ATUALIZADO: Apresenta o nome da fazenda ativa na barra superior
           _fazendaAtiva != null
               ? 'Fazenda: ${_fazendaAtiva!.name}'
               : 'Gestão Rural',
@@ -493,7 +533,6 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   const Divider(),
-                  // --- ADICIONADO: Opção de cadastrar mais uma fazenda ---
                   ListTile(
                     leading: const Icon(
                       Icons.add_home_work,
@@ -510,7 +549,6 @@ class _HomePageState extends State<HomePage> {
                       );
                     },
                   ),
-                  // --- ADICIONADO: Opção para troca de fazenda via método ---
                   ListTile(
                     leading: const Icon(
                       Icons.swap_horiz,
@@ -605,6 +643,41 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBody() {
+    // ADICIONADO: Bloqueia as abas se a fazenda não estiver selecionada
+    if (_fazendaAtiva == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.home_work_outlined,
+                size: 80,
+                color: AppColors.lightkGrey.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Nenhuma fazenda ativa',
+                style: AppTextStyles.midText20.copyWith(
+                  color: AppColors.greenlightOne,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Abra o menu lateral (☰) e escolha "Trocar de Fazenda" para carregar seus dados.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.smallText.copyWith(
+                  color: AppColors.grey,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_currentIndex == 0) {
       return ListView(
         padding: const EdgeInsets.all(16.0),
