@@ -11,7 +11,12 @@ import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ADICIONADO: Para guardar a preferência de sessão
+import 'package:shared_preferences/shared_preferences.dart';
+
+// --- ADICIONADOS PARA A VERIFICAÇÃO ---
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agro_comercial/features/home/collaborator_home_page.dart';
 
 import '../../locator.dart';
 import 'sign_in_controller.dart';
@@ -30,7 +35,7 @@ class _SignInPageState extends State<SignInPage> {
   final _passwordController = TextEditingController();
   final _signInController = locator.get<SignInController>();
 
-  bool _keepConnected = true; // ADICIONADO: Variável da caixa de seleção
+  bool _keepConnected = true;
 
   @override
   void initState() {
@@ -58,12 +63,12 @@ class _SignInPageState extends State<SignInPage> {
     } else if (state is SignInStateSuccess) {
       Navigator.pop(context); // Remove o loading
 
-      // GUARDA A ESCOLHA DO UTILIZADOR NA MEMÓRIA DO DISPOSITIVO
       SharedPreferences.getInstance().then((prefs) {
         prefs.setBool('keepConnected', _keepConnected);
       });
 
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      // AQUI CHAMAMOS A VERIFICAÇÃO EM VEZ DE IR DIRETO PRA HOME
+      _redirectBasedOnRole();
     } else if (state is SignInStateError) {
       Navigator.pop(context); // Remove o loading
       customModalBottomSheet(
@@ -71,6 +76,51 @@ class _SignInPageState extends State<SignInPage> {
         content: state.message,
         buttonText: "Tentar novamente",
       );
+    }
+  }
+
+  // Função que vai no banco ver se é Admin ou Colaborador
+  Future<void> _redirectBasedOnRole() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const CustomCircularProgressIndicator(),
+    );
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      bool isCollaborator = false;
+
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        final data = doc.data();
+
+        if (data != null) {
+          if (data['role'] == 'colaborador' || data['tipo'] == 'colaborador') {
+            isCollaborator = true;
+          }
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      // Redirecionamento Dinâmico
+      if (isCollaborator) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const CollaboratorHomePage()),
+        );
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
   }
 
@@ -122,7 +172,6 @@ class _SignInPageState extends State<SignInPage> {
                   validator: Validator.validatePassword,
                   onEditingComplete: _onSignInButtonPressed,
                 ),
-                // ADICIONADO: Caixa de "Manter-me conectado"
                 Row(
                   children: [
                     Checkbox(

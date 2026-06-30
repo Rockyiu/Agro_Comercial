@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/services/employee_service/employee_service.dart';
+import 'package:agro_comercial/locator.dart'; // ADICIONADO
+import 'package:agro_comercial/features/farm/farm_controller.dart'; // ADICIONADO
 import 'employee_state.dart';
 
 class EmployeeController extends ChangeNotifier {
@@ -16,12 +17,14 @@ class EmployeeController extends ChangeNotifier {
     _state = EmployeeLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final employeesList = await _employeeService.getEmployees(user.uid);
+      // CORREÇÃO: Busca apenas os funcionários da fazenda ativa
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+
+      if (activeFarmId != null) {
+        final employeesList = await _employeeService.getEmployees(activeFarmId);
         _state = EmployeeSuccessState(employeesList);
       } else {
-        _state = EmployeeErrorState("Usuário não logado.");
+        _state = EmployeeErrorState("Nenhuma fazenda ativa selecionada.");
       }
     } catch (e) {
       _state = EmployeeErrorState("Erro ao carregar funcionários.");
@@ -33,9 +36,12 @@ class EmployeeController extends ChangeNotifier {
     _state = EmployeeLoadingState();
     notifyListeners();
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await _employeeService.inviteEmployee(name, cpf, user.uid);
+      // CORREÇÃO: Registra o funcionário na fazenda ativa em vez do UID do admin
+      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+
+      if (activeFarmId != null) {
+        // Atenção: O seu inviteEmployee no EmployeeService vai precisar aceitar esse farmId
+        await _employeeService.inviteEmployee(name, cpf, activeFarmId);
       }
       await loadEmployees();
     } catch (e) {

@@ -278,7 +278,11 @@ class OperationController extends ChangeNotifier {
     notifyListeners();
     try {
       final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-      if (activeFarmId == null) return await _rollbackOperation(oldOp);
+      if (activeFarmId == null) return;
+
+      // ADICIONADO: Baixa o estoque atual antes de estornar
+      await loadFarmResources();
+      await _rollbackOperation(oldOp);
 
       if (newOp.usedProducts) {
         for (var appliedProduct in appliedProductsList) {
@@ -347,7 +351,7 @@ class OperationController extends ChangeNotifier {
         id: oldOp.id,
         title: newOp.title,
         description: newOp.description,
-        farmId: activeFarmId, // <- AQUI O ISOLAMENTO OCORRE
+        farmId: activeFarmId,
         dateTimestamp: oldOp.dateTimestamp,
         usedMachine: newOp.usedMachine,
         machineId: newOp.machineId,
@@ -369,6 +373,8 @@ class OperationController extends ChangeNotifier {
     _state = OperationLoadingState();
     notifyListeners();
     try {
+      // ADICIONADO: Baixa o estoque atual antes de estornar
+      await loadFarmResources();
       await _rollbackOperation(op);
       await _operationService.deleteOperation(op.id!);
       await loadOperationsData();
@@ -382,6 +388,8 @@ class OperationController extends ChangeNotifier {
     _state = OperationLoadingState();
     notifyListeners();
     try {
+      // ADICIONADO: Baixa o estoque atual antes de estornar
+      await loadFarmResources();
       final activeId = locator.get<FarmController>().selectedFarm?.id;
       if (activeId != null) {
         final ops = await _operationService.getOperations(activeId);

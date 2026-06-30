@@ -16,6 +16,7 @@ import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/operation/register_operation_page.dart';
 import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
+import 'package:agro_comercial/features/home/collaborator_home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
 

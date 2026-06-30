@@ -9,6 +9,7 @@ import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
+import 'package:agro_comercial/features/home/collaborator_home_page.dart';
 import 'package:agro_comercial/features/sign_up/sign_up_controller.dart';
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
 import 'package:agro_comercial/locator.dart';
@@ -69,6 +70,7 @@ class _SignUpPageState extends State<SignUpPage> {
         Navigator.pop(context);
 
         if (_selectedRole == 'admin') {
+          // Admin vai para o registo da fazenda
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -76,7 +78,13 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           );
         } else {
-          Navigator.pushReplacementNamed(context, '/home');
+          // AQUI ESTÁ A CORREÇÃO: Colaborador vai para a tela dele!
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CollaboratorHomePage(),
+            ),
+          );
         }
       }
       if (_signUpController.state is SignUpErrorState) {

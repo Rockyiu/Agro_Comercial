@@ -321,6 +321,7 @@ class _RegisterFieldOperationPageState
   List<Widget> _buildApplicationFields() {
     return [
       DropdownButtonFormField<String>(
+        isExpanded: true,
         decoration: const InputDecoration(
           labelText: "PRODUTO / INSUMO UTILIZADO",
           enabledBorder: OutlineInputBorder(
@@ -332,7 +333,8 @@ class _RegisterFieldOperationPageState
           return DropdownMenuItem<String>(
             value: p.id,
             child: Text(
-              "${p.name} (${p.category}) - ${p.quantity * p.measure} ${p.unit}",
+              "${p.name} (${p.category}) - ${(p.quantity * p.measure).toStringAsFixed(2)} ${p.unit}",
+              overflow: TextOverflow.ellipsis,
             ),
           );
         }).toList(),
@@ -387,6 +389,7 @@ class _RegisterFieldOperationPageState
       ),
       const SizedBox(height: 16),
       DropdownButtonFormField<String>(
+        isExpanded: true,
         decoration: const InputDecoration(
           labelText: "MAQUINÁRIO UTILIZADO (Opcional)",
           enabledBorder: OutlineInputBorder(
@@ -398,7 +401,10 @@ class _RegisterFieldOperationPageState
             .map(
               (m) => DropdownMenuItem<String>(
                 value: m.id,
-                child: Text("${m.name} • ${m.brand}"),
+                child: Text(
+                  "${m.name} • ${m.brand}",
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             )
             .toList(),

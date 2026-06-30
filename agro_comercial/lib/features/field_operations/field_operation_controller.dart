@@ -267,6 +267,8 @@ class FieldOperationController extends ChangeNotifier {
       final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
       if (activeFarmId == null) return;
 
+      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
+      await loadFarmResources();
       await _rollbackOperation(oldOp);
 
       double? calculatedHours;
@@ -334,8 +336,7 @@ class FieldOperationController extends ChangeNotifier {
         type: newOp.type,
         plotName: newOp.plotName,
         dateTimestamp: oldOp.dateTimestamp,
-        farmId:
-            activeFarmId, // <- Vinculado corretamente ao ID da fazenda ativa
+        farmId: activeFarmId,
         condition: newOp.condition,
         observations: newOp.observations,
         productId: newOp.productId,
@@ -359,6 +360,8 @@ class FieldOperationController extends ChangeNotifier {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
+      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
+      await loadFarmResources();
       await _rollbackOperation(op);
       await _operationService.deleteFieldOperation(op.id!);
       await loadOperationsData();
@@ -372,6 +375,8 @@ class FieldOperationController extends ChangeNotifier {
     _state = FieldOperationLoadingState();
     notifyListeners();
     try {
+      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
+      await loadFarmResources();
       final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
       if (activeFarmId != null) {
         final ops = await _operationService.getFieldOperations(activeFarmId);
