@@ -491,7 +491,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                       key: ValueKey('category_$_selectedCategory'),
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: "CATEGORIA OCEPAR",
+                        labelText: "CATEGORIA",
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(
                             color: AppColors.greenlightOne,
