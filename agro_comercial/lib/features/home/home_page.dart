@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
 import 'package:agro_comercial/features/operation/operation_controller.dart';
@@ -487,6 +488,22 @@ class _HomePageState extends State<HomePage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const OperationPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.attach_money, // Ícone de dinheiro/custos
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Custos'),
+                    onTap: () {
+                      Navigator.pop(context); // Fecha o Drawer
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CostPage(),
                         ),
                       );
                     },

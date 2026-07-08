@@ -411,7 +411,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        "Qtd: ${product.quantity} ${product.unit}",
+                        "Qtd: ${product.quantity.toStringAsFixed(2)} ${product.unit}",
                         style: AppTextStyles.smallText.copyWith(
                           fontWeight: FontWeight.bold,
                           fontSize: 12,

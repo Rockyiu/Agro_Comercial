@@ -5,6 +5,7 @@ import 'package:agro_comercial/features/field_operations/field_operation_page.da
 import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/features/sign_in/sign_in_page.dart';
+import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
   final List<Widget> _pages = [
     const FieldOperationPage(),
     const OperationPage(),
-    const Center(child: Text("Nova funcionalidade em breve")), // Terceira aba
+    const CostPage(), // <--- SUBSTITUÍMOS O "EM BREVE" PELA NOVA TELA
   ];
 
   @override
@@ -82,7 +83,9 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: AppColors.greenlightOne.withValues(
+                                  alpha: 0.5,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -174,7 +177,10 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
             icon: Icon(Icons.assignment_outlined),
             label: 'Operações',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'Mais'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.attach_money), // <--- ÍCONE DE CUSTOS
+            label: 'Custos', // <--- NOVO NOME
+          ),
         ],
       ),
     );
