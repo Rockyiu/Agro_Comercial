@@ -3,6 +3,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
 import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
+import 'package:agro_comercial/features/farm/edit_farm_page.dart'; // Importação adicionada para a edição
 import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
 import 'package:agro_comercial/features/operation/operation_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
@@ -17,7 +18,7 @@ import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/operation/register_operation_page.dart';
 import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
-import 'package:agro_comercial/features/home/collaborator_home_page.dart';
+import 'package:agro_comercial/features/invoices/invoice_page.dart';
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/locator.dart';
 
@@ -38,7 +39,6 @@ class _HomePageState extends State<HomePage> {
 
   FarmModel? _fazendaAtiva;
 
-  // ADICIONADO: Inicialização automática da fazenda ao abrir o App!
   @override
   void initState() {
     super.initState();
@@ -47,7 +47,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Busca a última fazenda usada no SharedPreferences via FarmController
   Future<void> _inicializarFazendaAtiva() async {
     final farmController = locator.get<FarmController>();
     await farmController.loadFarms();
@@ -56,7 +55,6 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         _fazendaAtiva = farmController.selectedFarm;
       });
-      // Avisa os outros módulos para carregarem os dados desta fazenda
       locator.get<WarehouseController>().loadWarehouseData();
       locator.get<OperationController>().loadOperationsData();
       locator.get<FieldOperationController>().loadOperationsData();
@@ -111,21 +109,19 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: Text(fazenda.name),
+                    // CORREÇÃO: Usando os nomes atualizados do FarmModel
                     subtitle: Text(
-                      'Área: ${fazenda.area} | Talhões: ${fazenda.numberOfPlots}',
+                      'Área: ${fazenda.totalArea} | Talhões: ${fazenda.plantedFields.length}',
                     ),
                     onTap: () async {
-                      // 1. Atualiza o visual da Home
                       setState(() {
                         _fazendaAtiva = fazenda;
                       });
 
-                      // 2. Avisa o Controlador Global qual é a fazenda ativa
                       await locator.get<FarmController>().changeActiveFarm(
                         fazenda,
                       );
 
-                      // 3. Força as abas a buscarem os dados no Firebase usando a nova fazenda!
                       locator.get<WarehouseController>().loadWarehouseData();
                       locator.get<OperationController>().loadOperationsData();
                       locator
@@ -460,6 +456,37 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
+                  // ADICIONADO: Botão para Editar "Minha Fazenda"
+                  ListTile(
+                    leading: const Icon(
+                      Icons.landscape,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Minha Fazenda'),
+                    onTap: () {
+                      Navigator.pop(context); // Fecha o Drawer
+                      final activeFarm = locator
+                          .get<FarmController>()
+                          .selectedFarm;
+                      if (activeFarm != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                EditFarmPage(farm: activeFarm),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Nenhuma fazenda selecionada no momento.',
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                  ),
                   ListTile(
                     leading: const Icon(
                       Icons.assignment_turned_in_outlined,
@@ -494,12 +521,12 @@ class _HomePageState extends State<HomePage> {
                   ),
                   ListTile(
                     leading: const Icon(
-                      Icons.attach_money, // Ícone de dinheiro/custos
+                      Icons.attach_money,
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Custos'),
                     onTap: () {
-                      Navigator.pop(context); // Fecha o Drawer
+                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -520,6 +547,22 @@ class _HomePageState extends State<HomePage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const EmployeePage(),
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.receipt_long,
+                      color: AppColors.greenlightOne,
+                    ),
+                    title: const Text('Notas Fiscais'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const InvoicePage(),
                         ),
                       );
                     },
@@ -661,7 +704,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBody() {
-    // ADICIONADO: Bloqueia as abas se a fazenda não estiver selecionada
     if (_fazendaAtiva == null) {
       return Center(
         child: Padding(

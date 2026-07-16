@@ -20,6 +20,8 @@ import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/cost_service/cost_service.dart';
 import 'package:agro_comercial/features/costs/cost_controller.dart';
+import 'package:agro_comercial/services/invoice_service/invoice_local_service.dart';
+import 'package:agro_comercial/features/invoices/invoice_controller.dart';
 import 'package:get_it/get_it.dart';
 
 // Importação dos Serviços
@@ -145,5 +147,13 @@ void setupDependencies() {
 
   locator.registerFactory<CostController>(
     () => CostController(locator.get<CostService>()),
+  );
+
+  locator.registerLazySingleton<InvoiceLocalService>(
+    () => InvoiceLocalService(),
+  );
+
+  locator.registerFactory<InvoiceController>(
+    () => InvoiceController(locator.get<InvoiceLocalService>()),
   );
 }

@@ -28,8 +28,8 @@ class SignUpController extends ChangeNotifier {
       // Limpa a formatação do CPF (remove pontos e traços)
       String cleanCpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');
 
-      // Faz o cadastro do usuário (Admin ou Colaborador) livremente
-      await _authService.signUp(
+      // Salva a resposta em uma variável 'result' para analisarmos
+      final result = await _authService.signUp(
         name: name,
         email: email,
         cpf: cleanCpf,
@@ -37,7 +37,17 @@ class SignUpController extends ChangeNotifier {
         role: role,
       );
 
-      _changeState(SignUpSuccessState());
+      // Usando o método fold() do seu DataResult para lidar com a resposta
+      result.fold(
+        (error) {
+          // Se deu erro no Firebase (ex: email repetido, senha fraca), avisa a tela
+          _changeState(SignUpErrorState(error.message));
+        },
+        (user) {
+          // Se deu tudo certo, comemoramos o sucesso e mandamos para a tela de Fazenda
+          _changeState(SignUpSuccessState());
+        },
+      );
     } catch (e) {
       _changeState(SignUpErrorState(e.toString()));
     }

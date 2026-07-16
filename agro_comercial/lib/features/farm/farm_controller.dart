@@ -41,6 +41,25 @@ class FarmController extends ChangeNotifier {
     }
   }
 
+  Future<void> updateFarm(FarmModel updatedFarm) async {
+    try {
+      // 1. Manda o serviço atualizar no Firebase
+      await _farmService.updateFarm(updatedFarm);
+
+      // 2. Se a fazenda que o usuário acabou de editar for a mesma que está
+      // ativa/selecionada no momento, atualiza a variável para refletir na hora!
+      if (selectedFarm?.id == updatedFarm.id) {
+        selectedFarm = updatedFarm;
+      }
+
+      // 3. Recarrega a lista de fazendas para a interface
+      await loadFarms();
+      notifyListeners();
+    } catch (e) {
+      throw Exception("Não foi possível atualizar a fazenda: $e");
+    }
+  }
+
   void setActiveFarm(FarmModel farm) {
     selectedFarm = farm;
     notifyListeners();

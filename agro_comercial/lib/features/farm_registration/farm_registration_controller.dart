@@ -18,13 +18,13 @@ class FarmRegistrationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ATUALIZADO: Recebendo os novos parâmetros totalArea e plantedFields
   Future<void> saveFarm({
     required String name,
-    required String cadPro, // ADICIONADO
+    required String cadPro,
     required String address,
-    required String area,
-    required int numberOfPlots,
-    required List<String?> plotCrops,
+    required String totalArea,
+    required List<Map<String, dynamic>> plantedFields,
   }) async {
     _changeState(FarmRegistrationLoadingState());
 
@@ -35,19 +35,13 @@ class FarmRegistrationController extends ChangeNotifier {
         return;
       }
 
-      // Converte os talhões (remover nulos por segurança)
-      List<String> cleanCrops = plotCrops
-          .where((c) => c != null)
-          .cast<String>()
-          .toList();
-
+      // Montando a nova fazenda com a estrutura atualizada
       final newFarm = FarmModel(
         name: name,
         cadPro: cadPro,
         address: address,
-        area: area,
-        numberOfPlots: numberOfPlots,
-        plotCrops: cleanCrops,
+        totalArea: totalArea,
+        plantedFields: plantedFields,
         ownerId: user.uid, // Vincula ao dono atual!
       );
 

@@ -21,17 +21,17 @@ class FarmRegistrationPage extends StatefulWidget {
 
 class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
-  final _cadProController =
-      TextEditingController(); // ADICIONADO: Controlador do CAD/PRO
+  final _cadProController = TextEditingController();
   final _addressController = TextEditingController();
-  final _areaController = TextEditingController();
+  final _totalAreaController = TextEditingController();
 
   final _farmController = locator.get<FarmRegistrationController>();
 
-  int _numberOfPlots = 1;
-  List<String?> _plotCrops = [null];
+  final List<Map<String, TextEditingController>> _fieldControllers = [];
 
+  // A SUA LISTA DE CULTURAS VOLTOU AQUI!
   final List<String> _cropOptions = [
     'Soja',
     'Milho',
@@ -51,6 +51,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
   void initState() {
     super.initState();
     _farmController.addListener(_handleStateChange);
+    _addField();
   }
 
   void _handleStateChange() {
@@ -63,12 +64,11 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
         builder: (context) => const CustomCircularProgressIndicator(),
       );
     } else if (state is FarmRegistrationSuccessState) {
-      Navigator.pop(context); // Fecha o loading
+      Navigator.pop(context);
 
-      // ADICIONADO: Avisa o aplicativo para recarregar as fazendas e ativar a nova!
       locator.get<FarmController>().loadFarms();
 
-      Navigator.pushReplacementNamed(context, '/home'); // Vai pra Home!
+      Navigator.pushReplacementNamed(context, '/home');
     } else if (state is FarmRegistrationErrorState) {
       Navigator.pop(context);
       customModalBottomSheet(
@@ -79,41 +79,43 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
     }
   }
 
-  void _onPlotsChanged(int? newValue) {
-    if (newValue != null) {
-      setState(() {
-        _numberOfPlots = newValue;
-        List<String?> newCrops = List.filled(_numberOfPlots, null);
-        for (int i = 0; i < _numberOfPlots && i < _plotCrops.length; i++) {
-          newCrops[i] = _plotCrops[i];
-        }
-        _plotCrops = newCrops;
+  void _addField() {
+    setState(() {
+      _fieldControllers.add({
+        'name': TextEditingController(
+          text: "Talhão ${_fieldControllers.length + 1}",
+        ),
+        'area': TextEditingController(),
+        'crop': TextEditingController(),
       });
-    }
+    });
+  }
+
+  void _removeField(int index) {
+    setState(() {
+      _fieldControllers[index]['name']?.dispose();
+      _fieldControllers[index]['area']?.dispose();
+      _fieldControllers[index]['crop']?.dispose();
+      _fieldControllers.removeAt(index);
+    });
   }
 
   void _onSaveButtonPressed() {
     if (_formKey.currentState?.validate() ?? false) {
-      if (_plotCrops.contains(null)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Por favor, selecione a cultura de todos os talhões.",
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
+      List<Map<String, dynamic>> plantedFields = _fieldControllers.map((c) {
+        return {
+          'name': c['name']!.text.trim(),
+          'area': double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
+          'crop': c['crop']!.text.trim(),
+        };
+      }).toList();
 
-      // Chama o controller passando o cadPro
       _farmController.saveFarm(
-        name: _nameController.text,
-        cadPro: _cadProController.text, // ADICIONADO: Envio do CAD/PRO
-        address: _addressController.text,
-        area: _areaController.text,
-        numberOfPlots: _numberOfPlots,
-        plotCrops: _plotCrops,
+        name: _nameController.text.trim(),
+        cadPro: _cadProController.text.trim(),
+        address: _addressController.text.trim(),
+        totalArea: _totalAreaController.text.trim(),
+        plantedFields: plantedFields,
       );
     }
   }
@@ -121,11 +123,16 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
   @override
   void dispose() {
     _nameController.dispose();
-    _cadProController
-        .dispose(); // ADICIONADO: Liberação do controller do CAD/PRO
+    _cadProController.dispose();
     _addressController.dispose();
-    _areaController.dispose();
-    _farmController.dispose();
+    _totalAreaController.dispose();
+    _farmController.removeListener(_handleStateChange);
+
+    for (var controllers in _fieldControllers) {
+      controllers['name']?.dispose();
+      controllers['area']?.dispose();
+      controllers['crop']?.dispose();
+    }
     super.dispose();
   }
 
@@ -165,7 +172,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       ? "O nome não pode ser vazio"
                       : null,
                 ),
-                // --- CAMPO ADICIONADO ---
+                const SizedBox(height: 16),
                 CustomTextFormField(
                   controller: _cadProController,
                   labelText: "CAD/PRO (Inscrição Estadual)",
@@ -175,7 +182,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       ? "O CAD/PRO não pode ser vazio"
                       : null,
                 ),
-                // ------------------------
+                const SizedBox(height: 16),
                 CustomTextFormField(
                   controller: _addressController,
                   labelText: "Endereço da Propriedade",
@@ -184,8 +191,9 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       ? "O endereço não pode ser vazio"
                       : null,
                 ),
+                const SizedBox(height: 16),
                 CustomTextFormField(
-                  controller: _areaController,
+                  controller: _totalAreaController,
                   labelText: "Área Total (Alqueires ou Hectares)",
                   hintText: "Ex: 50",
                   keyboardType: const TextInputType.numberWithOptions(
@@ -193,76 +201,141 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                   ),
                   validator: Validator.validateNumber,
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 12.0,
-                  ),
-                  child: DropdownButtonFormField<int>(
-                    initialValue: _numberOfPlots,
-                    decoration: InputDecoration(
-                      labelText: "Quantidade de Talhões",
-                      labelStyle: AppTextStyles.inputLabelText.copyWith(
-                        color: AppColors.lightkGrey,
-                      ),
-                      border: const OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.greenlightOne),
-                      ),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.greenlightOne),
+                const SizedBox(height: 32),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Áreas de Plantio (Talhões)",
+                      style: AppTextStyles.midText20.copyWith(
+                        color: AppColors.greenlightOne,
                       ),
                     ),
-                    items: List.generate(10, (index) => index + 1)
-                        .map(
-                          (number) => DropdownMenuItem(
-                            value: number,
-                            child: Text('$number Talhão(ões)'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: _onPlotsChanged,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                    vertical: 16.0,
-                  ),
-                  child: Divider(color: AppColors.greenlightOne),
-                ),
-                ...List.generate(_numberOfPlots, (index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 8.0,
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _plotCrops[index],
-                      decoration: InputDecoration(
-                        labelText: "Cultura do Talhão ${index + 1}",
-                        labelStyle: AppTextStyles.inputLabelText.copyWith(
-                          color: AppColors.lightkGrey,
-                        ),
-                        border: const OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
-                        enabledBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_circle,
+                        color: AppColors.greenlightOne,
+                        size: 32,
                       ),
-                      hint: const Text("Selecione o que você planta"),
-                      items: _cropOptions.map((crop) {
-                        return DropdownMenuItem(value: crop, child: Text(crop));
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _plotCrops[index] = value;
-                        });
-                      },
+                      onPressed: _addField,
+                    ),
+                  ],
+                ),
+                const Divider(color: AppColors.greenlightOne),
+                const SizedBox(height: 8),
+
+                ...List.generate(_fieldControllers.length, (index) {
+                  final controllers = _fieldControllers[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: CustomTextFormField(
+                                  controller: controllers['name']!,
+                                  labelText: "Identificação (Ex: Talhão 1)",
+                                  validator: (v) =>
+                                      v!.isEmpty ? "Obrigatório" : null,
+                                ),
+                              ),
+                              if (_fieldControllers.length > 1)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () => _removeField(index),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: CustomTextFormField(
+                                  controller: controllers['area']!,
+                                  labelText: "Área Plantada",
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  validator: (v) =>
+                                      v!.isEmpty ? "Obrigatório" : null,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+
+                              // O NOVO DROPDOWN ESTÁ AQUI!
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  isExpanded: true,
+                                  value: controllers['crop']!.text.isEmpty
+                                      ? null
+                                      : controllers['crop']!.text,
+                                  decoration: InputDecoration(
+                                    labelText: "Cultura",
+                                    labelStyle: AppTextStyles.inputLabelText
+                                        .copyWith(color: AppColors.lightkGrey),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 16,
+                                    ),
+                                    border: const OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.greenlightOne,
+                                      ),
+                                    ),
+                                    enabledBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.greenlightOne,
+                                      ),
+                                    ),
+                                    focusedBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.greenlightOne,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  hint: const Text(
+                                    "Selecione",
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  items: _cropOptions.map((String crop) {
+                                    return DropdownMenuItem<String>(
+                                      value: crop,
+                                      child: Text(
+                                        crop,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (String? newValue) {
+                                    if (newValue != null) {
+                                      controllers['crop']!.text =
+                                          newValue; // Salva a escolha no controlador invisível
+                                    }
+                                  },
+                                  validator: (v) => v == null || v.isEmpty
+                                      ? "Obrigatório"
+                                      : null,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }),

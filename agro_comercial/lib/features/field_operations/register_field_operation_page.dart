@@ -4,6 +4,7 @@ import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart'; // ADICIONADO: Importação do FarmController
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -68,6 +69,14 @@ class _RegisterFieldOperationPageState
 
   @override
   Widget build(BuildContext context) {
+    // ADICIONADO: Puxa a fazenda ativa e cria a lista com os nomes dos talhões
+    final activeFarm = locator.get<FarmController>().selectedFarm;
+    final List<String> talhoesDisponiveis =
+        activeFarm?.plantedFields
+            .map((field) => field['name'].toString())
+            .toList() ??
+        [];
+
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
@@ -126,11 +135,57 @@ class _RegisterFieldOperationPageState
                   ),
                   const SizedBox(height: 24),
 
-                  CustomTextFormField(
-                    controller: _plotController,
-                    labelText: "IDENTIFICAÇÃO DO TALHÃO",
-                    hintText: "Ex: Talhão 01, Área Norte",
-                    validator: (v) => v!.isEmpty ? "Informe o talhão" : null,
+                  // ADICIONADO: Dropdown de Talhões substituindo o campo de texto antigo
+                  DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    value: _plotController.text.isEmpty
+                        ? null
+                        : _plotController.text,
+                    decoration: InputDecoration(
+                      labelText: "IDENTIFICAÇÃO DO TALHÃO",
+                      labelStyle: AppTextStyles.inputLabelText.copyWith(
+                        color: AppColors.lightkGrey,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 16,
+                      ),
+                      border: const OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.greenlightOne),
+                      ),
+                      enabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.greenlightOne),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(
+                          color: AppColors.greenlightOne,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    hint: const Text(
+                      "Selecione o Talhão",
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    items: talhoesDisponiveis.map((String talhao) {
+                      return DropdownMenuItem<String>(
+                        value: talhao,
+                        child: Text(
+                          talhao,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        setState(() {
+                          _plotController.text =
+                              newValue; // Salva a escolha do usuário internamente
+                        });
+                      }
+                    },
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? "Informe o talhão" : null,
                   ),
                   const SizedBox(height: 16),
 
