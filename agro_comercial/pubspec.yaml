@@ -48,6 +48,8 @@ dependencies:
   path_provider: ^2.1.6
   file_picker: ^8.0.0
   open_filex: ^4.7.0
+  pdf: ^3.12.0
+  printing: ^5.14.3
 
 dev_dependencies:
   flutter_test:

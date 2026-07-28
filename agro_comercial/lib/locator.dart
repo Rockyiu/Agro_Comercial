@@ -1,3 +1,4 @@
+import 'package:agro_comercial/features/cash_book/consolidation_controller.dart';
 import 'package:agro_comercial/features/employee/employee_controller.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
@@ -22,6 +23,7 @@ import 'package:agro_comercial/services/cost_service/cost_service.dart';
 import 'package:agro_comercial/features/costs/cost_controller.dart';
 import 'package:agro_comercial/services/invoice_service/invoice_local_service.dart';
 import 'package:agro_comercial/features/invoices/invoice_controller.dart';
+import 'package:agro_comercial/features/cash_book/bookkeeping_controller.dart';
 import 'package:get_it/get_it.dart';
 
 // Importação dos Serviços
@@ -155,5 +157,13 @@ void setupDependencies() {
 
   locator.registerFactory<InvoiceController>(
     () => InvoiceController(locator.get<InvoiceLocalService>()),
+  );
+
+  locator.registerLazySingleton<BookkeepingController>(
+    () => BookkeepingController(),
+  );
+
+  locator.registerLazySingleton<ConsolidationController>(
+    () => ConsolidationController(),
   );
 }

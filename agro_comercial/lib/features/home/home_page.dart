@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/features/cash_book/cash_book_page.dart';
 import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/farm/edit_farm_page.dart'; // Importação adicionada para a edição
@@ -778,6 +779,9 @@ class _HomePageState extends State<HomePage> {
       );
     } else if (_currentIndex == 2) {
       return const WarehousePage();
+    } else if (_currentIndex == 1) {
+      // <-- ABA DO LIVRO CAIXA
+      return const CashBookPage();
     } else if (_currentIndex == 3) {
       return Center(
         child: Column(
