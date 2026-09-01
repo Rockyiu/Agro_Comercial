@@ -10,7 +10,6 @@ import 'package:agro_comercial/features/warehouse/warehouse_state.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';

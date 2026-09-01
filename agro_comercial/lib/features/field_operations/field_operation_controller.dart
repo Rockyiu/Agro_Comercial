@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';

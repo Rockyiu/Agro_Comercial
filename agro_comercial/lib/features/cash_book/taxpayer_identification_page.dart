@@ -39,7 +39,7 @@ class _TaxpayerIdentificationPageState
     try {
       final doc = await FirebaseFirestore.instance
           .collection('users') // Verifica se a sua coleção chama 'users' mesmo
-          .doc(_currentUser!.uid)
+          .doc(_currentUser.uid)
           .get();
 
       if (doc.exists && doc.data() != null) {
