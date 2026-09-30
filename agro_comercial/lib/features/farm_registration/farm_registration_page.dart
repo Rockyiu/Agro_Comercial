@@ -280,7 +280,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                               Expanded(
                                 child: DropdownButtonFormField<String>(
                                   isExpanded: true,
-                                  value: controllers['crop']!.text.isEmpty
+                                  initialValue:
+                                      controllers['crop']!.text.isEmpty
                                       ? null
                                       : controllers['crop']!.text,
                                   decoration: InputDecoration(

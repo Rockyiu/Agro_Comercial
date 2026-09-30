@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["SEU_TEAM_ID.dev.vinicius.agrocomercil.agroComercial"],
+        "components": [{ "/": "/auth/action*" }]
+      }
+    ]
+  }
+}

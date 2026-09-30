@@ -236,6 +236,7 @@ class FieldOperationController extends ChangeNotifier {
         dateTimestamp: operation.dateTimestamp,
         farmId:
             activeFarmId, // <- Vinculado corretamente ao ID da fazenda ativa
+        createdBy: FirebaseAuth.instance.currentUser?.uid,
         condition: operation.condition,
         observations: operation.observations,
         productId: operation.productId,
@@ -337,6 +338,7 @@ class FieldOperationController extends ChangeNotifier {
         plotName: newOp.plotName,
         dateTimestamp: oldOp.dateTimestamp,
         farmId: activeFarmId,
+        createdBy: oldOp.createdBy,
         condition: newOp.condition,
         observations: newOp.observations,
         productId: newOp.productId,

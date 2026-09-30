@@ -4,6 +4,7 @@ class OperationModel {
   final String description;
   final String farmId;
   final int dateTimestamp;
+  final String? createdBy; // UID de quem registrou a operação
 
   // Maquinário utilizado
   final bool usedMachine;
@@ -21,6 +22,7 @@ class OperationModel {
     required this.description,
     required this.farmId,
     required this.dateTimestamp,
+    this.createdBy,
     required this.usedMachine,
     this.machineId,
     this.machineName,
@@ -36,6 +38,7 @@ class OperationModel {
       'description': description,
       'farmId': farmId,
       'dateTimestamp': dateTimestamp,
+      'createdBy': createdBy,
       'usedMachine': usedMachine,
       'machineId': machineId,
       'machineName': machineName,
@@ -53,6 +56,7 @@ class OperationModel {
       farmId: map['farmId'] ?? '',
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
+      createdBy: map['createdBy'],
       usedMachine: map['usedMachine'] ?? false,
       machineId: map['machineId'],
       machineName: map['machineName'],

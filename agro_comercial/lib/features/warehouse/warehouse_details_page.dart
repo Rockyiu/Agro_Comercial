@@ -501,7 +501,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      machine.brand + " • " + machine.model,
+                      "${machine.brand} • ${machine.model}",
                       style: AppTextStyles.smallText.copyWith(
                         color: Colors.black87,
                       ),

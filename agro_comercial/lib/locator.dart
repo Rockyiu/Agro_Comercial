@@ -1,6 +1,8 @@
 import 'package:agro_comercial/features/cash_book/consolidation_controller.dart';
 import 'package:agro_comercial/features/employee/employee_controller.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
+import 'package:agro_comercial/features/home/collaborator_home_controller.dart';
+import 'package:agro_comercial/features/home/home_controller.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_controller.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
 import 'package:agro_comercial/features/operation/operation_controller.dart';
@@ -35,6 +37,8 @@ import 'services/secure_storage.dart';
 import 'features/splash/splash_controller.dart';
 import 'features/sign_in/sign_in_controller.dart';
 import 'features/sign_up/sign_up_controller.dart';
+import 'features/forgot_password/forgot_password_controller.dart';
+import 'features/reset_password/reset_password_controller.dart';
 
 final locator = GetIt.instance;
 
@@ -69,6 +73,14 @@ void setupDependencies() {
 
   locator.registerFactory<SignUpController>(
     () => SignUpController(locator.get<AuthService>()),
+  );
+
+  locator.registerFactory<ForgotPasswordController>(
+    () => ForgotPasswordController(locator.get<AuthService>()),
+  );
+
+  locator.registerFactory<ResetPasswordController>(
+    () => ResetPasswordController(locator.get<AuthService>()),
   );
 
   locator.registerLazySingleton<WarehouseController>(
@@ -143,6 +155,23 @@ void setupDependencies() {
 
   locator.registerLazySingleton<FarmController>(
     () => FarmController(locator.get<FarmService>()),
+  );
+
+  locator.registerFactory<HomeController>(
+    () => HomeController(
+      locator.get<OperationService>(),
+      locator.get<FieldOperationService>(),
+      locator.get<EmployeeService>(),
+      locator.get<FarmController>(),
+    ),
+  );
+
+  locator.registerFactory<CollaboratorHomeController>(
+    () => CollaboratorHomeController(
+      locator.get<OperationService>(),
+      locator.get<FieldOperationService>(),
+      locator.get<FarmController>(),
+    ),
   );
 
   locator.registerLazySingleton<CostService>(() => CostService());

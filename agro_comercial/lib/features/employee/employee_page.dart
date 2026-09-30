@@ -184,8 +184,9 @@ class _EmployeePageState extends State<EmployeePage> {
                           borderRadius: BorderRadius.circular(12),
                           onLongPress: () => _toggleSelection(emp),
                           onTap: () {
-                            if (selectedEmployees.isNotEmpty)
+                            if (selectedEmployees.isNotEmpty) {
                               _toggleSelection(emp);
+                            }
                           },
                           child: ListTile(
                             leading: CircleAvatar(

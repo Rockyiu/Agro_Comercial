@@ -13,6 +13,7 @@ class OperationService {
       description: operation.description,
       farmId: operation.farmId,
       dateTimestamp: operation.dateTimestamp,
+      createdBy: operation.createdBy,
       usedMachine: operation.usedMachine,
       machineId: operation.machineId,
       machineName: operation.machineName,
@@ -33,6 +34,25 @@ class OperationService {
     return snapshot.docs
         .map((doc) => OperationModel.fromMap(doc.data()))
         .toList();
+  }
+
+  // Operações registradas por um usuário específico (ex: colaborador) na fazenda.
+  // Só usa filtros de igualdade para não exigir índice composto no Firestore;
+  // a ordenação é feita localmente.
+  Future<List<OperationModel>> getOperationsByUser(
+    String farmId,
+    String userId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('operations')
+        .where('farmId', isEqualTo: farmId)
+        .where('createdBy', isEqualTo: userId)
+        .get();
+    final operations = snapshot.docs
+        .map((doc) => OperationModel.fromMap(doc.data()))
+        .toList();
+    operations.sort((a, b) => b.dateTimestamp.compareTo(a.dateTimestamp));
+    return operations;
   }
 
   Future<void> updateOperation(OperationModel operation) async {

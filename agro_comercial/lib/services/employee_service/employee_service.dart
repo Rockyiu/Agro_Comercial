@@ -19,6 +19,21 @@ class EmployeeService {
     }).toList();
   }
 
+  // Busca o nome de cada usuário pelo UID (usado para mostrar quem registrou
+  // cada atividade). Lê pelo ID do documento, então funciona mesmo para
+  // colaboradores que já foram desvinculados da fazenda.
+  Future<Map<String, String>> getUserNames(Iterable<String> userIds) async {
+    final docs = await Future.wait(
+      userIds.toSet().map((id) => _firestore.collection('users').doc(id).get()),
+    );
+
+    return {
+      for (final doc in docs)
+        if ((doc.data()?['name'] as String?)?.isNotEmpty ?? false)
+          doc.id: doc.data()!['name'] as String,
+    };
+  }
+
   // 2. Vincula um colaborador existente à FAZENDA através do CPF
   Future<void> inviteEmployee(String name, String cpf, String farmId) async {
     String cleanCpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');

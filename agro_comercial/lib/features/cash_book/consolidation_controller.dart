@@ -51,9 +51,9 @@ class ConsolidationController extends ChangeNotifier {
         final item = BookkeepingModel.fromMap(doc.data(), doc.id);
         int mes = item.mes;
 
-        if (item.conta.startsWith('1'))
+        if (item.conta.startsWith('1')) {
           resumoAno[mes].receitas += item.valor;
-        else if (item.conta.startsWith('2'))
+        } else if (item.conta.startsWith('2'))
           resumoAno[mes].despesas += item.valor;
         else if (item.conta.startsWith('3'))
           resumoAno[mes].despesasNaoDedutiveis += item.valor;

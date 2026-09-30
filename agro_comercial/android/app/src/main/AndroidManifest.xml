@@ -24,6 +24,19 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Deep linking do Flutter: entrega o link recebido como rota para o Navigator -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
+            <!-- App Link: abre o app ao clicar no link de redefinição de senha do e-mail
+                 (requer web/.well-known/assetlinks.json publicado no Firebase Hosting) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="agro-comercial.web.app"
+                    android:pathPrefix="/auth/action" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

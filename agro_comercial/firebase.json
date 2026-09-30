@@ -1,1 +1,47 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"agro-comercial","appId":"1:547900345321:android:3cb02296370771d956d978","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"agro-comercial","configurations":{"android":"1:547900345321:android:3cb02296370771d956d978","ios":"1:547900345321:ios:b486a533a8f3c86a56d978","web":"1:547900345321:web:1652d81ae45d735e56d978"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "agro-comercial",
+          "appId": "1:547900345321:android:3cb02296370771d956d978",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "agro-comercial",
+          "configurations": {
+            "android": "1:547900345321:android:3cb02296370771d956d978",
+            "ios": "1:547900345321:ios:b486a533a8f3c86a56d978",
+            "web": "1:547900345321:web:1652d81ae45d735e56d978"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ]
+  }
+}

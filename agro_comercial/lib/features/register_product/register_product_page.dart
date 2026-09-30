@@ -98,8 +98,9 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                   source: ImageSource.camera,
                   imageQuality: 70,
                 );
-                if (photo != null)
+                if (photo != null) {
                   setState(() => _selectedImage = File(photo.path));
+                }
               },
             ),
             ListTile(
@@ -111,8 +112,9 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                   source: ImageSource.gallery,
                   imageQuality: 70,
                 );
-                if (image != null)
+                if (image != null) {
                   setState(() => _selectedImage = File(image.path));
+                }
               },
             ),
           ],

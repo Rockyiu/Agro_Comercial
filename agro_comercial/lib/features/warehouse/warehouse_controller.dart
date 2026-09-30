@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';

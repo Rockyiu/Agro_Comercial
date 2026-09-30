@@ -143,7 +143,36 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<DataResult<bool>> forgotPassword(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      // Envia o e-mail de redefinição em português
+      await _auth.setLanguageCode('pt-BR');
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return DataResult.success(true);
+    } on FirebaseAuthException catch (e) {
+      return DataResult.failure(AuthException(code: e.code));
+    } catch (e) {
+      return DataResult.failure(const GeneralException());
+    }
+  }
+
+  @override
+  Future<DataResult<String>> verifyPasswordResetCode(String code) async {
+    try {
+      final email = await _auth.verifyPasswordResetCode(code);
+      return DataResult.success(email);
+    } on FirebaseAuthException catch (e) {
+      return DataResult.failure(AuthException(code: e.code));
+    } catch (e) {
+      return DataResult.failure(const GeneralException());
+    }
+  }
+
+  @override
+  Future<DataResult<bool>> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      await _auth.confirmPasswordReset(code: code, newPassword: newPassword);
       return DataResult.success(true);
     } on FirebaseAuthException catch (e) {
       return DataResult.failure(AuthException(code: e.code));

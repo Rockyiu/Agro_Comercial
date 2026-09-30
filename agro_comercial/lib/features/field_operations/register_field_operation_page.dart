@@ -138,7 +138,7 @@ class _RegisterFieldOperationPageState
                   // ADICIONADO: Dropdown de Talhões substituindo o campo de texto antigo
                   DropdownButtonFormField<String>(
                     isExpanded: true,
-                    value: _plotController.text.isEmpty
+                    initialValue: _plotController.text.isEmpty
                         ? null
                         : _plotController.text,
                     decoration: InputDecoration(

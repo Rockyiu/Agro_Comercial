@@ -4,6 +4,7 @@ class FieldOperationModel {
   final String plotName; // Nome/Número do Talhão
   final int dateTimestamp;
   final String farmId;
+  final String? createdBy; // UID de quem registrou a vistoria/aplicação
 
   final String? condition;
   final String? observations;
@@ -23,6 +24,7 @@ class FieldOperationModel {
     required this.plotName,
     required this.dateTimestamp,
     required this.farmId,
+    this.createdBy,
     this.condition,
     this.observations,
     this.productId,
@@ -38,7 +40,7 @@ class FieldOperationModel {
     return {
       if (id != null) 'id': id,
       'type': type, 'plotName': plotName, 'dateTimestamp': dateTimestamp,
-      'farmId': farmId, 'condition': condition, 'observations': observations,
+      'farmId': farmId, 'createdBy': createdBy, 'condition': condition, 'observations': observations,
       'productId': productId, 'productName': productName, 'dosage': dosage,
       'dosageUnit': dosageUnit,
       'machineId': machineId,
@@ -55,6 +57,7 @@ class FieldOperationModel {
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
       farmId: map['farmId'] ?? '',
+      createdBy: map['createdBy'],
       condition: map['condition'],
       observations: map['observations'],
       productId: map['productId'],

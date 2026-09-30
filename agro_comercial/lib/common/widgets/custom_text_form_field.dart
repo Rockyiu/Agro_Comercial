@@ -91,7 +91,7 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           errorMaxLines: 3,
           helperText: _helperText,
           helperMaxLines: 3,
-          errorStyle: const TextStyle(color: Colors.yellow),
+          errorStyle: const TextStyle(color: Colors.red),
           suffixIcon: widget.suffixIcon,
           hintText: widget.hintText,
           floatingLabelBehavior: FloatingLabelBehavior.always,

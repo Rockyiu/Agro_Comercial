@@ -162,10 +162,12 @@ class _ProfilePageState extends State<ProfilePage> {
                       controller: _nameController,
                       labelText: "NOME COMPLETO",
                       validator: (v) {
-                        if (v == null || v.trim().isEmpty)
+                        if (v == null || v.trim().isEmpty) {
                           return "O nome é obrigatório";
-                        if (v.trim().split(' ').length < 2)
+                        }
+                        if (v.trim().split(' ').length < 2) {
                           return "Informe nome e sobrenome";
+                        }
                         return null;
                       },
                     ),
@@ -176,8 +178,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       labelText: "E-MAIL DE ACESSO",
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
-                        if (v == null || v.isEmpty)
+                        if (v == null || v.isEmpty) {
                           return "O e-mail é obrigatório";
+                        }
                         // Validação nativa de formato de E-mail
                         final bool emailValid = RegExp(
                           r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
@@ -212,8 +215,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       validator: (v) {
                         if (v != null && v.isNotEmpty) {
                           String numeros = v.replaceAll(RegExp(r'[^0-9]'), '');
-                          if (numeros.length < 10)
+                          if (numeros.length < 10) {
                             return "Insira o DDD e o número";
+                          }
                         }
                         return null;
                       },

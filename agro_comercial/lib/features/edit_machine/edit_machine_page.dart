@@ -112,8 +112,9 @@ class _EditMachinePageState extends State<EditMachinePage> {
                   source: ImageSource.camera,
                   imageQuality: 70,
                 );
-                if (photo != null)
+                if (photo != null) {
                   setState(() => _newSelectedImage = File(photo.path));
+                }
               },
             ),
             ListTile(
@@ -125,8 +126,9 @@ class _EditMachinePageState extends State<EditMachinePage> {
                   source: ImageSource.gallery,
                   imageQuality: 70,
                 );
-                if (image != null)
+                if (image != null) {
                   setState(() => _newSelectedImage = File(image.path));
+                }
               },
             ),
           ],

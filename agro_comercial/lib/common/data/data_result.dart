@@ -15,7 +15,7 @@ class DataResult<T> {
     Function(T data) onSuccess,
   ) {
     if (_error != null) {
-      onFailure(_error!);
+      onFailure(_error);
     } else if (_data != null) {
       onSuccess(_data as T);
     }

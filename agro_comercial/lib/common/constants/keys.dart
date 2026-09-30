@@ -40,6 +40,15 @@ class Keys {
     'forgot_password_send_link_button',
   );
 
+  // Reset password page (Redefinir Senha)
+  static const resetPasswordNewPasswordField = Key(
+    'reset_password_new_password_field',
+  );
+  static const resetPasswordConfirmPasswordField = Key(
+    'reset_password_confirm_password_field',
+  );
+  static const resetPasswordSaveButton = Key('reset_password_save_button');
+
   // App bottom bar items (Menu de baixo - Futuro)
   static const homePageBottomAppBarItem = Key('home_page_bottom_app_bar_item');
   static const operationsPageBottomAppBarItem = Key(

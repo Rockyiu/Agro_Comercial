@@ -41,6 +41,26 @@ class FarmController extends ChangeNotifier {
     }
   }
 
+  // O colaborador não é dono de fazendas: a fazenda ativa dele é a que o
+  // produtor vinculou ao seu cadastro na tela "Minha Equipe".
+  Future<void> loadCollaboratorFarm() async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final farm = await _farmService.getFarmByCollaborator(user.uid);
+        farms = farm != null ? [farm] : [];
+        selectedFarm = farm;
+      }
+    } catch (e) {
+      debugPrint("Erro ao buscar fazenda do colaborador: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> updateFarm(FarmModel updatedFarm) async {
     try {
       // 1. Manda o serviço atualizar no Firebase

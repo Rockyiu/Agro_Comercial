@@ -221,7 +221,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                       "Desmarque para implementos manuais, aplicadores costais, etc.",
                       style: AppTextStyles.smallText,
                     ),
-                    activeColor: AppColors.greenlightOne,
+                    activeThumbColor: AppColors.greenlightOne,
                     value: _isMotorized,
                     onChanged: (val) => setState(() => _isMotorized = val),
                   ),

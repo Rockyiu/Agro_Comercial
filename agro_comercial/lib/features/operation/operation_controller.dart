@@ -251,6 +251,7 @@ class OperationController extends ChangeNotifier {
         description: operation.description,
         farmId: activeFarmId, // <- AQUI O ISOLAMENTO OCORRE
         dateTimestamp: DateTime.now().millisecondsSinceEpoch,
+        createdBy: FirebaseAuth.instance.currentUser?.uid,
         usedMachine: operation.usedMachine,
         machineId: operation.machineId,
         machineName: operation.machineName,
@@ -353,6 +354,7 @@ class OperationController extends ChangeNotifier {
         description: newOp.description,
         farmId: activeFarmId,
         dateTimestamp: oldOp.dateTimestamp,
+        createdBy: oldOp.createdBy,
         usedMachine: newOp.usedMachine,
         machineId: newOp.machineId,
         machineName: newOp.machineName,

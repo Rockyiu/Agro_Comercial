@@ -1,6 +1,5 @@
 import 'package:agro_comercial/common/data/data_result.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
-import 'package:agro_comercial/services/services.dart';
 
 abstract class AuthService {
   Future<DataResult<UserModel>> signUp({
@@ -21,4 +20,12 @@ abstract class AuthService {
   Future<DataResult<String>> userToken();
 
   Future<DataResult<bool>> forgotPassword(String email);
+
+  // Valida o código (oobCode) do link de redefinição e devolve o e-mail da conta
+  Future<DataResult<String>> verifyPasswordResetCode(String code);
+
+  Future<DataResult<bool>> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  });
 }

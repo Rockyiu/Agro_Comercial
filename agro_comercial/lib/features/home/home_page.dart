@@ -1,12 +1,18 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/common/models/operation_model.dart';
+import 'package:agro_comercial/common/models/field_operation_model.dart';
+import 'package:agro_comercial/features/operation/operation_details_page.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/activity_card.dart';
+
 import 'package:agro_comercial/features/cash_book/cash_book_page.dart';
 import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
-import 'package:agro_comercial/features/farm/edit_farm_page.dart'; // Importação adicionada para a edição
-import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
-import 'package:agro_comercial/features/operation/operation_controller.dart';
+import 'package:agro_comercial/features/farm/edit_farm_page.dart';
+import 'package:agro_comercial/features/field_operations/field_operation_details_page.dart';
+import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/employee/employee_page.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
@@ -21,6 +27,8 @@ import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'package:agro_comercial/features/invoices/invoice_page.dart';
 import 'package:flutter/material.dart';
+import 'home_controller.dart';
+import 'home_state.dart';
 import 'package:agro_comercial/locator.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,7 +44,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
+  // Trazemos os controladores para o nível da classe para eles não perderem a memória
   final _farmService = locator.get<FarmService>();
+  final _farmController = locator.get<FarmController>();
+  final _warehouseController = locator.get<WarehouseController>();
+  final _homeController = locator.get<HomeController>();
 
   FarmModel? _fazendaAtiva;
 
@@ -49,17 +61,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _inicializarFazendaAtiva() async {
-    final farmController = locator.get<FarmController>();
-    await farmController.loadFarms();
+    await _farmController.loadFarms();
 
-    if (farmController.selectedFarm != null) {
+    if (_farmController.selectedFarm != null) {
       setState(() {
-        _fazendaAtiva = farmController.selectedFarm;
+        _fazendaAtiva = _farmController.selectedFarm;
       });
-      locator.get<WarehouseController>().loadWarehouseData();
-      locator.get<OperationController>().loadOperationsData();
-      locator.get<FieldOperationController>().loadOperationsData();
+      _warehouseController.loadWarehouseData();
+      _homeController.loadActivities();
     }
+  }
+
+  @override
+  void dispose() {
+    _homeController.dispose();
+    super.dispose();
   }
 
   Future<void> _mostrarSeletorDeFazendas(BuildContext context) async {
@@ -69,16 +85,15 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.greenlightOne),
-      ),
+      builder: (context) =>
+          const Center(child: CustomCircularProgressIndicator()),
     );
 
     try {
       final fazendas = await _farmService.getFarmsByOwner(user.uid);
 
       if (!context.mounted) return;
-      Navigator.pop(context); // Fecha o loading
+      Navigator.pop(context);
 
       if (fazendas.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -110,7 +125,6 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: Text(fazenda.name),
-                    // CORREÇÃO: Usando os nomes atualizados do FarmModel
                     subtitle: Text(
                       'Área: ${fazenda.totalArea} | Talhões: ${fazenda.plantedFields.length}',
                     ),
@@ -119,18 +133,13 @@ class _HomePageState extends State<HomePage> {
                         _fazendaAtiva = fazenda;
                       });
 
-                      await locator.get<FarmController>().changeActiveFarm(
-                        fazenda,
-                      );
+                      await _farmController.changeActiveFarm(fazenda);
 
-                      locator.get<WarehouseController>().loadWarehouseData();
-                      locator.get<OperationController>().loadOperationsData();
-                      locator
-                          .get<FieldOperationController>()
-                          .loadOperationsData();
+                      _warehouseController.loadWarehouseData();
+                      _homeController.loadActivities();
 
                       if (!context.mounted) return;
-                      Navigator.pop(context); // Fecha o seletor
+                      Navigator.pop(context);
 
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -149,7 +158,7 @@ class _HomePageState extends State<HomePage> {
         },
       );
     } catch (e) {
-      Navigator.pop(context); // Fecha o loading em caso de erro
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Erro ao carregar as fazendas. Tente novamente."),
@@ -209,14 +218,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterMachinePage(),
                       ),
                     );
+                    _inicializarFazendaAtiva(); // Atualiza a Home ao voltar!
                   },
                 ),
                 ListTile(
@@ -234,14 +244,45 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterOperationPage(),
                       ),
                     );
+                    _inicializarFazendaAtiva(); // Atualiza a Home ao voltar!
+                  },
+                ),
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.assignment_turned_in_outlined,
+                      color: AppColors.greenlightOne,
+                    ),
+                  ),
+                  title: Text(
+                    'Cadastrar Vistoria / Aplicação',
+                    style: AppTextStyles.inputText,
+                  ),
+                  subtitle: Text(
+                    'Condição do talhão, aplicação de produtos',
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.lightkGrey,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const RegisterFieldOperationPage(),
+                      ),
+                    );
+                    _inicializarFazendaAtiva(); // Atualiza a Home ao voltar!
                   },
                 ),
                 ListTile(
@@ -262,14 +303,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterProductPage(),
                       ),
                     );
+                    _inicializarFazendaAtiva(); // Atualiza a Home ao voltar!
                   },
                 ),
               ],
@@ -327,7 +369,7 @@ class _HomePageState extends State<HomePage> {
                         builder: (context) => const RegisterWarehousePage(),
                       ),
                     );
-                    locator.get<WarehouseController>().loadWarehouseData();
+                    _inicializarFazendaAtiva();
                   },
                 ),
                 ListTile(
@@ -345,14 +387,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterMachinePage(),
                       ),
                     );
+                    _inicializarFazendaAtiva();
                   },
                 ),
                 ListTile(
@@ -370,14 +413,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  onTap: () {
+                  onTap: () async {
                     Navigator.pop(context);
-                    Navigator.push(
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RegisterProductPage(),
                       ),
                     );
+                    _inicializarFazendaAtiva();
                   },
                 ),
               ],
@@ -457,26 +501,24 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  // ADICIONADO: Botão para Editar "Minha Fazenda"
                   ListTile(
                     leading: const Icon(
                       Icons.landscape,
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Minha Fazenda'),
-                    onTap: () {
-                      Navigator.pop(context); // Fecha o Drawer
-                      final activeFarm = locator
-                          .get<FarmController>()
-                          .selectedFarm;
+                    onTap: () async {
+                      Navigator.pop(context);
+                      final activeFarm = _farmController.selectedFarm;
                       if (activeFarm != null) {
-                        Navigator.push(
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 EditFarmPage(farm: activeFarm),
                           ),
                         );
+                        _inicializarFazendaAtiva();
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -494,14 +536,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Vistorias'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const FieldOperationPage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -510,14 +553,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Operações'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const OperationPage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -526,14 +570,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Custos'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const CostPage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -542,14 +587,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Minha Equipe'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const EmployeePage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -558,14 +604,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Notas Fiscais'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const InvoicePage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -574,14 +621,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Meu Perfil'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const ProfilePage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -601,14 +649,15 @@ class _HomePageState extends State<HomePage> {
                       color: AppColors.greenlightOne,
                     ),
                     title: const Text('Cadastrar Nova Fazenda'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const FarmRegistrationPage(),
                         ),
                       );
+                      _inicializarFazendaAtiva();
                     },
                   ),
                   ListTile(
@@ -706,81 +755,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBody() {
     if (_fazendaAtiva == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.home_work_outlined,
-                size: 80,
-                color: AppColors.lightkGrey.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Nenhuma fazenda ativa',
-                style: AppTextStyles.midText20.copyWith(
-                  color: AppColors.greenlightOne,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Abra o menu lateral (☰) e escolha "Trocar de Fazenda" para carregar seus dados.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.smallText.copyWith(
-                  color: AppColors.grey,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildFarmEmptyState();
     }
 
     if (_currentIndex == 0) {
-      return ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
-            child: Text(
-              'Visão Geral',
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.greenlightOne,
-              ),
-            ),
-          ),
-          _buildSummaryCard(
-            title: 'Custos Recentes',
-            value: 'R\$ 1.450,00',
-            subtitle: 'Compra de Agrotóxicos e Fertilizantes',
-            icon: Icons.attach_money,
-            color: Colors.redAccent,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryCard(
-            title: 'Última Operação',
-            value: 'Trator Massey 95',
-            subtitle: 'Operou por 5 hours - Talhão 02',
-            icon: Icons.agriculture,
-            color: Colors.orange,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryCard(
-            title: 'Vistorias Recentes',
-            value: 'Talhão 01',
-            subtitle: 'Avaliação de pragas concluída com sucesso',
-            icon: Icons.search,
-            color: Colors.blueAccent,
-          ),
-        ],
-      );
+      return _buildActivitiesTab();
     } else if (_currentIndex == 2) {
       return const WarehousePage();
     } else if (_currentIndex == 1) {
-      // <-- ABA DO LIVRO CAIXA
       return const CashBookPage();
     } else if (_currentIndex == 3) {
       return Center(
@@ -803,81 +785,219 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     } else {
-      return Center(
+      return const SizedBox.shrink();
+    }
+  }
+
+  // --- COMPONENTES VISUAIS SEPARADOS PARA ORGANIZAR O CÓDIGO ---
+
+  // --- ABA INÍCIO: ATIVIDADES DA FAZENDA (PRODUTOR + EQUIPE) ---
+
+  Widget _buildActivitiesTab() {
+    return ListenableBuilder(
+      listenable: _homeController,
+      builder: (context, _) {
+        final state = _homeController.state;
+
+        if (state is HomeInitialState || state is HomeLoadingState) {
+          return const Center(child: CustomCircularProgressIndicator());
+        }
+
+        if (state is HomeErrorState) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.cloud_off_outlined,
+                    size: 80,
+                    color: AppColors.lightkGrey.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Algo deu errado',
+                    style: AppTextStyles.midText20.copyWith(
+                      color: AppColors.greenlightOne,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.grey,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: _inicializarFazendaAtiva,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final successState = state as HomeSuccessState;
+
+        return RefreshIndicator(
+          color: AppColors.greenlightOne,
+          onRefresh: _homeController.loadActivities,
+          child: ListView(
+            // Permite o "puxar para atualizar" mesmo com a lista vazia
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
+                child: Text(
+                  'Atividades da Fazenda',
+                  style: AppTextStyles.midText20.copyWith(
+                    color: AppColors.greenlightOne,
+                  ),
+                ),
+              ),
+              if (successState.isEmpty)
+                _buildEmptyHomeState()
+              else
+                ..._buildActivityCards(successState),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Junta operações e vistorias/aplicações, da mais recente para a mais antiga
+  List<Widget> _buildActivityCards(HomeSuccessState state) {
+    final combinedList = <({int timestamp, Widget widget})>[
+      for (final op in state.operations)
+        (
+          timestamp: op.dateTimestamp,
+          widget: _buildOperationCard(
+            op,
+            registeredBy: state.authorName(op.createdBy),
+          ),
+        ),
+      for (final fOp in state.fieldOperations)
+        (
+          timestamp: fOp.dateTimestamp,
+          widget: _buildFieldOperationCard(
+            fOp,
+            registeredBy: state.authorName(fOp.createdBy),
+          ),
+        ),
+    ];
+
+    combinedList.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return combinedList.map((e) => e.widget).toList();
+  }
+
+  Widget _buildFarmEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.construction,
-              size: 64,
+              Icons.home_work_outlined,
+              size: 80,
               color: AppColors.lightkGrey.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
-              'Página em construção',
+              'Nenhuma fazenda ativa',
               style: AppTextStyles.midText20.copyWith(
-                color: AppColors.lightkGrey,
+                color: AppColors.greenlightOne,
               ),
             ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 1,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: color.withValues(alpha: 0.15),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: AppTextStyles.midText20.copyWith(
-                      color: AppColors.greenlightOne,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.grey,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+            const SizedBox(height: 8),
+            Text(
+              'Abra o menu lateral (☰) e escolha "Trocar de Fazenda" para carregar seus dados.',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.smallText.copyWith(
+                color: AppColors.grey,
+                fontSize: 14,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildEmptyHomeState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48.0, horizontal: 16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.inbox_outlined,
+            size: 80,
+            color: AppColors.lightkGrey.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Nenhuma atividade ainda',
+            style: AppTextStyles.midText20.copyWith(
+              color: AppColors.greenlightOne,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Ainda não há operações, vistorias ou aplicações cadastradas nesta fazenda.\nUse o botão verde (+) abaixo para cadastrar a primeira atividade!',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.smallText.copyWith(
+              color: AppColors.grey,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOperationCard(OperationModel operation, {String? registeredBy}) {
+    return OperationActivityCard(
+      operation: operation,
+      registeredBy: registeredBy,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OperationDetailsPage(operation: operation),
+          ),
+        );
+        _inicializarFazendaAtiva();
+      },
+    );
+  }
+
+  Widget _buildFieldOperationCard(
+    FieldOperationModel fieldOperation, {
+    String? registeredBy,
+  }) {
+    return FieldOperationActivityCard(
+      fieldOperation: fieldOperation,
+      registeredBy: registeredBy,
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                FieldOperationDetailsPage(operation: fieldOperation),
+          ),
+        );
+        _inicializarFazendaAtiva();
+      },
     );
   }
 
@@ -888,11 +1008,7 @@ class _HomePageState extends State<HomePage> {
   }) {
     final isSelected = _currentIndex == index;
     return InkWell(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
+      onTap: () => setState(() => _currentIndex = index),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
