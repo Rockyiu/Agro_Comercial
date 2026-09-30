@@ -1,3 +1,5 @@
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
@@ -36,44 +38,27 @@ class _EmployeePageState extends State<EmployeePage> {
     });
   }
 
-  void _showDeleteDialog({UserModel? singleEmp}) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          singleEmp != null ? "Excluir Funcionário" : "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
-          singleEmp != null
-              ? "Deseja revogar o acesso de ${singleEmp.name} ao sistema?"
-              : "Deseja revogar o acesso dos ${selectedEmployees.length} funcionários?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (singleEmp != null) {
-                _controller.deleteSingleEmployee(singleEmp);
-              } else {
-                _controller.deleteSelectedEmployees(selectedEmployees.toList());
-                setState(() => selectedEmployees.clear());
-              }
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showDeleteDialog({UserModel? singleEmp}) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: singleEmp != null ? "Excluir Funcionário" : "Excluir Selecionados",
+      message: singleEmp != null
+          ? "Deseja revogar o acesso de ${singleEmp.name} ao sistema?"
+          : "Deseja revogar o acesso dos ${selectedEmployees.length} funcionários?",
     );
+    if (!confirmed || !mounted) return;
+    if (singleEmp != null) {
+      _controller.deleteSingleEmployee(singleEmp);
+    } else {
+      _controller.deleteSelectedEmployees(selectedEmployees.toList());
+      setState(() => selectedEmployees.clear());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -120,40 +105,10 @@ class _EmployeePageState extends State<EmployeePage> {
             return Column(
               children: [
                 if (selectedEmployees.isNotEmpty)
-                  Container(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${selectedEmployees.length} selecionado(s)",
-                          style: AppTextStyles.inputText.copyWith(
-                            color: AppColors.greenlightOne,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: AppColors.grey,
-                              ),
-                              onPressed: () =>
-                                  setState(() => selectedEmployees.clear()),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteDialog(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  SelectionActionBar(
+                    label: "${selectedEmployees.length} selecionado(s)",
+                    onClear: () => setState(() => selectedEmployees.clear()),
+                    onDelete: _showDeleteDialog,
                   ),
                 Expanded(
                   child: ListView.builder(

@@ -60,6 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
     _cpfController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 

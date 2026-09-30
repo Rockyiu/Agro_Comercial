@@ -1,9 +1,10 @@
 import 'dart:typed_data';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agro_comercial/features/profile/profile_controller.dart';
+import 'package:agro_comercial/features/profile/profile_state.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -24,6 +25,7 @@ class _ReportsPageState extends State<ReportsPage> {
   // Conectando aos nossos motores de dados reais
   final _consolidationController = locator.get<ConsolidationController>();
   final _bookkeepingController = locator.get<BookkeepingController>();
+  final _profileController = locator.get<ProfileController>();
 
   // Variáveis para armazenar os dados do usuário
   String _cpfUsuario = "Carregando...";
@@ -63,30 +65,31 @@ class _ReportsPageState extends State<ReportsPage> {
     _consolidationController.carregarCalculos();
     _bookkeepingController.carregarLancamentos();
 
-    // 2. Busca os dados reais do usuário logado no Firestore
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists) {
-          setState(() {
-            _cpfUsuario = doc.data()?['cpf'] ?? "CPF não cadastrado";
-            _nomeUsuario =
-                doc.data()?['nome'] ?? user.displayName ?? "Produtor Rural";
-          });
-        }
-      }
-    } catch (e) {
-      setState(() {
+    // 2. Busca nome e CPF do produtor logado
+    await _profileController.loadProfile();
+    if (!mounted) return;
+
+    final state = _profileController.state;
+    setState(() {
+      if (state is ProfileSuccessState) {
+        final cpf = state.profile.cpf;
+        _cpfUsuario = (cpf == null || cpf.isEmpty)
+            ? "CPF não cadastrado"
+            : Formatters.cpf(cpf);
+        final nome = state.profile.name;
+        _nomeUsuario = (nome == null || nome.isEmpty) ? "Produtor Rural" : nome;
+      } else {
         _cpfUsuario = "Erro ao carregar";
         _nomeUsuario = "Erro ao carregar";
-      });
-    } finally {
-      setState(() => _carregandoDados = false);
-    }
+      }
+      _carregandoDados = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileController.dispose();
+    super.dispose();
   }
 
   // ===========================================================================
@@ -201,38 +204,30 @@ class _ReportsPageState extends State<ReportsPage> {
               final res = _consolidationController.resumoAno[index];
               return [
                 _mesesSigla[index],
-                _consolidationController.formatarMoeda(res.receitas),
-                _consolidationController.formatarMoeda(res.despesas),
-                _consolidationController.formatarMoeda(
-                  res.despesasNaoDedutiveis,
-                ),
-                _consolidationController.formatarMoeda(
-                  res.adiantamentosAnteriores,
-                ),
-                _consolidationController.formatarMoeda(res.adiantamentosAtuais),
-                _consolidationController.formatarMoeda(res.resultadoMes),
+                Formatters.decimal(res.receitas),
+                Formatters.decimal(res.despesas),
+                Formatters.decimal(res.despesasNaoDedutiveis),
+                Formatters.decimal(res.adiantamentosAnteriores),
+                Formatters.decimal(res.adiantamentosAtuais),
+                Formatters.decimal(res.resultadoMes),
               ];
             });
 
             // Adicionando a linha do Total Geral
             data.add([
               'TOTAL',
-              _consolidationController.formatarMoeda(
-                _consolidationController.totalGeral.receitas,
-              ),
-              _consolidationController.formatarMoeda(
-                _consolidationController.totalGeral.despesas,
-              ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(_consolidationController.totalGeral.receitas),
+              Formatters.decimal(_consolidationController.totalGeral.despesas),
+              Formatters.decimal(
                 _consolidationController.totalGeral.despesasNaoDedutiveis,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.adiantamentosAnteriores,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.adiantamentosAtuais,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.resultadoMes,
               ),
             ]);
@@ -286,7 +281,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   "${l.dia.toString().padLeft(2, '0')}/${(l.mes + 1).toString().padLeft(2, '0')}/${l.ano}",
                   l.conta.split(' - ')[0],
                   l.historico,
-                  _consolidationController.formatarMoeda(l.valor),
+                  Formatters.decimal(l.valor),
                 ];
               }).toList();
             } else {

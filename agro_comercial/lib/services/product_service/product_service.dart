@@ -8,22 +8,8 @@ class ProductService {
   Future<void> createProduct(ProductModel product, File? imageFile) async {
     final docRef = _firestore.collection('products').doc();
 
-    // CORRIGIDO: Agora repassamos o 'measure' para a instância do ProductModel
-    final productWithId = ProductModel(
-      id: docRef.id,
-      name: product.name,
-      brand: product.brand,
-      quantity: product.quantity,
-      measure: product.measure, // <--- ADICIONADO AQUI PARA RESOLVER O ERRO
-      unit: product.unit,
-      category: product.category,
-      warehouseId: product.warehouseId,
-      farmId: product.farmId,
-      imageUrl: null, // Upload desativado temporariamente devido ao plano Spark
-      attributes: product.attributes,
-    );
-
-    final map = productWithId.toMap();
+    // Upload de imagem desativado temporariamente devido ao plano Spark
+    final map = product.copyWith(id: docRef.id).toMap()..['imageUrl'] = null;
     map['createdAt'] = DateTime.now().millisecondsSinceEpoch;
     await docRef.set(map);
   }
@@ -43,8 +29,7 @@ class ProductService {
       'name': product.name,
       'brand': product.brand,
       'quantity': product.quantity,
-      'measure': product
-          .measure, // <--- ADICIONADO: Mantém o banco atualizado se houver edição
+      'measure': product.measure,
       'unit': product.unit,
       'category': product.category,
       'attributes': product.attributes,

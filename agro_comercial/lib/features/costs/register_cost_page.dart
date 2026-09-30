@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
@@ -27,7 +25,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
 
   bool _isLoading = true;
   bool _isProcessing = false;
-  String _userRole = 'colaborador';
+  bool _isCollaborator = true; // restritivo até confirmar o perfil
 
   String? _selectedType;
   String? _selectedCategory;
@@ -81,8 +79,8 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       ];
     }
 
-    if (_userRole == 'colaborador') {
-      categories.removeWhere((c) => c.toLowerCase().contains('mão-de-obra'));
+    if (_isCollaborator) {
+      categories.removeWhere(CostModel.isLaborCategory);
     }
     return categories;
   }
@@ -94,62 +92,39 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
   }
 
   Future<void> _loadUserRoleAndData() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists) {
-          setState(() {
-            _userRole = doc.data()?['role'] ?? 'colaborador';
-            _selectedType = 'Variável';
-          });
-        }
-      }
+    final isCollaborator = await _costController.isCurrentUserCollaborator();
+    if (!mounted) return;
 
-      if (widget.costToEdit != null) {
-        _selectedType = widget.costToEdit!.type;
-        _selectedCategory = widget.costToEdit!.category;
-        _valueController.text = widget.costToEdit!.value.toString();
-        _obsController.text = widget.costToEdit!.observation ?? '';
+    final cost = widget.costToEdit;
+    setState(() {
+      _isCollaborator = isCollaborator;
+      _selectedType = cost?.type ?? 'Variável';
 
-        final calcData = widget.costToEdit!.calculationData;
-        if (calcData != null) {
-          // CORREÇÃO: Adicionadas chaves { } em todos os ifs
-          if (calcData.containsKey('vi')) {
-            _viController.text = calcData['vi'].toString();
+      if (cost != null) {
+        _selectedCategory = cost.category;
+        _valueController.text = cost.value.toString();
+        _obsController.text = cost.observation ?? '';
+
+        // Preenche os campos da fórmula com os valores usados no cálculo
+        final calcData = cost.calculationData ?? {};
+        final calcFields = {
+          'vi': _viController,
+          'vs': _vsController,
+          'vuh': _vuhController,
+          'vm': _vmController,
+          'uah': _uahController,
+          'vua': _vuaController,
+          'vt': _vtController,
+          'r': _rController,
+        };
+        calcFields.forEach((key, controller) {
+          if (calcData.containsKey(key)) {
+            controller.text = calcData[key].toString();
           }
-          if (calcData.containsKey('vs')) {
-            _vsController.text = calcData['vs'].toString();
-          }
-          if (calcData.containsKey('vuh')) {
-            _vuhController.text = calcData['vuh'].toString();
-          }
-          if (calcData.containsKey('vm')) {
-            _vmController.text = calcData['vm'].toString();
-          }
-          if (calcData.containsKey('uah')) {
-            _uahController.text = calcData['uah'].toString();
-          }
-          if (calcData.containsKey('vua')) {
-            _vuaController.text = calcData['vua'].toString();
-          }
-          if (calcData.containsKey('vt')) {
-            _vtController.text = calcData['vt'].toString();
-          }
-          if (calcData.containsKey('r')) {
-            _rController.text = calcData['r'].toString();
-          }
-        }
+        });
       }
-    } catch (e) {
-      // CORREÇÃO: Adicionado comentário para evitar o aviso de empty_catches
-      // Ignora erro e mantém o utilizador como colaborador por segurança
-    } finally {
-      setState(() => _isLoading = false);
-    }
+      _isLoading = false;
+    });
   }
 
   @override

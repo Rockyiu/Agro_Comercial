@@ -38,17 +38,7 @@ class FarmService {
   }
 
   Future<void> updateFarm(FarmModel farm) async {
-    try {
-      if (farm.id == null) throw Exception("ID da fazenda não pode ser nulo.");
-
-      await FirebaseFirestore.instance
-          .collection(
-            'farms',
-          ) // Confirme se o nome da sua coleção no Firebase é 'farms' mesmo
-          .doc(farm.id)
-          .update(farm.toMap());
-    } catch (e) {
-      throw Exception("Erro ao atualizar fazenda no Firebase: $e");
-    }
+    if (farm.id == null) throw Exception("ID da fazenda não pode ser nulo.");
+    await _firestore.collection('farms').doc(farm.id).update(farm.toMap());
   }
 }

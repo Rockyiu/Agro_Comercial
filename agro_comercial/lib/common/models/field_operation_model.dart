@@ -36,16 +36,61 @@ class FieldOperationModel {
     this.machineHours, // ADICIONADO
   });
 
+  bool get isInspection => type == 'Vistoria';
+
+  FieldOperationModel copyWith({
+    String? id,
+    String? type,
+    String? plotName,
+    int? dateTimestamp,
+    String? farmId,
+    String? createdBy,
+    String? condition,
+    String? observations,
+    String? productId,
+    String? productName,
+    double? dosage,
+    String? dosageUnit,
+    String? machineId,
+    String? machineName,
+    double? machineHours,
+  }) {
+    return FieldOperationModel(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      plotName: plotName ?? this.plotName,
+      dateTimestamp: dateTimestamp ?? this.dateTimestamp,
+      farmId: farmId ?? this.farmId,
+      createdBy: createdBy ?? this.createdBy,
+      condition: condition ?? this.condition,
+      observations: observations ?? this.observations,
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      dosage: dosage ?? this.dosage,
+      dosageUnit: dosageUnit ?? this.dosageUnit,
+      machineId: machineId ?? this.machineId,
+      machineName: machineName ?? this.machineName,
+      machineHours: machineHours ?? this.machineHours,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
-      'type': type, 'plotName': plotName, 'dateTimestamp': dateTimestamp,
-      'farmId': farmId, 'createdBy': createdBy, 'condition': condition, 'observations': observations,
-      'productId': productId, 'productName': productName, 'dosage': dosage,
+      'type': type,
+      'plotName': plotName,
+      'dateTimestamp': dateTimestamp,
+      'farmId': farmId,
+      'createdBy': createdBy,
+      'condition': condition,
+      'observations': observations,
+      'productId': productId,
+      'productName': productName,
+      'dosage': dosage,
       'dosageUnit': dosageUnit,
       'machineId': machineId,
       'machineName': machineName,
-      'machineHours': machineHours, // ADICIONADO
+      'machineHours': machineHours,
     };
   }
 

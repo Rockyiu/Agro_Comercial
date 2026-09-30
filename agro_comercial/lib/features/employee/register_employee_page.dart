@@ -28,6 +28,7 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
   void dispose() {
     _nameController.dispose();
     _cpfController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 

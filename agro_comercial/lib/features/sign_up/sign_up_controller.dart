@@ -1,8 +1,8 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/services/auth_service/auth_service.dart';
 
-class SignUpController extends ChangeNotifier {
+class SignUpController extends SafeChangeNotifier {
   final AuthService _authService;
 
   SignUpController(this._authService);

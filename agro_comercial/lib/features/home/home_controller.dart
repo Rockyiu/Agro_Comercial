@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -8,7 +9,7 @@ import 'package:agro_comercial/services/field_operation_service/field_operation_
 import 'package:agro_comercial/services/operation_service/operation_service.dart';
 import 'home_state.dart';
 
-class HomeController extends ChangeNotifier {
+class HomeController extends SafeChangeNotifier {
   final OperationService _operationService;
   final FieldOperationService _fieldOperationService;
   final EmployeeService _employeeService;
@@ -31,8 +32,10 @@ class HomeController extends ChangeNotifier {
 
   // Carrega todas as atividades (operações, vistorias e aplicações) da fazenda
   // ativa, registradas pelo produtor ou pela equipe, com o nome de quem registrou.
-  Future<void> loadActivities() async {
-    _changeState(HomeLoadingState());
+  // [showLoading] = false mantém a lista na tela enquanto atualiza
+  // (usado no "puxar para atualizar")
+  Future<void> loadActivities({bool showLoading = true}) async {
+    if (showLoading) _changeState(HomeLoadingState());
     try {
       final user = FirebaseAuth.instance.currentUser;
       final farmId = _farmController.selectedFarm?.id;

@@ -23,6 +23,8 @@ class UserModel {
     this.managerId,
   });
 
+  bool get isCollaborator => role == 'colaborador';
+
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,

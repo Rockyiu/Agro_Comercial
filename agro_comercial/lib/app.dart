@@ -11,6 +11,7 @@ import 'features/forgot_password/forgot_password_page.dart';
 import 'features/reset_password/reset_password_page.dart';
 import 'features/farm_registration/farm_registration_page.dart';
 import 'features/home/home_page.dart';
+import 'features/home/collaborator_home_page.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
@@ -68,6 +69,7 @@ class App extends StatelessWidget {
         NamedRoute.forgotPassword: (context) => const ForgotPasswordPage(),
         '/farm_registration': (context) => const FarmRegistrationPage(),
         '/home': (context) => const HomePage(),
+        NamedRoute.collaboratorHome: (context) => const CollaboratorHomePage(),
       },
     );
   }

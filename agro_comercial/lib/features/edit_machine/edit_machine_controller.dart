@@ -1,24 +1,10 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'dart:io'; // CORRIGIDO: Adicionado o import do File
-import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
+import 'edit_machine_state.dart';
 
-// --- ESTADOS ---
-abstract class EditMachineState {}
-
-class EditMachineInitialState extends EditMachineState {}
-
-class EditMachineLoadingState extends EditMachineState {}
-
-class EditMachineSuccessState extends EditMachineState {}
-
-class EditMachineErrorState extends EditMachineState {
-  final String message;
-  EditMachineErrorState(this.message);
-}
-
-// --- CONTROLADOR ---
-class EditMachineController extends ChangeNotifier {
+class EditMachineController extends SafeChangeNotifier {
   final MachineService _machineService;
 
   EditMachineController(this._machineService);

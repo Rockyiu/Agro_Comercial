@@ -4,6 +4,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 
 import 'bookkeeping_controller.dart';
@@ -120,7 +121,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
               onPressed: () async {
                 // Permite apagar a nota de dentro da tela de edição também
                 await _controller.excluirLancamentos([widget.dadosEdicao!.id!]);
-                if (mounted) Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context);
               },
             ),
         ],
@@ -332,20 +333,15 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             arquivoPdf: _arquivoPdfUpload,
                           );
 
-                          if (mounted) {
+                          if (context.mounted) {
                             setState(() => _isSaving = false);
                             if (sucesso) {
                               Navigator.pop(
                                 context,
                               ); // Volta para a tela principal
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Falha ao salvar. Verifique sua conexão.",
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
+                              context.showErrorSnackBar(
+                                "Falha ao salvar. Verifique sua conexão.",
                               );
                             }
                           }

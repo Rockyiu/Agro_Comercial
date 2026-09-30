@@ -8,6 +8,7 @@ import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_warehouse_controller.dart';
+import 'edit_warehouse_state.dart';
 
 class EditWarehousePage extends StatefulWidget {
   final WarehouseModel warehouse;

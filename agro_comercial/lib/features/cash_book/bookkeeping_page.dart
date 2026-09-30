@@ -1,5 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -75,20 +77,18 @@ class _BookkeepingPageState extends State<BookkeepingPage>
     });
   }
 
-  void _excluirSelecionados() async {
+  Future<void> _excluirSelecionados() async {
     await _controller.excluirLancamentos(_itensSelecionados.toList());
+    if (!mounted) return;
 
-    setState(() {
-      _itensSelecionados.clear();
-    });
+    setState(() => _itensSelecionados.clear());
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Lançamentos excluídos com sucesso!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    // Só confirma o sucesso se a exclusão realmente deu certo
+    final state = _controller.state;
+    if (state is BookkeepingErrorState) {
+      context.showErrorSnackBar(state.message);
+    } else {
+      context.showSuccessSnackBar("Lançamentos excluídos com sucesso!");
     }
   }
 
@@ -338,7 +338,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: Text(
-                                "R\$ ${item.valor.toStringAsFixed(2)}",
+                                Formatters.currency(item.valor),
                                 style: AppTextStyles.inputText.copyWith(
                                   color: isEntrada ? Colors.blue : Colors.red,
                                   fontWeight: FontWeight.bold,

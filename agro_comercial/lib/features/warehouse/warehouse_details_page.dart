@@ -1,3 +1,5 @@
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
@@ -10,6 +12,7 @@ import 'package:agro_comercial/features/edit_warehouse/edit_warehouse_page.dart'
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart'; // IMPORTANTE
 import 'package:agro_comercial/features/warehouse/warehouse_details_controller.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_details_state.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -138,41 +141,22 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
     );
   }
 
-  void _showDeleteMultipleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
+  Future<void> _showDeleteMultipleDialog() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Selecionados",
+      message:
           "Tem certeza que deseja excluir os ${selectedIds.length} item(ns) selecionado(s)?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteSelectedItems(
-                selectedIds.toList(),
-                widget.warehouse.id!,
-              );
-              setState(() => selectedIds.clear());
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
     );
+    if (!confirmed || !mounted) return;
+    _controller.deleteSelectedItems(selectedIds.toList(), widget.warehouse.id!);
+    setState(() => selectedIds.clear());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -224,40 +208,16 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
             ),
             const SizedBox(height: 16),
             if (selectedIds.isNotEmpty)
-              Container(
+              SelectionActionBar(
+                label: "${selectedIds.length} item(ns) selecionado(s)",
                 margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.greenlightOne.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                borderRadius: BorderRadius.circular(12),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "${selectedIds.length} item(ns) selecionado(s)",
-                      style: AppTextStyles.inputText.copyWith(
-                        color: AppColors.greenlightOne,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.close, color: AppColors.grey),
-                          onPressed: () => setState(() => selectedIds.clear()),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: _showDeleteMultipleDialog,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                onClear: () => setState(() => selectedIds.clear()),
+                onDelete: _showDeleteMultipleDialog,
               ),
             Expanded(
               child: ListenableBuilder(
@@ -361,7 +321,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           ),
         ),
         color: isSelected
-            ? AppColors.greenlightOne.withOpacity(0.05)
+            ? AppColors.greenlightOne.withValues(alpha: 0.05)
             : Colors.white,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -373,7 +333,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.greenlightOne
-                      : Colors.orange.withOpacity(0.1),
+                      : Colors.orange.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -407,7 +367,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.lightkGrey.withOpacity(0.15),
+                        color: AppColors.lightkGrey.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -459,7 +419,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           ),
         ),
         color: isSelected
-            ? AppColors.greenlightOne.withOpacity(0.05)
+            ? AppColors.greenlightOne.withValues(alpha: 0.05)
             : Colors.white,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -472,12 +432,12 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.greenlightOne
-                      : AppColors.greenlightOne.withOpacity(0.1),
+                      : AppColors.greenlightOne.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: isSelected
                         ? Colors.transparent
-                        : AppColors.greenlightOne.withOpacity(0.3),
+                        : AppColors.greenlightOne.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -538,7 +498,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
       decoration: BoxDecoration(
         color: isSelected
             ? Colors.white
-            : AppColors.lightkGrey.withOpacity(0.2),
+            : AppColors.lightkGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -567,7 +527,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
-      selectedColor: AppColors.greenlightOne.withOpacity(0.2),
+      selectedColor: AppColors.greenlightOne.withValues(alpha: 0.2),
       labelStyle: TextStyle(
         color: isSelected ? AppColors.greenlightOne : AppColors.grey,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

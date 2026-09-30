@@ -133,6 +133,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
       controllers['area']?.dispose();
       controllers['crop']?.dispose();
     }
+    _farmController.dispose();
     super.dispose();
   }
 

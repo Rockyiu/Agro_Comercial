@@ -1,33 +1,15 @@
-import 'package:flutter/foundation.dart';
-import 'package:agro_comercial/common/models/machine_model.dart';
-import 'package:agro_comercial/common/models/product_model.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'dart:async';
+
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
-import 'package:agro_comercial/locator.dart';
+import 'warehouse_details_state.dart';
 
-abstract class WarehouseDetailsState {}
-
-class WarehouseDetailsInitialState extends WarehouseDetailsState {}
-
-class WarehouseDetailsLoadingState extends WarehouseDetailsState {}
-
-class WarehouseDetailsSuccessState extends WarehouseDetailsState {
-  final List<MachineModel> machines;
-  final List<ProductModel> products; // Adicionado à resposta de sucesso
-  WarehouseDetailsSuccessState(this.machines, this.products);
-}
-
-class WarehouseDetailsErrorState extends WarehouseDetailsState {
-  final String message;
-  WarehouseDetailsErrorState(this.message);
-}
-
-class WarehouseDetailsController extends ChangeNotifier {
+class WarehouseDetailsController extends SafeChangeNotifier {
   final MachineService _machineService;
-  final ProductService _productService = locator
-      .get<ProductService>(); // Resgata o novo serviço
+  final ProductService _productService;
 
-  WarehouseDetailsController(this._machineService);
+  WarehouseDetailsController(this._machineService, this._productService);
 
   WarehouseDetailsState _state = WarehouseDetailsInitialState();
   WarehouseDetailsState get state => _state;
@@ -38,12 +20,10 @@ class WarehouseDetailsController extends ChangeNotifier {
 
     try {
       // Carrega ambos em paralelo do Firebase
-      final machines = await _machineService.getMachinesByWarehouse(
-        warehouseId,
-      );
-      final products = await _productService.getProductsByWarehouse(
-        warehouseId,
-      );
+      final (machines, products) = await (
+        _machineService.getMachinesByWarehouse(warehouseId),
+        _productService.getProductsByWarehouse(warehouseId),
+      ).wait;
 
       _state = WarehouseDetailsSuccessState(machines, products);
       notifyListeners();
@@ -61,9 +41,12 @@ class WarehouseDetailsController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Como os IDs do Firestore são únicos, podemos separar o lote de exclusão
-      await _machineService.deleteMultipleMachines(ids);
-      await _productService.deleteMultipleProducts(ids);
+      // Como os IDs do Firestore são únicos, os mesmos IDs podem ser enviados
+      // para os dois serviços: cada um só apaga o que for seu
+      await (
+        _machineService.deleteMultipleMachines(ids),
+        _productService.deleteMultipleProducts(ids),
+      ).wait;
 
       await loadInventory(warehouseId);
     } catch (e) {

@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'farm_registration_state.dart';
 
-class FarmRegistrationController extends ChangeNotifier {
+class FarmRegistrationController extends SafeChangeNotifier {
   final FarmService _farmService;
 
   FarmRegistrationController(this._farmService);

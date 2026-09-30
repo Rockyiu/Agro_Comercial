@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/locator.dart';
-
-// ADICIONADO: Importe a tela do colaborador
-import 'package:agro_comercial/features/home/collaborator_home_page.dart';
 
 import 'splash_controller.dart';
 import 'splash_state.dart';
@@ -26,8 +22,8 @@ class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    _splashController.isUserLogged();
     _splashController.addListener(_handleSplashStateChange);
+    _splashController.isUserLogged();
   }
 
   @override
@@ -36,47 +32,17 @@ class _SplashPageState extends State<SplashPage> {
     super.dispose();
   }
 
-  Future<void> _handleSplashStateChange() async {
-    if (_splashController.state is AuthenticatedUser) {
-      // VERIFICA SE É COLABORADOR OU ADMIN ANTES DE NAVEGAR
-      try {
-        final user = FirebaseAuth.instance.currentUser;
-        bool isCollaborator = false;
+  void _handleSplashStateChange() {
+    final state = _splashController.state;
 
-        if (user != null) {
-          final doc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-          final data = doc.data();
-
-          if (data != null) {
-            if (data['role'] == 'colaborador' ||
-                data['tipo'] == 'colaborador') {
-              isCollaborator = true;
-            }
-          }
-        }
-
-        if (!mounted) return;
-
-        if (isCollaborator) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const CollaboratorHomePage(),
-            ),
-          );
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-      } catch (e) {
-        // Em caso de erro de conexão, manda para a tela padrão por segurança
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } else if (_splashController.state is UnauthenticatedUser) {
-      Navigator.pushReplacementNamed(context, '/sign_in');
+    if (state is AuthenticatedUser) {
+      // Colaborador e produtor têm telas iniciais diferentes
+      Navigator.pushReplacementNamed(
+        context,
+        state.isCollaborator ? NamedRoute.collaboratorHome : NamedRoute.home,
+      );
+    } else if (state is UnauthenticatedUser) {
+      Navigator.pushReplacementNamed(context, NamedRoute.signIn);
     }
   }
 

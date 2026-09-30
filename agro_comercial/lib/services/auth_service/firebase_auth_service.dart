@@ -2,20 +2,19 @@ import 'package:agro_comercial/common/data/data_result.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/common/models/app_exception.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../secure_storage.dart';
 import 'auth_service.dart';
 
 class FirebaseAuthService implements AuthService {
-  FirebaseAuthService()
+  FirebaseAuthService(this._secureStorage)
     : _auth = FirebaseAuth.instance,
-      _functions = FirebaseFunctions.instance,
       _firestore = FirebaseFirestore.instance;
 
   final FirebaseAuth _auth;
-  final FirebaseFunctions _functions;
   final FirebaseFirestore _firestore;
+  final SecureStorageService _secureStorage;
 
   @override
   Future<DataResult<UserModel>> signIn({
@@ -112,11 +111,27 @@ class FirebaseAuthService implements AuthService {
 
   @override
   Future<void> signOut() async {
-    try {
-      await _auth.signOut();
-    } catch (e) {
-      rethrow;
-    }
+    await _auth.signOut();
+    // Sem isso o Splash acharia que ainda há alguém logado ao reabrir o app
+    await _secureStorage.deleteOne(key: SecureStorageService.currentUserKey);
+  }
+
+  @override
+  Future<bool> hasActiveSession() async {
+    final user = await _auth.authStateChanges().first;
+    return user != null;
+  }
+
+  @override
+  Future<bool> isCurrentUserCollaborator() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+
+    final data = (await _firestore.collection('users').doc(user.uid).get())
+        .data();
+    // 'tipo' é o nome antigo do campo, mantido para cadastros antigos
+    return data != null &&
+        (data['role'] == 'colaborador' || data['tipo'] == 'colaborador');
   }
 
   @override

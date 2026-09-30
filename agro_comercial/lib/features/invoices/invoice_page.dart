@@ -7,6 +7,7 @@ import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator
 import 'package:agro_comercial/locator.dart';
 
 import 'invoice_controller.dart';
+import 'invoice_state.dart';
 
 class InvoicePage extends StatefulWidget {
   const InvoicePage({super.key});
@@ -29,6 +30,12 @@ class _InvoicePageState extends State<InvoicePage> {
   String _formatDate(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
     return DateFormat('dd/MM/yyyy HH:mm').format(date);
+  }
+
+  @override
+  void dispose() {
+    _invoiceController.dispose();
+    super.dispose();
   }
 
   @override

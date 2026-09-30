@@ -1,15 +1,15 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/common/models/field_operation_model.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
-import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
-import 'package:agro_comercial/common/widgets/primary_button.dart';
-import 'package:agro_comercial/features/farm/farm_controller.dart'; // ADICIONADO: Importação do FarmController
+import 'package:agro_comercial/common/widgets/loading_overlay.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'field_operation_controller.dart';
 import 'field_operation_state.dart';
+import 'widgets/field_operation_form.dart';
 
 class RegisterFieldOperationPage extends StatefulWidget {
   const RegisterFieldOperationPage({super.key});
@@ -21,35 +21,18 @@ class RegisterFieldOperationPage extends StatefulWidget {
 
 class _RegisterFieldOperationPageState
     extends State<RegisterFieldOperationPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _plotController = TextEditingController();
-  final _obsController = TextEditingController();
-  final _dosageController = TextEditingController();
-
-  final _initialHorimeterController = TextEditingController();
-  final _finalHorimeterController = TextEditingController();
-
   final _controller = locator.get<FieldOperationController>();
-
   bool _isProcessing = false;
-  String _selectedType = 'Vistoria';
-  String? _selectedCondition;
 
-  String? _selectedProductId;
-  String? _selectedMachineId;
-  String _selectedDosageUnit = 'L';
-
-  final List<String> _conditions = ['Excelente', 'Atenção', 'Crítico'];
-  final List<String> _dosageUnits = [
-    'L',
-    'ml',
-    'kg',
-    'g',
-    'un',
-    'mg',
-    'saco',
-    'tambor',
-  ];
+  // Talhões cadastrados na fazenda ativa
+  final List<String> _plots =
+      locator
+          .get<FarmController>()
+          .selectedFarm
+          ?.plantedFields
+          .map((field) => field['name'].toString())
+          .toList() ??
+      [];
 
   @override
   void initState() {
@@ -59,24 +42,30 @@ class _RegisterFieldOperationPageState
 
   @override
   void dispose() {
-    _plotController.dispose();
-    _obsController.dispose();
-    _dosageController.dispose();
-    _initialHorimeterController.dispose();
-    _finalHorimeterController.dispose();
+    _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _save(FieldOperationFormData data) async {
+    setState(() => _isProcessing = true);
+    await _controller.launchOperation(
+      data.operation,
+      initialHorimeter: data.initialHorimeter,
+      finalHorimeter: data.finalHorimeter,
+    );
+    if (!mounted) return;
+
+    final state = _controller.state;
+    if (state is FieldOperationErrorState) {
+      setState(() => _isProcessing = false);
+      context.showErrorSnackBar(state.message);
+      return;
+    }
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // ADICIONADO: Puxa a fazenda ativa e cria a lista com os nomes dos talhões
-    final activeFarm = locator.get<FarmController>().selectedFarm;
-    final List<String> talhoesDisponiveis =
-        activeFarm?.plantedFields
-            .map((field) => field['name'].toString())
-            .toList() ??
-        [];
-
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
@@ -90,423 +79,26 @@ class _RegisterFieldOperationPageState
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_controller.isLoadingResources || _isProcessing) {
+          if (_controller.isLoadingResources) {
             return const Center(child: CustomCircularProgressIndicator());
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    "TIPO DE OPERAÇÃO",
-                    style: AppTextStyles.smallText.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(
-                        value: 'Vistoria',
-                        label: Text('Vistoria'),
-                        icon: Icon(Icons.search),
-                      ),
-                      ButtonSegment(
-                        value: 'Aplicação',
-                        label: Text('Aplicação'),
-                        icon: Icon(Icons.opacity),
-                      ),
-                    ],
-                    selected: {_selectedType},
-                    onSelectionChanged: (Set<String> newSelection) {
-                      setState(() {
-                        _selectedType = newSelection.first;
-                      });
-                    },
-                    style: SegmentedButton.styleFrom(
-                      selectedBackgroundColor: AppColors.greenlightOne,
-                      selectedForegroundColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ADICIONADO: Dropdown de Talhões substituindo o campo de texto antigo
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _plotController.text.isEmpty
-                        ? null
-                        : _plotController.text,
-                    decoration: InputDecoration(
-                      labelText: "IDENTIFICAÇÃO DO TALHÃO",
-                      labelStyle: AppTextStyles.inputLabelText.copyWith(
-                        color: AppColors.lightkGrey,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 16,
-                      ),
-                      border: const OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.greenlightOne),
-                      ),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: AppColors.greenlightOne),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(
-                          color: AppColors.greenlightOne,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    hint: const Text(
-                      "Selecione o Talhão",
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    items: talhoesDisponiveis.map((String talhao) {
-                      return DropdownMenuItem<String>(
-                        value: talhao,
-                        child: Text(
-                          talhao,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _plotController.text =
-                              newValue; // Salva a escolha do usuário internamente
-                        });
-                      }
-                    },
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? "Informe o talhão" : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  if (_selectedType == 'Vistoria') ..._buildInspectionFields(),
-                  if (_selectedType == 'Aplicação')
-                    ..._buildApplicationFields(),
-
-                  const SizedBox(height: 32),
-                  PrimaryButton(
-                    text: "Confirmar Lançamento",
-                    onPressed: () async {
-                      if (_formKey.currentState?.validate() ?? false) {
-                        String? machName;
-                        bool needsTime = false;
-
-                        double? initHori;
-                        double? finalHori;
-
-                        if (_selectedType == 'Aplicação' &&
-                            _selectedMachineId != null) {
-                          try {
-                            final m = _controller.machines.firstWhere(
-                              (mach) => mach.id == _selectedMachineId,
-                            );
-                            machName = m.name;
-                            needsTime = m.isMotorized;
-                          } catch (_) {}
-                        }
-
-                        if (_selectedType == 'Aplicação' && needsTime) {
-                          initHori = double.tryParse(
-                            _initialHorimeterController.text.replaceAll(
-                              ',',
-                              '.',
-                            ),
-                          );
-                          finalHori = double.tryParse(
-                            _finalHorimeterController.text.replaceAll(',', '.'),
-                          );
-
-                          if (initHori == null || finalHori == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Preencha o horímetro inicial e final!",
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          // OPÇÃO 1: BLOQUEIO RIGOROSO
-                          final m = _controller.machines.firstWhere(
-                            (mach) => mach.id == _selectedMachineId,
-                          );
-                          if (initHori.toInt() != m.workingHours) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  "Atenção: Horímetro inicial ($initHori) não confere com o sistema (${m.workingHours}h).",
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (finalHori < initHori) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Erro: O horímetro final deve ser maior que o inicial!",
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                        }
-
-                        String? prodName;
-                        if (_selectedType == 'Aplicação' &&
-                            _selectedProductId != null) {
-                          try {
-                            prodName = _controller.products
-                                .firstWhere((p) => p.id == _selectedProductId)
-                                .name;
-                          } catch (_) {}
-                        }
-
-                        final operation = FieldOperationModel(
-                          type: _selectedType,
-                          plotName: _plotController.text.trim(),
-                          dateTimestamp: DateTime.now().millisecondsSinceEpoch,
-                          farmId: '',
-                          condition: _selectedType == 'Vistoria'
-                              ? _selectedCondition
-                              : null,
-                          observations: _obsController.text.trim(),
-                          productId: _selectedType == 'Aplicação'
-                              ? _selectedProductId
-                              : null,
-                          productName: _selectedType == 'Aplicação'
-                              ? prodName
-                              : null,
-                          dosage: _selectedType == 'Aplicação'
-                              ? double.tryParse(_dosageController.text)
-                              : null,
-                          dosageUnit: _selectedType == 'Aplicação'
-                              ? _selectedDosageUnit
-                              : null,
-                          machineId: _selectedType == 'Aplicação'
-                              ? _selectedMachineId
-                              : null,
-                          machineName: _selectedType == 'Aplicação'
-                              ? machName
-                              : null,
-                        );
-
-                        setState(() => _isProcessing = true);
-
-                        await _controller.launchOperation(
-                          operation,
-                          initialHorimeter: initHori,
-                          finalHorimeter: finalHori,
-                        );
-
-                        if (!context.mounted) {
-                          return;
-                        }
-
-                        if (_controller.state is FieldOperationErrorState) {
-                          setState(() => _isProcessing = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                (_controller.state as FieldOperationErrorState)
-                                    .message,
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                          return;
-                        }
-
-                        Navigator.pop(context);
-                      }
-                    },
-                  ),
-                ],
+          return LoadingOverlay(
+            isLoading: _isProcessing,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: FieldOperationForm(
+                machines: _controller.machines,
+                products: _controller.products,
+                plots: _plots,
+                submitText: "Confirmar Lançamento",
+                strictHorimeter: true,
+                onSubmit: _save,
               ),
             ),
           );
         },
       ),
     );
-  }
-
-  List<Widget> _buildInspectionFields() {
-    return [
-      DropdownButtonFormField<String>(
-        decoration: const InputDecoration(
-          labelText: "CONDIÇÃO ATUAL DO TALHÃO",
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.greenlightOne),
-          ),
-        ),
-        initialValue: _selectedCondition,
-        items: _conditions
-            .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-            .toList(),
-        onChanged: (v) => setState(() => _selectedCondition = v),
-        validator: (v) => _selectedType == 'Vistoria' && v == null
-            ? "Selecione a condição"
-            : null,
-      ),
-      const SizedBox(height: 16),
-      CustomTextFormField(
-        controller: _obsController,
-        labelText: "OBSERVAÇÕES E DIAGNÓSTICO",
-        hintText:
-            "Ex: Presença de lagarta do cartucho identificada em nível leve.",
-      ),
-    ];
-  }
-
-  List<Widget> _buildApplicationFields() {
-    return [
-      DropdownButtonFormField<String>(
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: "PRODUTO / INSUMO UTILIZADO",
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.greenlightOne),
-          ),
-        ),
-        initialValue: _selectedProductId,
-        items: _controller.products.map((p) {
-          return DropdownMenuItem<String>(
-            value: p.id,
-            child: Text(
-              "${p.name} (${p.category}) - ${(p.quantity * p.measure).toStringAsFixed(2)} ${p.unit}",
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        }).toList(),
-        onChanged: (v) => setState(() {
-          _selectedProductId = v;
-          if (v != null) {
-            try {
-              final prod = _controller.products.firstWhere((p) => p.id == v);
-              _selectedDosageUnit = (prod.unit == 'L' || prod.unit == 'ml')
-                  ? 'ml'
-                  : (prod.unit == 'kg' || prod.unit == 'g')
-                  ? 'g'
-                  : prod.unit;
-            } catch (_) {}
-          }
-        }),
-        validator: (v) => _selectedType == 'Aplicação' && v == null
-            ? "Selecione o produto aplicado"
-            : null,
-      ),
-      const SizedBox(height: 16),
-      Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: CustomTextFormField(
-              controller: _dosageController,
-              labelText: "DOSAGEM COBERTURA",
-              keyboardType: TextInputType.number,
-              validator: (v) => _selectedType == 'Aplicação' && v!.isEmpty
-                  ? "Informe a dosagem"
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: "UNIDADE",
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.greenlightOne),
-                ),
-              ),
-              initialValue: _selectedDosageUnit,
-              items: _dosageUnits
-                  .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedDosageUnit = v!),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-      DropdownButtonFormField<String>(
-        isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: "MAQUINÁRIO UTILIZADO (Opcional)",
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: AppColors.greenlightOne),
-          ),
-        ),
-        initialValue: _selectedMachineId,
-        items: _controller.machines
-            .map(
-              (m) => DropdownMenuItem<String>(
-                value: m.id,
-                child: Text(
-                  "${m.name} • ${m.brand}",
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            )
-            .toList(),
-        onChanged: (v) => setState(() => _selectedMachineId = v),
-      ),
-      if (_selectedMachineId != null) ...[
-        Builder(
-          builder: (context) {
-            bool isMotorized = false;
-            try {
-              isMotorized = _controller.machines
-                  .firstWhere((m) => m.id == _selectedMachineId)
-                  .isMotorized;
-            } catch (_) {}
-
-            if (isMotorized) {
-              return Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CustomTextFormField(
-                        controller: _initialHorimeterController,
-                        labelText: "HORÍMETRO INICIAL",
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: CustomTextFormField(
-                        controller: _finalHorimeterController,
-                        labelText: "HORÍMETRO FINAL",
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-      ],
-    ];
   }
 }

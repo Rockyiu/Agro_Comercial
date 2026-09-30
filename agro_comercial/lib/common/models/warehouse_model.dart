@@ -7,6 +7,14 @@ class WarehouseModel {
 
   WarehouseModel({this.id, required this.name, required this.farmId});
 
+  WarehouseModel copyWith({String? id, String? name, String? farmId}) {
+    return WarehouseModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      farmId: farmId ?? this.farmId,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return <String, dynamic>{'id': id, 'name': name, 'farmId': farmId};
   }

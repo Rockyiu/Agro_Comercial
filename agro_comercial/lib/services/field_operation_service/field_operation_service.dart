@@ -6,24 +6,7 @@ class FieldOperationService {
 
   Future<void> saveFieldOperation(FieldOperationModel operation) async {
     final docRef = _firestore.collection('field_operations').doc();
-    final opWithId = FieldOperationModel(
-      id: docRef.id,
-      type: operation.type,
-      plotName: operation.plotName,
-      dateTimestamp: operation.dateTimestamp,
-      farmId: operation.farmId,
-      createdBy: operation.createdBy,
-      condition: operation.condition,
-      observations: operation.observations,
-      productId: operation.productId,
-      productName: operation.productName,
-      dosage: operation.dosage,
-      dosageUnit: operation.dosageUnit,
-      machineId: operation.machineId,
-      machineName: operation.machineName,
-      machineHours: operation.machineHours,
-    );
-    await docRef.set(opWithId.toMap());
+    await docRef.set(operation.copyWith(id: docRef.id).toMap());
   }
 
   Future<List<FieldOperationModel>> getFieldOperations(String farmId) async {

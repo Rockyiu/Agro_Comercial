@@ -31,6 +31,36 @@ class OperationModel {
     required this.appliedProducts,
   });
 
+  OperationModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? farmId,
+    int? dateTimestamp,
+    String? createdBy,
+    bool? usedMachine,
+    String? machineId,
+    String? machineName,
+    double? machineHours,
+    bool? usedProducts,
+    List<Map<String, dynamic>>? appliedProducts,
+  }) {
+    return OperationModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      farmId: farmId ?? this.farmId,
+      dateTimestamp: dateTimestamp ?? this.dateTimestamp,
+      createdBy: createdBy ?? this.createdBy,
+      usedMachine: usedMachine ?? this.usedMachine,
+      machineId: machineId ?? this.machineId,
+      machineName: machineName ?? this.machineName,
+      machineHours: machineHours ?? this.machineHours,
+      usedProducts: usedProducts ?? this.usedProducts,
+      appliedProducts: appliedProducts ?? this.appliedProducts,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,

@@ -25,6 +25,37 @@ class ProductModel {
     required this.attributes,
   });
 
+  // Estoque total na unidade do produto (ex: 3 embalagens de 20 L = 60 L)
+  double get totalStock => quantity * measure;
+
+  ProductModel copyWith({
+    String? id,
+    String? name,
+    String? brand,
+    double? quantity,
+    double? measure,
+    String? unit,
+    String? category,
+    String? warehouseId,
+    String? farmId,
+    String? imageUrl,
+    Map<String, dynamic>? attributes,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      brand: brand ?? this.brand,
+      quantity: quantity ?? this.quantity,
+      measure: measure ?? this.measure,
+      unit: unit ?? this.unit,
+      category: category ?? this.category,
+      warehouseId: warehouseId ?? this.warehouseId,
+      farmId: farmId ?? this.farmId,
+      imageUrl: imageUrl ?? this.imageUrl,
+      attributes: attributes ?? this.attributes,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,

@@ -21,8 +21,34 @@ class CostModel {
     this.calculationData,
   });
 
-  // Função para identificar rapidamente se é um custo restrito ao Admin
-  bool get isLabor => category.toLowerCase().contains('mão de obra');
+  // Custos de mão de obra são restritos ao produtor (Admin).
+  // As categorias são escritas "Mão-de-obra ...", por isso o hífen é ignorado.
+  static bool isLaborCategory(String category) =>
+      category.toLowerCase().replaceAll('-', ' ').contains('mão de obra');
+
+  bool get isLabor => isLaborCategory(category);
+
+  CostModel copyWith({
+    String? id,
+    String? farmId,
+    String? type,
+    String? category,
+    double? value,
+    int? dateTimestamp,
+    String? observation,
+    Map<String, dynamic>? calculationData,
+  }) {
+    return CostModel(
+      id: id ?? this.id,
+      farmId: farmId ?? this.farmId,
+      type: type ?? this.type,
+      category: category ?? this.category,
+      value: value ?? this.value,
+      dateTimestamp: dateTimestamp ?? this.dateTimestamp,
+      observation: observation ?? this.observation,
+      calculationData: calculationData ?? this.calculationData,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {

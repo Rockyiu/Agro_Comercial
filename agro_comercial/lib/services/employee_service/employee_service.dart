@@ -1,6 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 
+class EmployeeNotFoundException implements Exception {
+  final String message;
+  const EmployeeNotFoundException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class EmployeeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -46,7 +54,7 @@ class EmployeeService {
         .get();
 
     if (query.docs.isEmpty) {
-      throw Exception(
+      throw const EmployeeNotFoundException(
         "Nenhum colaborador encontrado com este CPF. Peça para ele criar uma conta no app primeiro.",
       );
     }

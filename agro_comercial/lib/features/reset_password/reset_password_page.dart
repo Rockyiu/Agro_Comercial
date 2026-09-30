@@ -135,7 +135,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
       children: [
-        const Icon(Icons.lock_outline, size: 72, color: AppColors.greenlightOne),
+        const Icon(
+          Icons.lock_outline,
+          size: 72,
+          color: AppColors.greenlightOne,
+        ),
         const SizedBox(height: 16),
         Text(
           'Criar nova senha',

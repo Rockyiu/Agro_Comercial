@@ -1,3 +1,5 @@
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -39,38 +41,22 @@ class _OperationPageState extends State<OperationPage> {
     });
   }
 
-  void _showDeleteMultipleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
+  Future<void> _showDeleteMultipleDialog() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Selecionados",
+      message:
           "Tem certeza que deseja apagar as ${selectedIds.length} operações selecionadas do histórico?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteSelectedOperations(selectedIds.toList());
-              setState(() => selectedIds.clear());
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
     );
+    if (!confirmed || !mounted) return;
+    _controller.deleteSelectedOperations(selectedIds.toList());
+    setState(() => selectedIds.clear());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -119,40 +105,10 @@ class _OperationPageState extends State<OperationPage> {
             return Column(
               children: [
                 if (selectedIds.isNotEmpty)
-                  Container(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${selectedIds.length} selecionada(s)",
-                          style: AppTextStyles.inputText.copyWith(
-                            color: AppColors.greenlightOne,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: AppColors.grey,
-                              ),
-                              onPressed: () =>
-                                  setState(() => selectedIds.clear()),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: _showDeleteMultipleDialog,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  SelectionActionBar(
+                    label: "${selectedIds.length} selecionada(s)",
+                    onClear: () => setState(() => selectedIds.clear()),
+                    onDelete: _showDeleteMultipleDialog,
                   ),
                 Expanded(
                   child: ListView.builder(

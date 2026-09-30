@@ -1,10 +1,10 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/common/models/app_exception.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../services/services.dart';
 import 'reset_password_state.dart';
 
-class ResetPasswordController extends ChangeNotifier {
+class ResetPasswordController extends SafeChangeNotifier {
   ResetPasswordController(this._authService);
 
   final AuthService _authService;

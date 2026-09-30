@@ -1,10 +1,11 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class FarmController extends ChangeNotifier {
+class FarmController extends SafeChangeNotifier {
   final FarmService _farmService;
 
   FarmController(this._farmService);
@@ -39,6 +40,16 @@ class FarmController extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  // Busca atualizada das fazendas do produtor (para o seletor "Trocar de
+  // Fazenda"). Diferente de loadFarms, repassa o erro para a tela avisar.
+  Future<List<FarmModel>> fetchOwnedFarms() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return [];
+    farms = await _farmService.getFarmsByOwner(user.uid);
+    notifyListeners();
+    return farms;
   }
 
   // O colaborador não é dono de fazendas: a fazenda ativa dele é a que o

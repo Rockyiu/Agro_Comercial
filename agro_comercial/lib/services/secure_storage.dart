@@ -3,6 +3,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorageService {
   const SecureStorageService();
 
+  // Chave onde o usuário logado fica salvo no aparelho
+  static const currentUserKey = 'CURRENT_USER';
+
   final _secureStorage = const FlutterSecureStorage();
 
   Future<void> write({required String key, String? value}) async {

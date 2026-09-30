@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/services/profile_service/profile_service.dart';
 
 import 'profile_state.dart'; // ADICIONADO: Puxando as classes do arquivo correto
 
-class ProfileController extends ChangeNotifier {
+class ProfileController extends SafeChangeNotifier {
   final ProfileService _profileService;
 
   ProfileController(this._profileService);

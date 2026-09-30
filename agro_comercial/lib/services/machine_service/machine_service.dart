@@ -25,19 +25,9 @@ class MachineService {
       imageUrl = await _uploadImage(docRef.id, imageFile);
     }
 
-    final machineWithId = MachineModel(
-      id: docRef.id,
-      name: machine.name,
-      model: machine.model,
-      brand: machine.brand,
-      power: machine.power,
-      workingHours: machine.workingHours,
-      imageUrl: imageUrl,
-      warehouseId: machine.warehouseId,
-      farmId: machine.farmId,
-    );
-
-    final map = machineWithId.toMap();
+    // copyWith preserva todos os campos (inclusive isMotorized, que antes
+    // era perdido aqui e toda máquina era salva como motorizada)
+    final map = machine.copyWith(id: docRef.id, imageUrl: imageUrl).toMap();
     map['createdAt'] = DateTime.now().millisecondsSinceEpoch;
 
     await docRef.set(map);
@@ -73,6 +63,11 @@ class MachineService {
 
   Future<void> deleteMachine(String machineId) async {
     await _firestore.collection('machines').doc(machineId).delete();
+    await _deleteImage(machineId);
+  }
+
+  // A máquina pode não ter foto; nesse caso o Storage lança erro e ignoramos
+  Future<void> _deleteImage(String machineId) async {
     try {
       await _storage.ref().child('machines').child('$machineId.jpg').delete();
     } catch (_) {}
@@ -82,14 +77,11 @@ class MachineService {
     final batch = _firestore.batch();
 
     for (String id in machineIds) {
-      final docRef = _firestore.collection('machines').doc(id);
-      batch.delete(docRef);
-
-      try {
-        await _storage.ref().child('machines').child('$id.jpg').delete();
-      } catch (_) {}
+      batch.delete(_firestore.collection('machines').doc(id));
     }
-
     await batch.commit();
+
+    // Apaga as fotos em paralelo depois de remover os registros
+    await Future.wait(machineIds.map(_deleteImage));
   }
 }

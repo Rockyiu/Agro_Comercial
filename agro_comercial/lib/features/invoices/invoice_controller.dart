@@ -1,38 +1,20 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'dart:io';
 import 'dart:math';
-import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:agro_comercial/common/models/invoice_model.dart';
 import 'package:agro_comercial/services/invoice_service/invoice_local_service.dart';
-import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
+import 'invoice_state.dart';
 
-abstract class InvoiceState {}
-
-class InvoiceInitialState extends InvoiceState {}
-
-class InvoiceLoadingState extends InvoiceState {
-  final String message;
-  InvoiceLoadingState([this.message = "Carregando..."]);
-}
-
-class InvoiceSuccessState extends InvoiceState {
-  final List<InvoiceModel> invoices;
-  InvoiceSuccessState(this.invoices);
-}
-
-class InvoiceErrorState extends InvoiceState {
-  final String message;
-  InvoiceErrorState(this.message);
-}
-
-class InvoiceController extends ChangeNotifier {
+class InvoiceController extends SafeChangeNotifier {
   final InvoiceLocalService _invoiceService;
+  final FarmController _farmController;
 
-  InvoiceController(this._invoiceService);
+  InvoiceController(this._invoiceService, this._farmController);
 
   InvoiceState _state = InvoiceInitialState();
   InvoiceState get state => _state;
@@ -47,7 +29,7 @@ class InvoiceController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final activeFarm = locator.get<FarmController>().selectedFarm;
+      final activeFarm = _farmController.selectedFarm;
       if (activeFarm == null) throw Exception("Nenhuma fazenda ativa.");
 
       // NOTA: Como não sei se você tem o campo cadPro no FarmModel,
@@ -66,7 +48,7 @@ class InvoiceController extends ChangeNotifier {
   // 2. LÓGICA DE DOWNLOAD INCREMENTAL E ESCOLHA DE PASTA
   // ==========================================
   Future<void> downloadNewInvoices() async {
-    final activeFarm = locator.get<FarmController>().selectedFarm;
+    final activeFarm = _farmController.selectedFarm;
     if (activeFarm == null) {
       _state = InvoiceErrorState("Nenhuma fazenda ativa.");
       notifyListeners();

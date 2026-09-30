@@ -13,8 +13,10 @@ class ProfileService {
     }
 
     final doc = await _firestore.collection('users').doc(user.uid).get();
-    if (doc.exists && doc.data() != null) {
-      return UserModel.fromMap(doc.data()!);
+    final data = doc.data();
+    if (data != null) {
+      // O id do usuário é o id do documento (não fica salvo dentro dele)
+      return UserModel.fromMap({...data, 'id': doc.id});
     }
 
     // Se não existir no banco de dados, gera um temporário com o que tem no Auth

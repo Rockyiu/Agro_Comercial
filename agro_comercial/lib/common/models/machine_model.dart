@@ -25,6 +25,32 @@ class MachineModel {
     this.isMotorized = true, // Por padrão, assumimos que tem motor
   });
 
+  MachineModel copyWith({
+    String? id,
+    String? name,
+    String? brand,
+    String? model,
+    String? power,
+    int? workingHours,
+    String? warehouseId,
+    String? farmId,
+    String? imageUrl,
+    bool? isMotorized,
+  }) {
+    return MachineModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      brand: brand ?? this.brand,
+      model: model ?? this.model,
+      power: power ?? this.power,
+      workingHours: workingHours ?? this.workingHours,
+      warehouseId: warehouseId ?? this.warehouseId,
+      farmId: farmId ?? this.farmId,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isMotorized: isMotorized ?? this.isMotorized,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,

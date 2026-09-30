@@ -1,9 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 
 import '../../services/services.dart';
 import 'forgot_password_state.dart';
 
-class ForgotPasswordController extends ChangeNotifier {
+class ForgotPasswordController extends SafeChangeNotifier {
   ForgotPasswordController(this._authService);
 
   final AuthService _authService;

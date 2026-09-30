@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,7 +8,7 @@ import 'package:agro_comercial/services/field_operation_service/field_operation_
 import 'package:agro_comercial/services/operation_service/operation_service.dart';
 import 'collaborator_home_state.dart';
 
-class CollaboratorHomeController extends ChangeNotifier {
+class CollaboratorHomeController extends SafeChangeNotifier {
   final OperationService _operationService;
   final FieldOperationService _fieldOperationService;
   final FarmController _farmController;
@@ -30,8 +31,13 @@ class CollaboratorHomeController extends ChangeNotifier {
   // registradas pelo colaborador logado na fazenda à qual ele está vinculado.
   // [reloadFarm] força buscar novamente a fazenda vinculada (ex: ao abrir a
   // tela), evitando reaproveitar a fazenda de outro usuário que usou o app antes.
-  Future<void> loadActivities({bool reloadFarm = false}) async {
-    _changeState(CollaboratorHomeLoadingState());
+  // [showLoading] = false mantém a lista na tela enquanto atualiza
+  // (usado no "puxar para atualizar")
+  Future<void> loadActivities({
+    bool reloadFarm = false,
+    bool showLoading = true,
+  }) async {
+    if (showLoading) _changeState(CollaboratorHomeLoadingState());
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {

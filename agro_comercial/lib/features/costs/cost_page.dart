@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
@@ -7,6 +9,7 @@ import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator
 import 'package:agro_comercial/locator.dart';
 
 import 'cost_controller.dart';
+import 'cost_state.dart';
 import 'cost_details_page.dart';
 import 'register_cost_page.dart';
 
@@ -39,48 +42,22 @@ class _CostPageState extends State<CostPage> {
     });
   }
 
-  void _showDeleteMultipleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
+  Future<void> _showDeleteMultipleDialog() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Selecionados",
+      message:
           "Tem certeza que deseja excluir os ${selectedIds.length} item(ns) selecionado(s)?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _costController.deleteSelectedCosts(selectedIds.toList());
-              setState(() => selectedIds.clear());
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
     );
+    if (!confirmed || !mounted) return;
+    _costController.deleteSelectedCosts(selectedIds.toList());
+    setState(() => selectedIds.clear());
   }
 
-  String _formatCurrency(double value) {
-    return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
-  }
-
-  String _formatDate(int timestamp) {
-    return DateFormat(
-      'dd/MM/yyyy',
-    ).format(DateTime.fromMillisecondsSinceEpoch(timestamp));
+  @override
+  void dispose() {
+    _costController.dispose();
+    super.dispose();
   }
 
   @override
@@ -125,44 +102,16 @@ class _CostPageState extends State<CostPage> {
             children: [
               // HEADER DE EXCLUSÃO MÚLTIPLA
               if (selectedIds.isNotEmpty)
-                Container(
+                SelectionActionBar(
+                  label: "${selectedIds.length} item(ns) selecionado(s)",
                   margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  borderRadius: BorderRadius.circular(12),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 8,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "${selectedIds.length} item(ns) selecionado(s)",
-                        style: AppTextStyles.inputText.copyWith(
-                          color: AppColors.greenlightOne,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.close,
-                              color: AppColors.grey,
-                            ),
-                            onPressed: () =>
-                                setState(() => selectedIds.clear()),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: _showDeleteMultipleDialog,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                  onClear: () => setState(() => selectedIds.clear()),
+                  onDelete: _showDeleteMultipleDialog,
                 ),
 
               Expanded(
@@ -258,7 +207,7 @@ class _CostPageState extends State<CostPage> {
                                       ),
                                     ),
                                     Text(
-                                      _formatDate(cost.dateTimestamp),
+                                      Formatters.date(cost.dateTimestamp),
                                       style: const TextStyle(
                                         fontSize: 11,
                                         color: Colors.grey,
@@ -267,7 +216,7 @@ class _CostPageState extends State<CostPage> {
                                   ],
                                 ),
                                 trailing: Text(
-                                  _formatCurrency(cost.value),
+                                  Formatters.currency(cost.value),
                                   style: AppTextStyles.smallText.copyWith(
                                     color: AppColors.greenlightOne,
                                     fontWeight: FontWeight.bold,
