@@ -19,6 +19,7 @@ import 'services/warehouse_service/warehouse_service.dart';
 
 // Controllers
 import 'features/cash_book/bookkeeping_controller.dart';
+import 'features/cash_book/cash_book_year_controller.dart';
 import 'features/cash_book/consolidation_controller.dart';
 import 'features/costs/cost_controller.dart';
 import 'features/edit_machine/edit_machine_controller.dart';
@@ -100,8 +101,15 @@ void _registerControllers() {
   locator.registerLazySingleton<BookkeepingController>(
     () => BookkeepingController(locator.get<BookkeepingService>()),
   );
+  // Ano-calendário do Livro Caixa (compartilhado entre as telas)
+  locator.registerLazySingleton<CashBookYearController>(
+    () => CashBookYearController(),
+  );
   locator.registerLazySingleton<ConsolidationController>(
-    () => ConsolidationController(locator.get<BookkeepingService>()),
+    () => ConsolidationController(
+      locator.get<BookkeepingService>(),
+      locator.get<CashBookYearController>(),
+    ),
   );
 
   // --- Factories: uma instância nova para cada tela ---

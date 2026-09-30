@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:agro_comercial/common/models/bookkeeping_model.dart';
 import 'package:agro_comercial/common/models/cost_model.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/common/utils/unit_converter.dart';
+import 'package:agro_comercial/features/cash_book/cash_book_year_controller.dart';
 import 'package:agro_comercial/features/cash_book/consolidation_controller.dart';
 import 'package:agro_comercial/services/stock_service/stock_service.dart';
 
@@ -168,5 +170,24 @@ void main() {
     expect(resumo.despesas, 300);
     expect(resumo.despesasNaoDedutiveis, 100);
     expect(resumo.resultadoMes, 600);
+  });
+
+  test('Seletor de ano: ano atual, 16 anteriores e anos com lançamentos', () {
+    final atual = DateTime.now().year;
+    final antigo = BookkeepingModel(
+      dia: 1,
+      mes: 0,
+      ano: atual - 30,
+      conta: '101',
+      historico: 'Lançamento antigo',
+      valor: 10,
+    );
+
+    final anos = CashBookYearController().availableYears([antigo]);
+
+    expect(anos.first, atual); // mais novo primeiro
+    expect(anos, contains(atual - 16));
+    expect(anos, isNot(contains(atual - 17)));
+    expect(anos.last, atual - 30); // ano de um lançamento antigo também aparece
   });
 }

@@ -14,7 +14,11 @@ import 'cost_details_page.dart';
 import 'register_cost_page.dart';
 
 class CostPage extends StatefulWidget {
-  const CostPage({super.key});
+  // false quando a tela é exibida como aba de outra (ex: Home do colaborador),
+  // que já tem a própria barra de título
+  final bool showAppBar;
+
+  const CostPage({super.key, this.showAppBar = true});
 
   @override
   State<CostPage> createState() => _CostPageState();
@@ -64,14 +68,16 @@ class _CostPageState extends State<CostPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Gestão de Custos",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(
+                "Gestão de Custos",
+                style: AppTextStyles.midText20.copyWith(color: Colors.white),
+              ),
+              backgroundColor: AppColors.greenlightOne,
+              iconTheme: const IconThemeData(color: Colors.white),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _costController,
         builder: (context, child) {

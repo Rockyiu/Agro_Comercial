@@ -5,6 +5,7 @@ import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'consolidation_controller.dart';
+import 'widgets/year_selector.dart';
 
 class ConsolidationPage extends StatefulWidget {
   const ConsolidationPage({super.key});
@@ -85,8 +86,28 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
             );
           }
 
-          // Decide qual layout renderizar com base no tamanho da tela!
-          return isDesktop ? _buildDesktopTable() : _buildMobileList();
+          return Column(
+            children: [
+              // Filtro do ano-calendário consolidado
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                color: AppColors.greenlightOne.withValues(alpha: 0.05),
+                child: YearSelector(
+                  year: _controller.anoSelecionado,
+                  years: _controller.anosDisponiveis,
+                  onChanged: _controller.selecionarAno,
+                ),
+              ),
+              // Decide qual layout renderizar com base no tamanho da tela!
+              Expanded(
+                child: isDesktop ? _buildDesktopTable() : _buildMobileList(),
+              ),
+            ],
+          );
         },
       ),
     );

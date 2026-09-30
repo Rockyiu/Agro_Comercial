@@ -48,18 +48,23 @@ class ProductService {
     await batch.commit();
   }
 
+  // Já existe outro produto com o mesmo nome e marca neste armazém?
+  // A comparação ignora maiúsculas/minúsculas e espaços nas pontas
+  // ("Glifosato" == " glifosato"). [ignoreId]: o próprio produto, na edição.
   Future<bool> checkDuplicateProduct(
     String name,
     String brand,
-    String warehouseId,
-  ) async {
-    final snapshot = await _firestore
-        .collection('products')
-        .where('warehouseId', isEqualTo: warehouseId)
-        .where('name', isEqualTo: name)
-        .where('brand', isEqualTo: brand)
-        .get();
+    String warehouseId, {
+    String? ignoreId,
+  }) async {
+    String normalize(String value) => value.trim().toLowerCase();
 
-    return snapshot.docs.isNotEmpty;
+    final products = await getProductsByWarehouse(warehouseId);
+    return products.any(
+      (p) =>
+          p.id != ignoreId &&
+          normalize(p.name) == normalize(name) &&
+          normalize(p.brand) == normalize(brand),
+    );
   }
 }

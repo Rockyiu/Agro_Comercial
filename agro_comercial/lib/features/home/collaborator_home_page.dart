@@ -191,12 +191,13 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
 
   Widget _buildBody() {
     switch (_currentIndex) {
+      // As abas usam a barra de título da Home (sem uma segunda barra)
       case _inspectionsTab:
-        return const FieldOperationPage();
+        return const FieldOperationPage(showAppBar: false);
       case _operationsTab:
-        return const OperationPage();
+        return const OperationPage(showAppBar: false);
       case _costsTab:
-        return const CostPage();
+        return const CostPage(showAppBar: false);
       default:
         return _buildActivitiesTab();
     }

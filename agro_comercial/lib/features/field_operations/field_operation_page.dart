@@ -12,7 +12,11 @@ import 'field_operation_controller.dart';
 import 'field_operation_state.dart';
 
 class FieldOperationPage extends StatefulWidget {
-  const FieldOperationPage({super.key});
+  // false quando a tela é exibida como aba de outra (ex: Home do colaborador),
+  // que já tem a própria barra de título
+  final bool showAppBar;
+
+  const FieldOperationPage({super.key, this.showAppBar = true});
 
   @override
   State<FieldOperationPage> createState() => _FieldOperationPageState();
@@ -63,14 +67,16 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
       // ADICIONADO: A barra superior com o botão de voltar!
-      appBar: AppBar(
-        title: Text(
-          "Vistorias e Aplicações",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(
+                "Vistorias e Aplicações",
+                style: AppTextStyles.midText20.copyWith(color: Colors.white),
+              ),
+              backgroundColor: AppColors.greenlightOne,
+              iconTheme: const IconThemeData(color: Colors.white),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {

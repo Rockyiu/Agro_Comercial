@@ -13,14 +13,16 @@ import '../../common/models/bookkeeping_model.dart';
 class RegisterBookkeepingPage extends StatefulWidget {
   final int mesBloqueado; // 0 = Jan, 1 = Fev...
   final String nomeMes;
-  final BookkeepingModel?
-  dadosEdicao; // CORRIGIDO: Agora recebe o Model correto!
+  final BookkeepingModel? dadosEdicao;
+  // Ano sugerido para um lançamento novo (o ano selecionado na Escrituração)
+  final int? anoInicial;
 
   const RegisterBookkeepingPage({
     super.key,
     required this.mesBloqueado,
     required this.nomeMes,
     this.dadosEdicao,
+    this.anoInicial,
   });
 
   @override
@@ -37,7 +39,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
   final _controller = locator.get<BookkeepingController>();
 
   int _diaSelecionado = DateTime.now().day;
-  int _anoSelecionado = 2026;
+  late int _anoSelecionado = widget.anoInicial ?? DateTime.now().year;
   String? _contaSelecionada;
 
   File? _arquivoPdfUpload;
@@ -68,8 +70,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
   @override
   void initState() {
     super.initState();
-    int ultimoDiaDoMes = DateTime(2026, widget.mesBloqueado + 2, 0).day;
-    if (_diaSelecionado > ultimoDiaDoMes) _diaSelecionado = ultimoDiaDoMes;
+    _ajustarDiaAoMes();
 
     // Se estiver no modo de edição, preenche os campos usando o Model
     if (widget.dadosEdicao != null) {
@@ -87,6 +88,15 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
     }
   }
 
+  // Quantidade de dias do mês no ano selecionado (fevereiro muda no bissexto)
+  int get _diasNoMes =>
+      DateTime(_anoSelecionado, widget.mesBloqueado + 2, 0).day;
+
+  // Evita um dia que não existe no mês (ex: 31 em abril, 29/02 em ano comum)
+  void _ajustarDiaAoMes() {
+    if (_diaSelecionado > _diasNoMes) _diaSelecionado = _diasNoMes;
+  }
+
   void _escolherPdf() {
     // Espaço reservado para a implementação do file_picker
     setState(() {
@@ -99,11 +109,13 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
   @override
   Widget build(BuildContext context) {
     final bool isEdicao = widget.dadosEdicao != null;
-    final List<int> anosPermitidos = List.generate(17, (index) => 2026 - index);
-    final List<int> diasDoMes = List.generate(
-      DateTime(_anoSelecionado, widget.mesBloqueado + 2, 0).day,
-      (index) => index + 1,
-    );
+    // Do ano atual até 16 anos atrás (+ o ano do lançamento, se for mais antigo)
+    final anoAtual = DateTime.now().year;
+    final List<int> anosPermitidos = {
+      for (int i = 0; i <= 16; i++) anoAtual - i,
+      _anoSelecionado,
+    }.toList()..sort((a, b) => b.compareTo(a));
+    final List<int> diasDoMes = List.generate(_diasNoMes, (index) => index + 1);
 
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
@@ -150,6 +162,11 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                         Expanded(
                           flex: 2,
                           child: DropdownButtonFormField<int>(
+                            // Recria o campo quando o dia é ajustado pela
+                            // troca de ano (ex: 29/02 -> 28/02)
+                            key: ValueKey(
+                              'dia_${_anoSelecionado}_$_diaSelecionado',
+                            ),
                             decoration: const InputDecoration(
                               labelText: "Dia",
                               border: OutlineInputBorder(),
@@ -198,8 +215,10 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (val) =>
-                                setState(() => _anoSelecionado = val!),
+                            onChanged: (val) => setState(() {
+                              _anoSelecionado = val!;
+                              _ajustarDiaAoMes();
+                            }),
                           ),
                         ),
                       ],

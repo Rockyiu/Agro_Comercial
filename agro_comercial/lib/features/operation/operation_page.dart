@@ -12,7 +12,11 @@ import 'operation_controller.dart';
 import 'operation_state.dart';
 
 class OperationPage extends StatefulWidget {
-  const OperationPage({super.key});
+  // false quando a tela é exibida como aba de outra (ex: Home do colaborador),
+  // que já tem a própria barra de título
+  final bool showAppBar;
+
+  const OperationPage({super.key, this.showAppBar = true});
 
   @override
   State<OperationPage> createState() => _OperationPageState();
@@ -64,14 +68,16 @@ class _OperationPageState extends State<OperationPage> {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
       // ADICIONADO: A barra superior com o botão de voltar!
-      appBar: AppBar(
-        title: Text(
-          "Histórico de Operações",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(
+                "Histórico de Operações",
+                style: AppTextStyles.midText20.copyWith(color: Colors.white),
+              ),
+              backgroundColor: AppColors.greenlightOne,
+              iconTheme: const IconThemeData(color: Colors.white),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {

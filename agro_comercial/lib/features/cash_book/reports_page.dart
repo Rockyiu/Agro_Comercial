@@ -13,6 +13,7 @@ import 'package:printing/printing.dart';
 import 'bookkeeping_controller.dart';
 import 'bookkeeping_state.dart';
 import 'consolidation_controller.dart';
+import 'widgets/year_selector.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -166,7 +167,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       ),
                     ),
                     pw.Text(
-                      "2026",
+                      "${_consolidationController.anoSelecionado}",
                       style: pw.TextStyle(
                         fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
@@ -274,9 +275,14 @@ class _ReportsPageState extends State<ReportsPage> {
             final state = _bookkeepingController.state;
             List<List<String>> data = [];
 
-            if (state is BookkeepingSuccessState &&
-                state.lancamentos.isNotEmpty) {
-              data = state.lancamentos.map((l) {
+            final ano = _consolidationController.anoSelecionado;
+            final lancamentosDoAno = [
+              if (state is BookkeepingSuccessState)
+                ...state.lancamentos.where((l) => l.ano == ano),
+            ];
+
+            if (lancamentosDoAno.isNotEmpty) {
+              data = lancamentosDoAno.map((l) {
                 return [
                   "${l.dia.toString().padLeft(2, '0')}/${(l.mes + 1).toString().padLeft(2, '0')}/${l.ano}",
                   l.conta.split(' - ')[0],
@@ -483,6 +489,17 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Ano-calendário dos relatórios (o mesmo da Escrituração
+                      // e da Consolidação)
+                      ListenableBuilder(
+                        listenable: _consolidationController,
+                        builder: (context, _) => YearSelector(
+                          year: _consolidationController.anoSelecionado,
+                          years: _consolidationController.anosDisponiveis,
+                          onChanged: _consolidationController.selecionarAno,
+                        ),
                       ),
                       const Divider(height: 32),
 

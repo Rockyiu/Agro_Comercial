@@ -30,6 +30,8 @@ class ProductController extends SafeChangeNotifier {
         _changeState(ProductErrorState("Erro: Nenhuma fazenda selecionada!"));
         return;
       }
+      if (await _isDuplicate(product)) return;
+
       await _productService.createProduct(
         product.copyWith(farmId: activeFarmId),
         imageFile,
@@ -44,12 +46,33 @@ class ProductController extends SafeChangeNotifier {
   Future<void> updateProduct(ProductModel product) async {
     _changeState(ProductLoadingState());
     try {
+      if (await _isDuplicate(product)) return;
+
       await _productService.updateProduct(product, null);
       _changeState(ProductSuccessState());
     } catch (e) {
       debugPrint("Erro ao atualizar produto: $e");
       _changeState(ProductErrorState("Erro ao atualizar o produto."));
     }
+  }
+
+  // Bloqueia dois produtos com o mesmo nome e marca no mesmo armazém.
+  // Se for duplicado, já muda o estado para erro com a explicação.
+  Future<bool> _isDuplicate(ProductModel product) async {
+    final duplicate = await _productService.checkDuplicateProduct(
+      product.name,
+      product.brand,
+      product.warehouseId,
+      ignoreId: product.id,
+    );
+    if (duplicate) {
+      _changeState(
+        ProductErrorState(
+          'Já existe o produto "${product.name}" da marca "${product.brand}" neste armazém. Edite o produto existente para alterar a quantidade.',
+        ),
+      );
+    }
+    return duplicate;
   }
 
   Future<void> deleteProduct(String productId) async {
