@@ -150,6 +150,10 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
               ? Parsers.decimal(_dosageController.text)
               : null,
           dosageUnit: _isApplication ? _selectedDosageUnit : null,
+          // Preço do dia, para o custo do talhão não mudar se o preço do
+          // produto for alterado depois
+          unitPrice: product?.unitPrice,
+          productUnit: product?.unit,
           machineId: machine?.id,
           machineName: machine?.name,
         ),

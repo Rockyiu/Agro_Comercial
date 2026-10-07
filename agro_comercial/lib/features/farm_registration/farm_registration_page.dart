@@ -1,5 +1,8 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/crop_options.dart';
+import 'package:agro_comercial/common/utils/area_units.dart';
+import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -31,21 +34,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
 
   final List<Map<String, TextEditingController>> _fieldControllers = [];
 
-  // A SUA LISTA DE CULTURAS VOLTOU AQUI!
-  final List<String> _cropOptions = [
-    'Soja',
-    'Milho',
-    'Trigo',
-    'Café',
-    'Cana-de-açúcar',
-    'Feijão',
-    'Cenoura',
-    'Tomate',
-    'Algodão',
-    'Laranja',
-    'Pastagem',
-    'Outro',
-  ];
+  String _areaUnit = AreaUnits.hectare;
 
   @override
   void initState() {
@@ -116,6 +105,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
         address: _addressController.text.trim(),
         totalArea: _totalAreaController.text.trim(),
         plantedFields: plantedFields,
+        areaUnit: _areaUnit,
       );
     }
   }
@@ -193,9 +183,15 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       : null,
                 ),
                 const SizedBox(height: 16),
+                AreaUnitSelector(
+                  value: _areaUnit,
+                  onChanged: (unit) => setState(() => _areaUnit = unit),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                ),
+                const SizedBox(height: 8),
                 CustomTextFormField(
                   controller: _totalAreaController,
-                  labelText: "Área Total (Alqueires ou Hectares)",
+                  labelText: "Área Total (${AreaUnits.shortLabel(_areaUnit)})",
                   hintText: "Ex: 50",
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -266,7 +262,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                               Expanded(
                                 child: CustomTextFormField(
                                   controller: controllers['area']!,
-                                  labelText: "Área Plantada",
+                                  labelText:
+                                      "Área Plantada (${AreaUnits.shortLabel(_areaUnit)})",
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -314,7 +311,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                     "Selecione",
                                     style: TextStyle(fontSize: 13),
                                   ),
-                                  items: _cropOptions.map((String crop) {
+                                  items: CropOptions.all.map((String crop) {
                                     return DropdownMenuItem<String>(
                                       value: crop,
                                       child: Text(

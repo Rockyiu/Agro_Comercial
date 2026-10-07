@@ -33,6 +33,7 @@ class ProductService {
       'unit': product.unit,
       'category': product.category,
       'attributes': product.attributes,
+      'unitPrice': product.unitPrice,
     });
   }
 

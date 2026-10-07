@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'farm_registration_state.dart';
 
@@ -25,6 +26,7 @@ class FarmRegistrationController extends SafeChangeNotifier {
     required String address,
     required String totalArea,
     required List<Map<String, dynamic>> plantedFields,
+    String areaUnit = AreaUnits.hectare,
   }) async {
     _changeState(FarmRegistrationLoadingState());
 
@@ -43,6 +45,7 @@ class FarmRegistrationController extends SafeChangeNotifier {
         totalArea: totalArea,
         plantedFields: plantedFields,
         ownerId: user.uid, // Vincula ao dono atual!
+        areaUnit: areaUnit,
       );
 
       // Salva de verdade no Firebase

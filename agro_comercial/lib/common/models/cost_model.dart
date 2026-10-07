@@ -9,6 +9,9 @@ class CostModel {
   final String? observation;
   final Map<String, dynamic>?
   calculationData; // Guarda os valores usados na fórmula (Vi, Vs, Vm, etc)
+  // Talhão ao qual o custo pertence. Vazio = fazenda inteira (nos relatórios
+  // o valor é rateado entre os talhões pela área)
+  final String? plotName;
 
   CostModel({
     this.id,
@@ -19,6 +22,7 @@ class CostModel {
     required this.dateTimestamp,
     this.observation,
     this.calculationData,
+    this.plotName,
   });
 
   // Custos de mão de obra são restritos ao produtor (Admin).
@@ -37,6 +41,7 @@ class CostModel {
     int? dateTimestamp,
     String? observation,
     Map<String, dynamic>? calculationData,
+    String? plotName,
   }) {
     return CostModel(
       id: id ?? this.id,
@@ -47,6 +52,7 @@ class CostModel {
       dateTimestamp: dateTimestamp ?? this.dateTimestamp,
       observation: observation ?? this.observation,
       calculationData: calculationData ?? this.calculationData,
+      plotName: plotName ?? this.plotName,
     );
   }
 
@@ -59,6 +65,7 @@ class CostModel {
       'dateTimestamp': dateTimestamp,
       'observation': observation,
       'calculationData': calculationData,
+      'plotName': plotName,
     };
   }
 
@@ -74,6 +81,7 @@ class CostModel {
       calculationData: map['calculationData'] != null
           ? Map<String, dynamic>.from(map['calculationData'])
           : null,
+      plotName: map['plotName'],
     );
   }
 }

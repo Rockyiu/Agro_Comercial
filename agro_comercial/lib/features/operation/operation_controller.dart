@@ -128,12 +128,15 @@ class OperationController extends SafeChangeNotifier {
       farmId: farmId,
       dateTimestamp: dateTimestamp,
       createdBy: createdBy,
+      plotName: form.plotName,
       usedMachine: form.usedMachine,
       machineId: form.machineId,
       machineName: form.machineName,
       machineHours: form.usedMachine
           ? _workedHours(form.machineId, initialHorimeter, finalHorimeter)
           : null,
+      implementId: form.usedMachine ? form.implementId : null,
+      implementName: form.usedMachine ? form.implementName : null,
       usedProducts: form.usedProducts,
       appliedProducts: appliedProductsList,
     );

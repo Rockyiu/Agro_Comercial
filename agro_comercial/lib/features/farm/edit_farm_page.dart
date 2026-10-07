@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/crop_options.dart';
+import 'package:agro_comercial/common/utils/area_units.dart';
+import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -27,6 +30,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
   late TextEditingController _totalAreaController;
 
   final List<Map<String, TextEditingController>> _fieldControllers = [];
+  late String _areaUnit = widget.farm.areaUnit;
 
   bool _isLoading = false;
 
@@ -113,6 +117,9 @@ class _EditFarmPageState extends State<EditFarmPage> {
         totalArea: _totalAreaController.text
             .trim(), // CORREÇÃO 2: Mantido como String
         plantedFields: updatedFields,
+        // Sem o dono, a fazenda some da lista do produtor após salvar
+        ownerId: widget.farm.ownerId,
+        areaUnit: _areaUnit,
       );
 
       // CORREÇÃO 3: Descomentado para salvar no Firebase usando o controller
@@ -179,9 +186,16 @@ class _EditFarmPageState extends State<EditFarmPage> {
                       validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 16),
+                    AreaUnitSelector(
+                      value: _areaUnit,
+                      onChanged: (unit) => setState(() => _areaUnit = unit),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                    ),
+                    const SizedBox(height: 8),
                     CustomTextFormField(
                       controller: _totalAreaController,
-                      labelText: "Área Total (Alqueires/Hectares)",
+                      labelText:
+                          "Área Total (${AreaUnits.shortLabel(_areaUnit)})",
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -250,7 +264,8 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                   Expanded(
                                     child: CustomTextFormField(
                                       controller: controllers['area']!,
-                                      labelText: "Área Plantada",
+                                      labelText:
+                                          "Área Plantada (${AreaUnits.shortLabel(_areaUnit)})",
                                       keyboardType:
                                           const TextInputType.numberWithOptions(
                                             decimal: true,
@@ -261,11 +276,39 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
-                                    child: CustomTextFormField(
-                                      controller: controllers['crop']!,
-                                      labelText: "Cultura (Ex: Soja)",
-                                      validator: (v) =>
-                                          v!.isEmpty ? "Obrigatório" : null,
+                                    child: DropdownButtonFormField<String>(
+                                      isExpanded: true,
+                                      initialValue:
+                                          controllers['crop']!.text.isEmpty
+                                          ? null
+                                          : controllers['crop']!.text,
+                                      decoration: const InputDecoration(
+                                        labelText: "Cultura",
+                                        enabledBorder: OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: AppColors.greenlightOne,
+                                          ),
+                                        ),
+                                      ),
+                                      items:
+                                          CropOptions.withCurrent(
+                                                controllers['crop']!.text,
+                                              )
+                                              .map(
+                                                (crop) => DropdownMenuItem(
+                                                  value: crop,
+                                                  child: Text(crop),
+                                                ),
+                                              )
+                                              .toList(),
+                                      onChanged: (v) {
+                                        if (v != null) {
+                                          controllers['crop']!.text = v;
+                                        }
+                                      },
+                                      validator: (v) => v == null || v.isEmpty
+                                          ? "Obrigatório"
+                                          : null,
                                     ),
                                   ),
                                 ],

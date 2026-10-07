@@ -7,6 +7,8 @@ import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_details_page.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
 import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
+import 'package:agro_comercial/features/harvest/harvest_page.dart';
+import 'package:agro_comercial/features/harvest/register_harvest_page.dart';
 import 'package:agro_comercial/features/operation/operation_details_page.dart';
 import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/operation/register_operation_page.dart';
@@ -77,6 +79,14 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
           subtitle: 'Plantio, colheita, aplicação',
           onTap: () => _openPage(const RegisterOperationPage()),
         ),
+        // Só para colaboradores liberados pelo produtor em "Minha Equipe"
+        if (_controller.canRegisterHarvest)
+          AddMenuOption(
+            icon: Icons.grass,
+            title: 'Colheita',
+            subtitle: 'Produção do talhão e preço de venda',
+            onTap: () => _openPage(const RegisterHarvestPage()),
+          ),
       ],
     );
   }
@@ -134,6 +144,18 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
               ],
             ),
             items: [
+              // Reconstrói quando a permissão de colheita é carregada
+              ListenableBuilder(
+                listenable: _controller,
+                builder: (context, _) => _controller.canRegisterHarvest
+                    ? DrawerMenuItem(
+                        icon: Icons.grass,
+                        title: 'Minhas Colheitas',
+                        onTap: () =>
+                            _openPage(const HarvestPage(onlyMine: true)),
+                      )
+                    : const SizedBox.shrink(),
+              ),
               DrawerMenuItem(
                 icon: Icons.person_outline,
                 title: 'Meu Perfil',

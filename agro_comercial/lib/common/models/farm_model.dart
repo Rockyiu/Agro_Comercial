@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:agro_comercial/common/utils/area_units.dart';
+
 class FarmModel {
   final String? id;
   final String name;
@@ -9,6 +11,8 @@ class FarmModel {
   final List<Map<String, dynamic>>
   plantedFields; // ADICIONADO: Lista com os dados de cada talhão
   final String? ownerId;
+  // Unidade da área total e dos talhões: 'ha' (hectare) ou 'alq' (alqueire)
+  final String areaUnit;
 
   FarmModel({
     this.id,
@@ -18,7 +22,12 @@ class FarmModel {
     required this.totalArea,
     required this.plantedFields,
     this.ownerId,
+    this.areaUnit = AreaUnits.hectare,
   });
+
+  // Nomes dos talhões (usados nos seletores de talhão dos formulários)
+  List<String> get plotNames =>
+      plantedFields.map((field) => field['name'].toString()).toList();
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -29,6 +38,7 @@ class FarmModel {
       'totalArea': totalArea,
       'plantedFields': plantedFields, // Salva a lista de talhões
       'ownerId': ownerId,
+      'areaUnit': areaUnit,
     };
   }
 
@@ -49,6 +59,7 @@ class FarmModel {
             )
           : [],
       ownerId: map['ownerId'] != null ? map['ownerId'] as String : null,
+      areaUnit: map['areaUnit'] as String? ?? AreaUnits.hectare,
     );
   }
 

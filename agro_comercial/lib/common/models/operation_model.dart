@@ -5,14 +5,22 @@ class OperationModel {
   final String farmId;
   final int dateTimestamp;
   final String? createdBy; // UID de quem registrou a operação
+  // Talhão onde a operação foi feita. Vazio = fazenda inteira (nos relatórios
+  // o custo é rateado entre os talhões pela área)
+  final String? plotName;
 
   // Maquinário utilizado
   final bool usedMachine;
   final String? machineId;
   final String? machineName;
   final double? machineHours;
+  // Implemento acoplado ao trator (trabalha as mesmas horas da máquina)
+  final String? implementId;
+  final String? implementName;
 
-  // Produtos utilizados (Lista de 1 a 10 produtos stocados)
+  // Produtos utilizados (Lista de 1 a 10 produtos stocados).
+  // Cada item: productId, productName, dosage, dosageUnit e, desde os
+  // relatórios de custo, unitPrice e productUnit (preço no dia do lançamento)
   final bool usedProducts;
   final List<Map<String, dynamic>> appliedProducts;
 
@@ -23,10 +31,13 @@ class OperationModel {
     required this.farmId,
     required this.dateTimestamp,
     this.createdBy,
+    this.plotName,
     required this.usedMachine,
     this.machineId,
     this.machineName,
     this.machineHours,
+    this.implementId,
+    this.implementName,
     required this.usedProducts,
     required this.appliedProducts,
   });
@@ -38,10 +49,13 @@ class OperationModel {
     String? farmId,
     int? dateTimestamp,
     String? createdBy,
+    String? plotName,
     bool? usedMachine,
     String? machineId,
     String? machineName,
     double? machineHours,
+    String? implementId,
+    String? implementName,
     bool? usedProducts,
     List<Map<String, dynamic>>? appliedProducts,
   }) {
@@ -52,10 +66,13 @@ class OperationModel {
       farmId: farmId ?? this.farmId,
       dateTimestamp: dateTimestamp ?? this.dateTimestamp,
       createdBy: createdBy ?? this.createdBy,
+      plotName: plotName ?? this.plotName,
       usedMachine: usedMachine ?? this.usedMachine,
       machineId: machineId ?? this.machineId,
       machineName: machineName ?? this.machineName,
       machineHours: machineHours ?? this.machineHours,
+      implementId: implementId ?? this.implementId,
+      implementName: implementName ?? this.implementName,
       usedProducts: usedProducts ?? this.usedProducts,
       appliedProducts: appliedProducts ?? this.appliedProducts,
     );
@@ -69,10 +86,13 @@ class OperationModel {
       'farmId': farmId,
       'dateTimestamp': dateTimestamp,
       'createdBy': createdBy,
+      'plotName': plotName,
       'usedMachine': usedMachine,
       'machineId': machineId,
       'machineName': machineName,
       'machineHours': machineHours,
+      'implementId': implementId,
+      'implementName': implementName,
       'usedProducts': usedProducts,
       'appliedProducts': appliedProducts,
     };
@@ -87,10 +107,13 @@ class OperationModel {
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
       createdBy: map['createdBy'],
+      plotName: map['plotName'],
       usedMachine: map['usedMachine'] ?? false,
       machineId: map['machineId'],
       machineName: map['machineName'],
       machineHours: (map['machineHours'] as num?)?.toDouble(),
+      implementId: map['implementId'],
+      implementName: map['implementName'],
       usedProducts: map['usedProducts'] ?? false,
       appliedProducts: List<Map<String, dynamic>>.from(
         map['appliedProducts'] ?? [],

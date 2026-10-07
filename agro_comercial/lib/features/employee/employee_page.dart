@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
@@ -53,6 +54,20 @@ class _EmployeePageState extends State<EmployeePage> {
       _controller.deleteSelectedEmployees(selectedEmployees.toList());
       setState(() => selectedEmployees.clear());
     }
+  }
+
+  Future<void> _setHarvestPermission(UserModel emp, bool allowed) async {
+    final ok = await _controller.setHarvestPermission(emp, allowed);
+    if (!mounted) return;
+    if (!ok) {
+      context.showErrorSnackBar("Não foi possível alterar a permissão.");
+      return;
+    }
+    context.showSuccessSnackBar(
+      allowed
+          ? "${emp.name} agora pode registrar Produção / Colheita."
+          : "Produção / Colheita bloqueada para ${emp.name}.",
+    );
   }
 
   @override
@@ -143,34 +158,54 @@ class _EmployeePageState extends State<EmployeePage> {
                               _toggleSelection(emp);
                             }
                           },
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.greenlightOne
-                                  .withValues(alpha: 0.1),
-                              child: const Icon(
-                                Icons.person,
-                                color: AppColors.greenlightOne,
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: AppColors.greenlightOne
+                                      .withValues(alpha: 0.1),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: AppColors.greenlightOne,
+                                  ),
+                                ),
+                                title: Text(
+                                  emp.name ?? '',
+                                  style: AppTextStyles.inputText.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "CPF: ${emp.cpf ?? 'Não informado'}",
+                                ),
+                                trailing: selectedEmployees.isEmpty
+                                    ? IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () =>
+                                            _showDeleteDialog(singleEmp: emp),
+                                      )
+                                    : null,
                               ),
-                            ),
-                            title: Text(
-                              emp.name ?? '',
-                              style: AppTextStyles.inputText.copyWith(
-                                fontWeight: FontWeight.bold,
+                              // Permissões que o produtor pode liberar
+                              SwitchListTile(
+                                dense: true,
+                                secondary: const Icon(
+                                  Icons.grass,
+                                  color: AppColors.greenlightOne,
+                                ),
+                                title: const Text(
+                                  "Pode registrar Produção / Colheita",
+                                ),
+                                activeThumbColor: AppColors.greenlightOne,
+                                value: emp.canRegisterHarvest,
+                                onChanged: selectedEmployees.isEmpty
+                                    ? (v) => _setHarvestPermission(emp, v)
+                                    : null,
                               ),
-                            ),
-                            subtitle: Text(
-                              "CPF: ${emp.cpf ?? 'Não informado'}",
-                            ),
-                            trailing: selectedEmployees.isEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () =>
-                                        _showDeleteDialog(singleEmp: emp),
-                                  )
-                                : null,
+                            ],
                           ),
                         ),
                       );

@@ -8,6 +8,7 @@ import 'services/cost_service/cost_service.dart';
 import 'services/employee_service/employee_service.dart';
 import 'services/farm_service/farm_service.dart';
 import 'services/field_operation_service/field_operation_service.dart';
+import 'services/harvest_service/harvest_service.dart';
 import 'services/invoice_service/invoice_local_service.dart';
 import 'services/machine_service/machine_service.dart';
 import 'services/operation_service/operation_service.dart';
@@ -29,6 +30,7 @@ import 'features/farm/farm_controller.dart';
 import 'features/farm_registration/farm_registration_controller.dart';
 import 'features/field_operations/field_operation_controller.dart';
 import 'features/forgot_password/forgot_password_controller.dart';
+import 'features/harvest/harvest_controller.dart';
 import 'features/home/collaborator_home_controller.dart';
 import 'features/home/home_controller.dart';
 import 'features/invoices/invoice_controller.dart';
@@ -37,6 +39,7 @@ import 'features/profile/profile_controller.dart';
 import 'features/register_machine/register_machine_controller.dart';
 import 'features/register_product/product_controller.dart';
 import 'features/register_warehouse/register_warehouse_controller.dart';
+import 'features/reports/reports_controller.dart';
 import 'features/reset_password/reset_password_controller.dart';
 import 'features/sign_in/sign_in_controller.dart';
 import 'features/sign_up/sign_up_controller.dart';
@@ -78,6 +81,7 @@ void _registerServices() {
   locator.registerFactory<FieldOperationService>(() => FieldOperationService());
 
   locator.registerLazySingleton<CostService>(() => CostService());
+  locator.registerFactory<HarvestService>(() => HarvestService());
   locator.registerLazySingleton<BookkeepingService>(() => BookkeepingService());
   // Singleton: mantém uma única conexão aberta com o banco local (SQLite)
   locator.registerLazySingleton<InvoiceLocalService>(
@@ -151,6 +155,7 @@ void _registerControllers() {
       locator.get<OperationService>(),
       locator.get<FieldOperationService>(),
       locator.get<FarmController>(),
+      locator.get<EmployeeService>(),
     ),
   );
 
@@ -229,6 +234,24 @@ void _registerControllers() {
     () => InvoiceController(
       locator.get<InvoiceLocalService>(),
       locator.get<FarmController>(),
+    ),
+  );
+
+  // Produção e relatórios de custo de produção
+  locator.registerFactory<HarvestController>(
+    () => HarvestController(
+      locator.get<HarvestService>(),
+      locator.get<FarmController>(),
+    ),
+  );
+  locator.registerFactory<ReportsController>(
+    () => ReportsController(
+      locator.get<FarmController>(),
+      locator.get<OperationService>(),
+      locator.get<FieldOperationService>(),
+      locator.get<CostService>(),
+      locator.get<HarvestService>(),
+      locator.get<StockService>(),
     ),
   );
 }

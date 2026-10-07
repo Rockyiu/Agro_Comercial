@@ -2,6 +2,7 @@ import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
@@ -26,6 +27,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _brandController;
   late final TextEditingController _quantityController;
+  late final TextEditingController _priceController;
   late final TextEditingController _extraController;
 
   // Campo de especificação que está sendo exibido/editado
@@ -40,6 +42,9 @@ class _EditProductPageState extends State<EditProductPage> {
     _brandController = TextEditingController(text: product.brand);
     _quantityController = TextEditingController(
       text: product.quantity.toString(),
+    );
+    _priceController = TextEditingController(
+      text: product.unitPrice?.toString().replaceAll('.', ',') ?? '',
     );
 
     _extraKey = product.attributes.containsKey('campo_extra_1')
@@ -56,6 +61,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _nameController.dispose();
     _brandController.dispose();
     _quantityController.dispose();
+    _priceController.dispose();
     _extraController.dispose();
     super.dispose();
   }
@@ -90,11 +96,21 @@ class _EditProductPageState extends State<EditProductPage> {
       attributes[_extraKey] = _extraController.text.trim();
     }
 
-    final updatedProduct = widget.product.copyWith(
+    // Construído sem copyWith para permitir apagar o preço (null)
+    final product = widget.product;
+    final updatedProduct = ProductModel(
+      id: product.id,
       name: _nameController.text.trim(),
       brand: _brandController.text.trim(),
       quantity: Parsers.decimal(_quantityController.text) ?? 0.0,
+      measure: product.measure,
+      unit: product.unit,
+      category: product.category,
+      warehouseId: product.warehouseId,
+      farmId: product.farmId,
+      imageUrl: product.imageUrl,
       attributes: attributes,
+      unitPrice: Parsers.decimal(_priceController.text),
     );
     await _runAndClose(() => _controller.updateProduct(updatedProduct));
   }
@@ -185,6 +201,15 @@ class _EditProductPageState extends State<EditProductPage> {
                     decimal: true,
                   ),
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                ),
+                CustomTextFormField(
+                  controller: _priceController,
+                  labelText: "PREÇO POR ${widget.product.unit} (R\$)",
+                  hintText: "Usado no custo por talhão",
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: Validator.validateOptionalDecimal,
                 ),
 
                 if (widget.product.attributes.isNotEmpty)

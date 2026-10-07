@@ -10,6 +10,10 @@ class UserModel {
   final String? phone;
   final String? imageUrl;
   final String? managerId; // ADICIONADO: O ID do gerente dono da fazenda
+  // Colaborador liberado pelo produtor para registrar Produção/Colheita.
+  // Só é gravado pela tela "Minha Equipe" (EmployeeService), por isso fica
+  // fora do toMap: salvar o perfil não pode apagar nem alterar a liberação.
+  final bool canRegisterHarvest;
 
   UserModel({
     required this.id,
@@ -21,9 +25,25 @@ class UserModel {
     this.phone,
     this.imageUrl,
     this.managerId,
+    this.canRegisterHarvest = false,
   });
 
   bool get isCollaborator => role == 'colaborador';
+
+  UserModel copyWith({bool? canRegisterHarvest}) {
+    return UserModel(
+      id: id,
+      name: name,
+      email: email,
+      cpf: cpf,
+      password: password,
+      role: role,
+      phone: phone,
+      imageUrl: imageUrl,
+      managerId: managerId,
+      canRegisterHarvest: canRegisterHarvest ?? this.canRegisterHarvest,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
@@ -49,6 +69,7 @@ class UserModel {
       phone: map['phone'] != null ? map['phone'] as String : null,
       imageUrl: map['imageUrl'] != null ? map['imageUrl'] as String : null,
       managerId: map['managerId'] != null ? map['managerId'] as String : null,
+      canRegisterHarvest: map['canRegisterHarvest'] == true,
     );
   }
 

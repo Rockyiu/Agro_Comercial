@@ -136,6 +136,8 @@ class FieldOperationController extends SafeChangeNotifier {
       productName: form.productName,
       dosage: form.dosage,
       dosageUnit: form.dosageUnit,
+      unitPrice: form.unitPrice,
+      productUnit: form.productUnit,
       machineId: form.machineId,
       machineName: form.machineName,
       machineHours: form.isInspection

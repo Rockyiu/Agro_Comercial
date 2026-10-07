@@ -5,6 +5,7 @@ import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/loading_overlay.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -24,6 +25,10 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
   final _controller = locator.get<OperationController>();
   bool _isEditing = false;
   bool _isProcessing = false;
+
+  // Talhões cadastrados na fazenda ativa
+  final List<String> _plots =
+      locator.get<FarmController>().selectedFarm?.plotNames ?? [];
 
   @override
   void initState() {
@@ -140,6 +145,7 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         OperationForm(
           machines: _controller.machines,
           products: _controller.products,
+          plots: _plots,
           initialOperation: widget.operation,
           submitText: "Salvar Alterações",
           onSubmit: _update,
@@ -174,6 +180,12 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
           ),
         ),
         const SizedBox(height: 16),
+        ListTile(
+          leading: const Icon(Icons.grid_view, color: AppColors.greenlightOne),
+          title: Text(
+            "Talhão: ${(operation.plotName?.isNotEmpty ?? false) ? operation.plotName : 'Fazenda inteira'}",
+          ),
+        ),
         if (operation.usedMachine)
           ListTile(
             leading: const Icon(
@@ -186,6 +198,14 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
                   ? "Operou por: ${operation.machineHours!.toStringAsFixed(1)}h"
                   : "Implemento manual / Sem horas",
             ),
+          ),
+        if (operation.usedMachine && operation.implementName != null)
+          ListTile(
+            leading: const Icon(
+              Icons.precision_manufacturing_outlined,
+              color: AppColors.greenlightOne,
+            ),
+            title: Text("Implemento: ${operation.implementName}"),
           ),
         if (operation.usedProducts) ...[
           const Padding(

@@ -13,6 +13,9 @@ class FieldOperationModel {
   final String? productName;
   final double? dosage;
   final String? dosageUnit;
+  // Preço do insumo no dia do lançamento, por unidade do estoque (productUnit)
+  final double? unitPrice;
+  final String? productUnit;
 
   final String? machineId;
   final String? machineName;
@@ -31,6 +34,8 @@ class FieldOperationModel {
     this.productName,
     this.dosage,
     this.dosageUnit,
+    this.unitPrice,
+    this.productUnit,
     this.machineId,
     this.machineName,
     this.machineHours, // ADICIONADO
@@ -51,6 +56,8 @@ class FieldOperationModel {
     String? productName,
     double? dosage,
     String? dosageUnit,
+    double? unitPrice,
+    String? productUnit,
     String? machineId,
     String? machineName,
     double? machineHours,
@@ -68,6 +75,8 @@ class FieldOperationModel {
       productName: productName ?? this.productName,
       dosage: dosage ?? this.dosage,
       dosageUnit: dosageUnit ?? this.dosageUnit,
+      unitPrice: unitPrice ?? this.unitPrice,
+      productUnit: productUnit ?? this.productUnit,
       machineId: machineId ?? this.machineId,
       machineName: machineName ?? this.machineName,
       machineHours: machineHours ?? this.machineHours,
@@ -88,6 +97,8 @@ class FieldOperationModel {
       'productName': productName,
       'dosage': dosage,
       'dosageUnit': dosageUnit,
+      'unitPrice': unitPrice,
+      'productUnit': productUnit,
       'machineId': machineId,
       'machineName': machineName,
       'machineHours': machineHours,
@@ -109,6 +120,8 @@ class FieldOperationModel {
       productName: map['productName'],
       dosage: (map['dosage'] as num?)?.toDouble(),
       dosageUnit: map['dosageUnit'],
+      unitPrice: (map['unitPrice'] as num?)?.toDouble(),
+      productUnit: map['productUnit'],
       machineId: map['machineId'],
       machineName: map['machineName'],
       machineHours: (map['machineHours'] as num?)?.toDouble(), // ADICIONADO

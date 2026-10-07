@@ -10,6 +10,7 @@ class ProductModel {
   final String farmId;
   final String? imageUrl;
   final Map<String, dynamic> attributes;
+  final double? unitPrice; // Preço por unidade do estoque (ex: R$ por L)
 
   ProductModel({
     this.id,
@@ -23,10 +24,14 @@ class ProductModel {
     required this.farmId,
     this.imageUrl,
     required this.attributes,
+    this.unitPrice,
   });
 
   // Estoque total na unidade do produto (ex: 3 embalagens de 20 L = 60 L)
   double get totalStock => quantity * measure;
+
+  // Princípio ativo / composição informado no cadastro (defensivos e adubos)
+  String get formulation => attributes['campo_extra_1']?.toString() ?? '';
 
   ProductModel copyWith({
     String? id,
@@ -40,6 +45,7 @@ class ProductModel {
     String? farmId,
     String? imageUrl,
     Map<String, dynamic>? attributes,
+    double? unitPrice,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -53,6 +59,7 @@ class ProductModel {
       farmId: farmId ?? this.farmId,
       imageUrl: imageUrl ?? this.imageUrl,
       attributes: attributes ?? this.attributes,
+      unitPrice: unitPrice ?? this.unitPrice,
     );
   }
 
@@ -69,6 +76,7 @@ class ProductModel {
       'farmId': farmId,
       'imageUrl': imageUrl,
       'attributes': attributes,
+      'unitPrice': unitPrice,
     };
   }
 
@@ -85,6 +93,7 @@ class ProductModel {
       farmId: map['farmId'] ?? '',
       imageUrl: map['imageUrl'],
       attributes: Map<String, dynamic>.from(map['attributes'] ?? {}),
+      unitPrice: (map['unitPrice'] as num?)?.toDouble(),
     );
   }
 }

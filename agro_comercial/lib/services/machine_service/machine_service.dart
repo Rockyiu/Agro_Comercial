@@ -58,6 +58,7 @@ class MachineService {
       'power': machine.power,
       'workingHours': machine.workingHours,
       'imageUrl': imageUrl,
+      'costData': machine.costData?.toMap(),
     });
   }
 

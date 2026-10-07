@@ -67,12 +67,33 @@ class EmployeeService {
     });
   }
 
+  // Libera ou bloqueia o registro de Produção/Colheita para o colaborador
+  Future<void> setHarvestPermission(String userId, bool allowed) async {
+    await _firestore.collection('users').doc(userId).update({
+      'canRegisterHarvest': allowed,
+    });
+  }
+
+  // O colaborador logado foi liberado para registrar Produção/Colheita?
+  Future<bool> hasHarvestPermission(String userId) async {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    return doc.data()?['canRegisterHarvest'] == true;
+  }
+
+  // Campos apagados ao desvincular: a liberação não acompanha o colaborador
+  // se ele for vinculado depois a outra fazenda
+  static final _unlinkFields = {
+    'farmId': FieldValue.delete(),
+    'canRegisterHarvest': FieldValue.delete(),
+  };
+
   // 3. Remove o acesso (desvincula da fazenda)
   Future<void> removeEmployeeAccess(UserModel employee) async {
     if (employee.id != null) {
-      await _firestore.collection('users').doc(employee.id).update({
-        'farmId': FieldValue.delete(),
-      });
+      await _firestore
+          .collection('users')
+          .doc(employee.id)
+          .update(_unlinkFields);
     }
   }
 
@@ -82,7 +103,7 @@ class EmployeeService {
     for (var emp in employees) {
       if (emp.id != null) {
         final docRef = _firestore.collection('users').doc(emp.id);
-        batch.update(docRef, {'farmId': FieldValue.delete()});
+        batch.update(docRef, _unlinkFields);
       }
     }
     await batch.commit();

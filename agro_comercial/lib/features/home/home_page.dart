@@ -13,6 +13,8 @@ import 'package:agro_comercial/features/farm_registration/farm_registration_page
 import 'package:agro_comercial/features/field_operations/field_operation_details_page.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
 import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
+import 'package:agro_comercial/features/harvest/harvest_page.dart';
+import 'package:agro_comercial/features/harvest/register_harvest_page.dart';
 import 'package:agro_comercial/features/invoices/invoice_page.dart';
 import 'package:agro_comercial/features/operation/operation_details_page.dart';
 import 'package:agro_comercial/features/operation/operation_page.dart';
@@ -21,6 +23,7 @@ import 'package:agro_comercial/features/profile/profile_page.dart';
 import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
 import 'package:agro_comercial/features/register_product/register_product_page.dart';
 import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
+import 'package:agro_comercial/features/reports/production_reports_page.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
 import 'package:agro_comercial/locator.dart';
@@ -161,6 +164,12 @@ class _HomePageState extends State<HomePage> {
             title: 'Cadastrar Produto',
             subtitle: 'Insumos, sementes, defensivos, peças',
             onTap: () => _openPage(const RegisterProductPage()),
+          ),
+          AddMenuOption(
+            icon: Icons.grass,
+            title: 'Registrar Colheita',
+            subtitle: 'Produção do talhão e preço de venda',
+            onTap: () => _openPage(const RegisterHarvestPage()),
           ),
         ],
       );
@@ -312,6 +321,11 @@ class _HomePageState extends State<HomePage> {
           onTap: () => _openPage(const CostPage()),
         ),
         DrawerMenuItem(
+          icon: Icons.grass,
+          title: 'Produção / Colheita',
+          onTap: () => _openPage(const HarvestPage()),
+        ),
+        DrawerMenuItem(
           icon: Icons.people_outline,
           title: 'Minha Equipe',
           onTap: () => _openPage(const EmployeePage()),
@@ -368,13 +382,8 @@ class _HomePageState extends State<HomePage> {
       case _warehouseTab:
         return const WarehousePage();
       case _reportsTab:
-        return const Center(
-          child: EmptyState(
-            icon: Icons.bar_chart_rounded,
-            title: 'Relatórios em construção',
-            message: 'Em breve você poderá acompanhar os relatórios aqui.',
-          ),
-        );
+        // A key recria a aba ao trocar de fazenda
+        return ProductionReportsPage(key: ValueKey('reports_${farm.id}'));
       default:
         return _buildActivitiesTab();
     }

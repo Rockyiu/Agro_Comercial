@@ -114,4 +114,10 @@ class Validator {
     }
     return null;
   }
+
+  // Campo numérico opcional: vazio é aceito, mas se preenchido deve ser número
+  static String? validateOptionalDecimal(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return validateNumber(value);
+  }
 }

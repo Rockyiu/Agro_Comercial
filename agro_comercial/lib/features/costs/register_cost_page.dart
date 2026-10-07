@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/cost_categories.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -29,6 +32,17 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
 
   String? _selectedType;
   String? _selectedCategory;
+  String? _selectedPlot; // null = fazenda inteira (rateio por área)
+  late DateTime _costDate = widget.costToEdit != null
+      ? DateTime.fromMillisecondsSinceEpoch(widget.costToEdit!.dateTimestamp)
+      : DateTime.now();
+
+  // Talhões da fazenda ativa + o já salvo no custo (se foi renomeado/removido)
+  late final List<String> _plots = {
+    ...?locator.get<FarmController>().selectedFarm?.plotNames,
+    if (widget.costToEdit?.plotName?.isNotEmpty ?? false)
+      widget.costToEdit!.plotName!,
+  }.toList();
 
   final _valueController = TextEditingController();
   final _obsController = TextEditingController();
@@ -42,43 +56,8 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
   final _uahController = TextEditingController();
   final _rController = TextEditingController();
 
-  final List<String> _types = ['Variável', 'Fixo'];
-
   List<String> get _currentCategories {
-    List<String> categories = [];
-    if (_selectedType == 'Variável') {
-      categories = [
-        'Manutenção de Tratores',
-        'Manutenção de Implementos',
-        'Combustíveis, lubrificantes e filtros',
-        'Aluguel de máquinas',
-        'Manutenção de benfeitorias',
-        'Mão-de-obra temporária',
-        'Serviços contratados',
-        'Insumos',
-        'Despesas gerais',
-        'Assistência técnica',
-        'Transporte externo',
-        'Recepção, secagem, limpeza',
-        'Seguro rural',
-        'Juros sobre capital de giro',
-        'INSS',
-      ];
-    } else if (_selectedType == 'Fixo') {
-      categories = [
-        'Depreciação de Máquinas',
-        'Depreciação de Benfeitorias',
-        'Seguro de Máquinas',
-        'Seguro de Benfeitorias',
-        'Juros sobre Terras',
-        'Juros sobre Máquinas',
-        'Juros sobre Benfeitorias',
-        'Impostos, taxas e contribuições',
-        'Mão-de-obra fixa',
-        'Arrendamento',
-      ];
-    }
-
+    final categories = List<String>.of(CostCategories.byType(_selectedType));
     if (_isCollaborator) {
       categories.removeWhere(CostModel.isLaborCategory);
     }
@@ -98,7 +77,8 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
     final cost = widget.costToEdit;
     setState(() {
       _isCollaborator = isCollaborator;
-      _selectedType = cost?.type ?? 'Variável';
+      _selectedType = cost?.type ?? CostCategories.variable;
+      if (cost?.plotName?.isNotEmpty ?? false) _selectedPlot = cost!.plotName;
 
       if (cost != null) {
         _selectedCategory = cost.category;
@@ -140,6 +120,16 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
     _uahController.dispose();
     _rController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _costDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _costDate = picked);
   }
 
   double _parse(TextEditingController controller) {
@@ -268,11 +258,10 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         type: _selectedType!,
         category: _selectedCategory!,
         value: finalValue,
-        dateTimestamp:
-            widget.costToEdit?.dateTimestamp ??
-            DateTime.now().millisecondsSinceEpoch,
+        dateTimestamp: _costDate.millisecondsSinceEpoch,
         observation: _obsController.text.trim(),
         calculationData: calcData.isNotEmpty ? calcData : null,
+        plotName: _selectedPlot,
       );
 
       if (widget.costToEdit != null) {
@@ -451,7 +440,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                         ),
                       ),
                       initialValue: _selectedType,
-                      items: _types
+                      items: CostCategories.types
                           .map(
                             (t) => DropdownMenuItem(value: t, child: Text(t)),
                           )
@@ -486,6 +475,45 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     const SizedBox(height: 24),
                     ..._buildDynamicFields(),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<String?>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: "TALHÃO",
+                        helperText:
+                            "Sem talhão, o custo é rateado entre os talhões pela área",
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppColors.greenlightOne,
+                          ),
+                        ),
+                      ),
+                      initialValue: _selectedPlot,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("Fazenda inteira"),
+                        ),
+                        ..._plots.map(
+                          (p) => DropdownMenuItem<String?>(
+                            value: p,
+                            child: Text(p),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedPlot = v),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _pickDate,
+                      icon: const Icon(
+                        Icons.event,
+                        color: AppColors.greenlightOne,
+                      ),
+                      label: Text(
+                        "Data do custo: ${Formatters.date(_costDate.millisecondsSinceEpoch)}",
+                        style: const TextStyle(color: AppColors.greenlightOne),
+                      ),
+                    ),
                     CustomTextFormField(
                       controller: _obsController,
                       labelText: "OBSERVAÇÕES",

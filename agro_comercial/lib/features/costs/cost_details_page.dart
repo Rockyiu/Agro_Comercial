@@ -114,6 +114,18 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
                 ),
                 const SizedBox(height: 16),
 
+                Text(
+                  "TALHÃO",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                Text(
+                  (widget.cost.plotName?.isNotEmpty ?? false)
+                      ? widget.cost.plotName!
+                      : "Fazenda inteira (rateio por área)",
+                  style: AppTextStyles.inputText,
+                ),
+                const SizedBox(height: 16),
+
                 if (widget.cost.observation != null &&
                     widget.cost.observation!.isNotEmpty) ...[
                   Text(

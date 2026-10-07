@@ -1,4 +1,5 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
@@ -58,6 +59,7 @@ class RegisterMachineController extends SafeChangeNotifier {
     required String warehouseId,
     required bool isMotorized,
     required File? imageFile,
+    MachineCostData? costData,
   }) async {
     _changeState(RegisterMachineLoadingState());
 
@@ -91,6 +93,7 @@ class RegisterMachineController extends SafeChangeNotifier {
             activeFarmId, // CORREÇÃO: Agora garantido com a variável correta
         isMotorized: isMotorized,
         imageUrl: null,
+        costData: costData,
       );
 
       await _machineService.createMachine(newMachine, imageFile);

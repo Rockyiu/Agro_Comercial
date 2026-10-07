@@ -3,6 +3,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/loading_overlay.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -20,6 +21,10 @@ class RegisterOperationPage extends StatefulWidget {
 class _RegisterOperationPageState extends State<RegisterOperationPage> {
   final _controller = locator.get<OperationController>();
   bool _isProcessing = false;
+
+  // Talhões cadastrados na fazenda ativa
+  final List<String> _plots =
+      locator.get<FarmController>().selectedFarm?.plotNames ?? [];
 
   @override
   void initState() {
@@ -79,6 +84,7 @@ class _RegisterOperationPageState extends State<RegisterOperationPage> {
               child: OperationForm(
                 machines: _controller.machines,
                 products: _controller.products,
+                plots: _plots,
                 submitText: "Salvar Operação",
                 strictHorimeter: true,
                 onSubmit: _save,

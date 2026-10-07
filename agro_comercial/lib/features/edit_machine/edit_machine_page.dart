@@ -4,7 +4,9 @@ import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/machine_cost_fields.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
@@ -29,6 +31,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
   late TextEditingController _modelController;
   late TextEditingController _powerController;
   late TextEditingController _hoursController;
+  late final _costControllers = MachineCostControllers(widget.machine.costData);
 
   final _powerFocus = FocusNode();
   final _hoursFocus = FocusNode();
@@ -116,6 +119,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
     _modelController.dispose();
     _powerController.dispose();
     _hoursController.dispose();
+    _costControllers.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -280,6 +284,11 @@ class _EditMachinePageState extends State<EditMachinePage> {
                 labelText: "HORAS TRABALHADAS",
                 keyboardType: TextInputType.number,
               ),
+              const SizedBox(height: 16),
+              MachineCostFields(
+                controllers: _costControllers,
+                isMotorized: widget.machine.isMotorized,
+              ),
               const SizedBox(height: 32),
 
               PrimaryButton(
@@ -294,6 +303,10 @@ class _EditMachinePageState extends State<EditMachinePage> {
                       power: _powerController.text.trim(),
                       workingHours:
                           Parsers.decimal(_hoursController.text)?.round() ?? 0,
+                      // Campos apagados: grava os dados de custo vazios
+                      costData:
+                          _costControllers.toCostData() ??
+                          const MachineCostData(),
                     );
 
                     _controller.updateMachineData(

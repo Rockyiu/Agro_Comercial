@@ -5,6 +5,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/empty_state.dart';
@@ -33,6 +34,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
   final _brandController = TextEditingController();
   final _quantityController = TextEditingController();
   final _measureController = TextEditingController();
+  final _priceController = TextEditingController();
 
   final _extra1Controller = TextEditingController();
   final _extra2Controller = TextEditingController();
@@ -83,6 +85,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
     _brandController.dispose();
     _quantityController.dispose();
     _measureController.dispose();
+    _priceController.dispose();
     _extra1Controller.dispose();
     _extra2Controller.dispose();
     super.dispose();
@@ -310,6 +313,16 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                         ],
                       ),
 
+                      CustomTextFormField(
+                        controller: _priceController,
+                        labelText: "PREÇO POR $_selectedUnit (R\$) - opcional",
+                        hintText: "Usado no custo por talhão",
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: Validator.validateOptionalDecimal,
+                      ),
+
                       if (_selectedCategory != null)
                         ..._buildCategorySpecificFields(),
 
@@ -344,6 +357,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       warehouseId: _selectedWarehouse!.id!,
       farmId: '',
       attributes: extraAttributes,
+      unitPrice: Parsers.decimal(_priceController.text),
     );
 
     await _controller.createProduct(newProduct, _selectedImage);

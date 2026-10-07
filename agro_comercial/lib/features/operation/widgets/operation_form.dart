@@ -30,6 +30,7 @@ class OperationFormData {
 class OperationForm extends StatefulWidget {
   final List<MachineModel> machines;
   final List<ProductModel> products;
+  final List<String> plots; // talhões da fazenda ativa
   final OperationModel? initialOperation; // preenchido na edição
   final String submitText;
   // No cadastro o horímetro inicial precisa bater com o da máquina no sistema
@@ -40,6 +41,7 @@ class OperationForm extends StatefulWidget {
     super.key,
     required this.machines,
     required this.products,
+    this.plots = const [],
     required this.submitText,
     required this.onSubmit,
     this.initialOperation,
@@ -63,15 +65,32 @@ class _OperationFormState extends State<OperationForm> {
   );
 
   String? _selectedTitle;
+  String? _selectedPlot; // null = fazenda inteira
   bool _usedMachine = false;
   bool _usedProducts = false;
   String? _selectedMachineId;
+  String? _selectedImplementId;
   int _productsCount = 1;
   final _selectedProductIds = List<String?>.filled(_maxProducts, null);
   final _selectedDosageUnits = List<String>.filled(_maxProducts, 'ml');
 
   MachineModel? get _selectedMachine =>
       widget.machines.where((m) => m.id == _selectedMachineId).firstOrNull;
+
+  // Implementos (máquinas sem motor) que podem ser acoplados ao trator
+  List<MachineModel> get _implements =>
+      widget.machines.where((m) => !m.isMotorized).toList();
+
+  MachineModel? get _selectedImplement =>
+      _implements.where((m) => m.id == _selectedImplementId).firstOrNull;
+
+  // Talhões da fazenda + o talhão já salvo na operação (caso tenha sido
+  // renomeado ou removido da fazenda depois)
+  late final List<String> _plots = {
+    ...widget.plots,
+    if (widget.initialOperation?.plotName?.isNotEmpty ?? false)
+      widget.initialOperation!.plotName!,
+  }.toList();
 
   ProductModel? _selectedProduct(int index) => widget.products
       .where((p) => p.id == _selectedProductIds[index])
@@ -87,10 +106,14 @@ class _OperationFormState extends State<OperationForm> {
         ? op.title
         : null;
     _descController.text = op.description;
+    if (op.plotName?.isNotEmpty ?? false) _selectedPlot = op.plotName;
     _usedMachine = op.usedMachine;
     // Só pré-seleciona se a máquina ainda existir (senão o Dropdown quebra)
     if (_usedMachine && widget.machines.any((m) => m.id == op.machineId)) {
       _selectedMachineId = op.machineId;
+    }
+    if (_usedMachine && _implements.any((m) => m.id == op.implementId)) {
+      _selectedImplementId = op.implementId;
     }
 
     _usedProducts = op.usedProducts;
@@ -149,8 +172,17 @@ class _OperationFormState extends State<OperationForm> {
               'productName': product.name,
               'dosage': Parsers.decimal(_dosageControllers[i].text) ?? 0.0,
               'dosageUnit': _selectedDosageUnits[i],
+              // Preço do dia, para o custo do talhão não mudar se o preço
+              // do produto for alterado depois
+              'unitPrice': product.unitPrice,
+              'productUnit': product.unit,
             },
     ];
+
+    // Implemento só faz sentido acoplado a uma máquina motorizada
+    final implement = machine != null && machine.isMotorized
+        ? _selectedImplement
+        : null;
 
     await widget.onSubmit(
       OperationFormData(
@@ -160,9 +192,12 @@ class _OperationFormState extends State<OperationForm> {
           description: _descController.text.trim(),
           farmId: '',
           dateTimestamp: 0,
+          plotName: _selectedPlot,
           usedMachine: _usedMachine,
           machineId: machine?.id,
           machineName: machine?.name,
+          implementId: implement?.id,
+          implementName: implement?.name,
           usedProducts: _usedProducts,
           appliedProducts: appliedProducts,
         ),
@@ -203,6 +238,30 @@ class _OperationFormState extends State<OperationForm> {
                 .toList(),
             onChanged: (v) => setState(() => _selectedTitle = v),
             validator: (v) => v == null ? "Selecione a operação" : null,
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String?>(
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: "TALHÃO",
+              helperText:
+                  "Sem talhão, o custo é rateado entre os talhões pela área",
+              enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(color: AppColors.greenlightOne),
+              ),
+            ),
+            initialValue: _selectedPlot,
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text("Fazenda inteira"),
+              ),
+              ..._plots.map(
+                (plot) =>
+                    DropdownMenuItem<String?>(value: plot, child: Text(plot)),
+              ),
+            ],
+            onChanged: (v) => setState(() => _selectedPlot = v),
           ),
           const SizedBox(height: 16),
           CustomTextFormField(
@@ -269,6 +328,33 @@ class _OperationFormState extends State<OperationForm> {
           initialController: _initialHorimeterController,
           finalController: _finalHorimeterController,
         ),
+        if (_implements.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String?>(
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: "IMPLEMENTO ACOPLADO (Opcional)",
+              border: OutlineInputBorder(),
+            ),
+            initialValue: _selectedImplementId,
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text("Nenhum"),
+              ),
+              ..._implements.map(
+                (m) => DropdownMenuItem<String?>(
+                  value: m.id,
+                  child: Text(
+                    "${m.name} • ${m.brand}",
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (v) => setState(() => _selectedImplementId = v),
+          ),
+        ],
       ],
       const SizedBox(height: 16),
     ];

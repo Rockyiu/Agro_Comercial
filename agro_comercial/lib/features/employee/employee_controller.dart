@@ -56,6 +56,31 @@ class EmployeeController extends SafeChangeNotifier {
     }
   }
 
+  // Libera/bloqueia Produção/Colheita para o colaborador. A lista é atualizada
+  // na hora (sem tela de carregamento) e volta ao valor anterior se falhar.
+  // Retorna false em caso de erro, para a tela avisar.
+  Future<bool> setHarvestPermission(UserModel employee, bool allowed) async {
+    final current = _state;
+    if (employee.id == null || current is! EmployeeSuccessState) return false;
+
+    void replace(bool value) {
+      _state = EmployeeSuccessState([
+        for (final e in (_state as EmployeeSuccessState).employees)
+          e.id == employee.id ? e.copyWith(canRegisterHarvest: value) : e,
+      ]);
+      notifyListeners();
+    }
+
+    replace(allowed);
+    try {
+      await _employeeService.setHarvestPermission(employee.id!, allowed);
+      return true;
+    } catch (e) {
+      if (_state is EmployeeSuccessState) replace(!allowed);
+      return false;
+    }
+  }
+
   Future<void> deleteSingleEmployee(UserModel employee) async {
     _state = EmployeeLoadingState();
     notifyListeners();

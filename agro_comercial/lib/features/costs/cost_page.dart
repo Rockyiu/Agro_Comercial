@@ -206,7 +206,9 @@ class _CostPageState extends State<CostPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Tipo: ${cost.type}",
+                                      (cost.plotName?.isNotEmpty ?? false)
+                                          ? "Tipo: ${cost.type} • ${cost.plotName}"
+                                          : "Tipo: ${cost.type}",
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey,

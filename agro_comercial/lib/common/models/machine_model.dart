@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'machine_cost_data.dart';
+
 class MachineModel {
   final String? id;
   final String name;
@@ -11,6 +13,7 @@ class MachineModel {
   final String farmId;
   final String? imageUrl;
   final bool isMotorized; // <--- NOVA FLAG AQUI
+  final MachineCostData? costData; // Dados do custo da hora-máquina
 
   MachineModel({
     this.id,
@@ -23,6 +26,7 @@ class MachineModel {
     required this.farmId,
     this.imageUrl,
     this.isMotorized = true, // Por padrão, assumimos que tem motor
+    this.costData,
   });
 
   MachineModel copyWith({
@@ -36,6 +40,7 @@ class MachineModel {
     String? farmId,
     String? imageUrl,
     bool? isMotorized,
+    MachineCostData? costData,
   }) {
     return MachineModel(
       id: id ?? this.id,
@@ -48,6 +53,7 @@ class MachineModel {
       farmId: farmId ?? this.farmId,
       imageUrl: imageUrl ?? this.imageUrl,
       isMotorized: isMotorized ?? this.isMotorized,
+      costData: costData ?? this.costData,
     );
   }
 
@@ -63,6 +69,7 @@ class MachineModel {
       'farmId': farmId,
       'imageUrl': imageUrl,
       'isMotorized': isMotorized, // Salva no banco
+      'costData': costData?.toMap(),
     };
   }
 
@@ -80,6 +87,9 @@ class MachineModel {
       isMotorized:
           map['isMotorized'] ??
           true, // Lê do banco (evita quebrar máquinas antigas)
+      costData: map['costData'] != null
+          ? MachineCostData.fromMap(Map<String, dynamic>.from(map['costData']))
+          : null,
     );
   }
 
