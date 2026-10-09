@@ -26,13 +26,7 @@ class _RegisterFieldOperationPageState
 
   // Talhões cadastrados na fazenda ativa
   final List<String> _plots =
-      locator
-          .get<FarmController>()
-          .selectedFarm
-          ?.plantedFields
-          .map((field) => field['name'].toString())
-          .toList() ??
-      [];
+      locator.get<FarmController>().selectedFarm?.plotNames ?? [];
 
   @override
   void initState() {

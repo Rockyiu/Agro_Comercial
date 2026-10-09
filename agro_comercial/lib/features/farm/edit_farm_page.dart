@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/crop_options.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -10,6 +13,44 @@ import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
 import 'package:agro_comercial/locator.dart';
 import 'farm_controller.dart';
+
+// Campos de um talhão no formulário. [original] é o talhão já gravado (null
+// para um talhão novo): ao ser renomeado, ele mantém o id.
+class _PlotFields {
+  final PlotModel? original;
+  final TextEditingController name;
+  final TextEditingController area;
+  final TextEditingController crop;
+
+  // Talhão novo, ainda não gravado
+  _PlotFields.blank(String name)
+    : original = null,
+      name = TextEditingController(text: name),
+      area = TextEditingController(),
+      crop = TextEditingController();
+
+  _PlotFields.fromPlot(PlotModel plot)
+    : original = plot,
+      name = TextEditingController(text: plot.name),
+      area = TextEditingController(text: plot.area.toString()),
+      crop = TextEditingController(text: plot.crop);
+
+  // Talhão renomeado mantém o id e guarda o nome antigo, para os lançamentos
+  // anteriores continuarem ligados a ele
+  PlotModel toPlot() {
+    final name = this.name.text.trim();
+    final area = double.tryParse(this.area.text.replaceAll(',', '.')) ?? 0.0;
+    final crop = this.crop.text.trim();
+    return original?.update(name: name, area: area, crop: crop) ??
+        PlotModel.create(name: name, area: area, crop: crop);
+  }
+
+  void dispose() {
+    name.dispose();
+    area.dispose();
+    crop.dispose();
+  }
+}
 
 class EditFarmPage extends StatefulWidget {
   final FarmModel farm;
@@ -26,10 +67,10 @@ class _EditFarmPageState extends State<EditFarmPage> {
 
   late TextEditingController _nameController;
   late TextEditingController _cadProController;
-  late TextEditingController _addressController; // ADICIONADO
+  late TextEditingController _addressController;
   late TextEditingController _totalAreaController;
 
-  final List<Map<String, TextEditingController>> _fieldControllers = [];
+  final List<_PlotFields> _plotFields = [];
   late String _areaUnit = widget.farm.areaUnit;
 
   bool _isLoading = false;
@@ -40,45 +81,23 @@ class _EditFarmPageState extends State<EditFarmPage> {
     // Preenche os dados principais
     _nameController = TextEditingController(text: widget.farm.name);
     _cadProController = TextEditingController(text: widget.farm.cadPro);
-    _addressController = TextEditingController(
-      text: widget.farm.address,
-    ); // ADICIONADO
-    _totalAreaController = TextEditingController(
-      text: widget.farm.totalArea,
-    ); // CORRIGIDO: Já é String
+    _addressController = TextEditingController(text: widget.farm.address);
+    _totalAreaController = TextEditingController(text: widget.farm.totalArea);
 
-    // Preenche os talhões existentes
-    if (widget.farm.plantedFields.isNotEmpty) {
-      for (var field in widget.farm.plantedFields) {
-        _fieldControllers.add({
-          'name': TextEditingController(text: field['name']),
-          'area': TextEditingController(text: field['area'].toString()),
-          'crop': TextEditingController(text: field['crop']),
-        });
-      }
-    } else {
-      _addField(); // Se não tiver nenhum, adiciona um em branco
-    }
+    // Preenche os talhões existentes (ou um em branco, se não houver)
+    _plotFields.addAll(widget.farm.plots.map(_PlotFields.fromPlot));
+    if (_plotFields.isEmpty) _addField();
   }
 
   void _addField() {
     setState(() {
-      _fieldControllers.add({
-        'name': TextEditingController(
-          text: "Talhão ${_fieldControllers.length + 1}",
-        ),
-        'area': TextEditingController(),
-        'crop': TextEditingController(),
-      });
+      _plotFields.add(_PlotFields.blank("Talhão ${_plotFields.length + 1}"));
     });
   }
 
   void _removeField(int index) {
     setState(() {
-      _fieldControllers[index]['name']?.dispose();
-      _fieldControllers[index]['area']?.dispose();
-      _fieldControllers[index]['crop']?.dispose();
-      _fieldControllers.removeAt(index);
+      _plotFields.removeAt(index).dispose();
     });
   }
 
@@ -86,12 +105,10 @@ class _EditFarmPageState extends State<EditFarmPage> {
   void dispose() {
     _nameController.dispose();
     _cadProController.dispose();
-    _addressController.dispose(); // ADICIONADO
+    _addressController.dispose();
     _totalAreaController.dispose();
-    for (var controllers in _fieldControllers) {
-      controllers['name']?.dispose();
-      controllers['area']?.dispose();
-      controllers['crop']?.dispose();
+    for (final fields in _plotFields) {
+      fields.dispose();
     }
     super.dispose();
   }
@@ -100,41 +117,39 @@ class _EditFarmPageState extends State<EditFarmPage> {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() => _isLoading = true);
 
-      List<Map<String, dynamic>> updatedFields = _fieldControllers.map((c) {
-        return {
-          'name': c['name']!.text.trim(),
-          'area': double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
-          'crop': c['crop']!.text.trim(),
-        };
-      }).toList();
-
       final updatedFarm = FarmModel(
         id: widget.farm.id,
         name: _nameController.text.trim(),
         cadPro: _cadProController.text.trim(),
-        address: _addressController.text
-            .trim(), // CORREÇÃO 1: Endereço adicionado
-        totalArea: _totalAreaController.text
-            .trim(), // CORREÇÃO 2: Mantido como String
-        plantedFields: updatedFields,
+        address: _addressController.text.trim(),
+        totalArea: _totalAreaController.text.trim(),
+        plots: _plotFields.map((fields) => fields.toPlot()).toList(),
         // Sem o dono, a fazenda some da lista do produtor após salvar
         ownerId: widget.farm.ownerId,
         areaUnit: _areaUnit,
       );
 
-      // CORREÇÃO 3: Descomentado para salvar no Firebase usando o controller
-      await _controller.updateFarm(updatedFarm);
-
-      if (mounted) {
+      try {
+        await _controller.updateFarm(updatedFarm);
+      } catch (e) {
+        if (!mounted) return;
         setState(() => _isLoading = false);
-        Navigator.pop(context); // Fecha a tela de edição
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fazenda atualizada com sucesso!'),
-            backgroundColor: AppColors.greenlightOne,
-          ),
+        context.showErrorSnackBar(
+          "Erro ao atualizar a fazenda. Tente novamente.",
         );
+        return;
       }
+      if (!mounted) return;
+
+      // Mostra o aviso na tela anterior, depois de fechar esta
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Fazenda atualizada com sucesso!'),
+          backgroundColor: AppColors.greenlightOne,
+        ),
+      );
     }
   }
 
@@ -179,7 +194,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                       validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 16),
-                    // ADICIONADO: Campo para Endereço
+                    // Campo para Endereço
                     CustomTextFormField(
                       controller: _addressController,
                       labelText: "Endereço da Propriedade",
@@ -224,8 +239,8 @@ class _EditFarmPageState extends State<EditFarmPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    ...List.generate(_fieldControllers.length, (index) {
-                      final controllers = _fieldControllers[index];
+                    ...List.generate(_plotFields.length, (index) {
+                      final fields = _plotFields[index];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 16),
                         shape: RoundedRectangleBorder(
@@ -242,13 +257,16 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                 children: [
                                   Expanded(
                                     child: CustomTextFormField(
-                                      controller: controllers['name']!,
+                                      controller: fields.name,
                                       labelText: "Identificação (Ex: Talhão 1)",
                                       validator: (v) =>
-                                          v!.isEmpty ? "Obrigatório" : null,
+                                          Validator.validatePlotName(
+                                            v,
+                                            _plotFields.map((f) => f.name.text),
+                                          ),
                                     ),
                                   ),
-                                  if (_fieldControllers.length > 1)
+                                  if (_plotFields.length > 1)
                                     IconButton(
                                       icon: const Icon(
                                         Icons.delete,
@@ -263,7 +281,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                 children: [
                                   Expanded(
                                     child: CustomTextFormField(
-                                      controller: controllers['area']!,
+                                      controller: fields.area,
                                       labelText:
                                           "Área Plantada (${AreaUnits.shortLabel(_areaUnit)})",
                                       keyboardType:
@@ -278,10 +296,9 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                   Expanded(
                                     child: DropdownButtonFormField<String>(
                                       isExpanded: true,
-                                      initialValue:
-                                          controllers['crop']!.text.isEmpty
+                                      initialValue: fields.crop.text.isEmpty
                                           ? null
-                                          : controllers['crop']!.text,
+                                          : fields.crop.text,
                                       decoration: const InputDecoration(
                                         labelText: "Cultura",
                                         enabledBorder: OutlineInputBorder(
@@ -292,7 +309,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                       ),
                                       items:
                                           CropOptions.withCurrent(
-                                                controllers['crop']!.text,
+                                                fields.crop.text,
                                               )
                                               .map(
                                                 (crop) => DropdownMenuItem(
@@ -303,7 +320,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                               .toList(),
                                       onChanged: (v) {
                                         if (v != null) {
-                                          controllers['crop']!.text = v;
+                                          fields.crop.text = v;
                                         }
                                       },
                                       validator: (v) => v == null || v.isEmpty

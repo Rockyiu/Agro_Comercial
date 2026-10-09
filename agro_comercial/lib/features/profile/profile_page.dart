@@ -1,6 +1,8 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -32,7 +34,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _id;
   String? _imageUrl;
   String? _currentRole;
-  String? _currentPassword;
+  // O CPF só pode ser informado uma vez (identifica a conta na equipe)
+  bool _cpfLocked = false;
 
   @override
   void initState() {
@@ -45,12 +48,49 @@ class _ProfilePageState extends State<ProfilePage> {
     _id = profile.id;
     _imageUrl = profile.imageUrl;
     _currentRole = profile.role;
-    _currentPassword = profile.password;
+    _cpfLocked = (profile.cpf ?? '').isNotEmpty;
 
     _nameController.text = profile.name ?? '';
     _emailController.text = profile.email ?? '';
-    _cpfController.text = profile.cpf ?? '';
+    _cpfController.text = _cpfLocked ? Formatters.cpf(profile.cpf!) : '';
     _phoneController.text = profile.phone ?? '';
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() => _isProcessing = true);
+
+    final updatedProfile = UserModel(
+      id: _id!,
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      cpf: _cpfLocked ? null : _cpfController.text.trim(),
+      password: null,
+      role: _currentRole,
+      phone: _phoneController.text.trim(),
+      imageUrl: _imageUrl,
+    );
+
+    final result = await _controller.saveProfile(
+      updatedProfile,
+      newPassword: _passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (!result.ok) {
+      context.showErrorSnackBar(result.message);
+      return;
+    }
+    // Mostra o aviso na tela anterior, depois de fechar esta
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: AppColors.greenlightOne,
+      ),
+    );
   }
 
   @override
@@ -194,7 +234,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     CustomTextFormField(
                       controller: _cpfController,
-                      labelText: "CPF DO PRODUTOR",
+                      labelText: "CPF",
+                      enabled: !_cpfLocked,
+                      helperText: _cpfLocked
+                          ? "O CPF não pode ser alterado"
+                          : null,
                       keyboardType: TextInputType.number,
                       validator: (v) {
                         if (v != null && v.isNotEmpty) {
@@ -239,61 +283,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     const SizedBox(height: 32),
 
-                    PrimaryButton(
-                      text: "Salvar Alterações",
-                      onPressed: () async {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          setState(() => _isProcessing = true);
-
-                          final updatedProfile = UserModel(
-                            id: _id!,
-                            name: _nameController.text.trim(),
-                            email: _emailController.text.trim(),
-                            cpf: _cpfController.text.trim(),
-                            password: _passwordController.text.isNotEmpty
-                                ? _passwordController.text
-                                : _currentPassword,
-                            role: _currentRole,
-                            phone: _phoneController.text.trim(),
-                            imageUrl: _imageUrl,
-                          );
-
-                          final success = await _controller.saveProfile(
-                            updatedProfile,
-                            newPassword: _passwordController.text,
-                          );
-
-                          if (!context.mounted) {
-                            return;
-                          }
-
-                          setState(() => _isProcessing = false);
-
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Perfil atualizado com sucesso!"),
-                                backgroundColor: AppColors.greenlightOne,
-                              ),
-                            );
-                            Navigator.pop(context);
-                          } else {
-                            if (_controller.state is ProfileErrorState) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    (_controller.state as ProfileErrorState)
-                                        .message,
-                                  ),
-                                  backgroundColor: Colors.red,
-                                  duration: const Duration(seconds: 6),
-                                ),
-                              );
-                            }
-                          }
-                        }
-                      },
-                    ),
+                    PrimaryButton(text: "Salvar Alterações", onPressed: _save),
                   ],
                 ),
               ),

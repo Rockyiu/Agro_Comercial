@@ -8,11 +8,11 @@ class MachineModel {
   final String brand;
   final String model;
   final String power;
-  final int workingHours;
+  final double workingHours; // Horímetro (aceita frações de hora)
   final String warehouseId;
   final String farmId;
   final String? imageUrl;
-  final bool isMotorized; // <--- NOVA FLAG AQUI
+  final bool isMotorized; // false = implemento sem motor/horímetro
   final MachineCostData? costData; // Dados do custo da hora-máquina
 
   MachineModel({
@@ -29,13 +29,20 @@ class MachineModel {
     this.costData,
   });
 
+  // "75" -> "75 cv"; quem digitou a unidade ("75 CV") fica como está
+  String get powerLabel {
+    final value = power.trim();
+    if (value.isEmpty) return '-';
+    return RegExp(r'[a-zA-Z]').hasMatch(value) ? value : "$value cv";
+  }
+
   MachineModel copyWith({
     String? id,
     String? name,
     String? brand,
     String? model,
     String? power,
-    int? workingHours,
+    double? workingHours,
     String? warehouseId,
     String? farmId,
     String? imageUrl,
@@ -80,7 +87,7 @@ class MachineModel {
       brand: map['brand'] ?? '',
       model: map['model'] ?? '',
       power: map['power'] ?? '',
-      workingHours: map['workingHours'] ?? 0,
+      workingHours: (map['workingHours'] as num?)?.toDouble() ?? 0,
       warehouseId: map['warehouseId'] ?? '',
       farmId: map['farmId'] ?? '',
       imageUrl: map['imageUrl'],

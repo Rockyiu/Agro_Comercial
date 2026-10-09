@@ -8,6 +8,7 @@ import 'package:agro_comercial/common/models/harvest_model.dart';
 import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/features/reports/production_report.dart';
@@ -48,9 +49,9 @@ FarmModel _farm({String unit = AreaUnits.hectare}) {
     address: '',
     totalArea: '40',
     areaUnit: unit,
-    plantedFields: [
-      {'name': 'Talhão 1', 'area': 10.0, 'crop': 'Soja'},
-      {'name': 'Talhão 2', 'area': 30.0, 'crop': 'Milho'},
+    plots: [
+      PlotModel.fromMap({'name': 'Talhão 1', 'area': 10.0, 'crop': 'Soja'}),
+      PlotModel.fromMap({'name': 'Talhão 2', 'area': 30.0, 'crop': 'Milho'}),
     ],
   );
 }
@@ -392,6 +393,67 @@ void main() {
       expect(report.warnings.unmatchedPlotRecords, 1);
       expect(report.total.totalCost, closeTo(400, 1e-9));
       expect(report.plots[0].expenses.single.isShared, isTrue);
+    });
+
+    test('talhão renomeado continua com os lançamentos antigos e novos', () {
+      // Fazenda gravada antes dos ids: o talhão recebe o id derivado do nome
+      final legacyFarm = FarmModel.fromMap({
+        'id': 'f1',
+        'name': 'Fazenda Teste',
+        'totalArea': '40',
+        'plantedFields': [
+          {'name': 'Talhão 1', 'area': 10.0, 'crop': 'Soja'},
+          {'name': 'Talhão 2', 'area': 30.0, 'crop': 'Milho'},
+        ],
+      });
+      final legacyId = legacyFarm.plots[0].id;
+
+      // Edição da fazenda: renomeia o Talhão 1 (mantém o id)
+      final renamed = legacyFarm.plots[0].update(
+        name: 'Talhão Norte',
+        area: 10,
+        crop: 'Soja',
+      );
+      final farm = FarmModel.fromMap(
+        FarmModel(
+          id: 'f1',
+          name: 'Fazenda Teste',
+          cadPro: '1',
+          address: '',
+          totalArea: '40',
+          plots: [renamed, legacyFarm.plots[1]],
+        ).toMap(),
+      );
+      expect(farm.plots[0].id, legacyId);
+
+      CostModel cost(double value, {String? plotId, String? plotName}) =>
+          CostModel(
+            farmId: 'f1',
+            type: CostCategories.variable,
+            category: 'Fretes',
+            value: value,
+            dateTimestamp: _ts(2025, 8, 1),
+            plotId: plotId,
+            plotName: plotName,
+          );
+
+      final report = build(
+        farm: farm,
+        machines: const [],
+        costs: [
+          cost(100, plotName: 'Talhão 1'), // antes dos ids, só com o nome
+          cost(50, plotId: legacyId, plotName: 'Talhão 1'), // com o id
+          cost(25, plotId: legacyId, plotName: 'Talhão Norte'), // depois
+        ],
+      );
+
+      expect(report.warnings.unmatchedPlotRecords, 0);
+      expect(report.warnings.sharedRecords, 0);
+      final plot = report.plots[0];
+      expect(plot.plotName, 'Talhão Norte');
+      expect(plot.expenses.length, 3);
+      expect(plot.expenses.any((e) => e.isShared), isFalse);
+      expect(report.plots[1].expenses, isEmpty);
     });
   });
 }

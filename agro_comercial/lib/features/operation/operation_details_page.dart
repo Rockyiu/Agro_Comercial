@@ -26,9 +26,18 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
   bool _isEditing = false;
   bool _isProcessing = false;
 
+  final _farm = locator.get<FarmController>().selectedFarm;
+
   // Talhões cadastrados na fazenda ativa
-  final List<String> _plots =
-      locator.get<FarmController>().selectedFarm?.plotNames ?? [];
+  late final List<String> _plots = _farm?.plotNames ?? [];
+
+  // Nome atual do talhão da operação (acompanha renomeações)
+  late final String? _plotName =
+      _farm?.currentPlotName(
+        id: widget.operation.plotId,
+        name: widget.operation.plotName,
+      ) ??
+      widget.operation.plotName;
 
   @override
   void initState() {
@@ -94,13 +103,14 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         backgroundColor: AppColors.greenlightOne,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit,
-              color: Colors.white,
+          if (_controller.canModify(widget.operation.createdBy))
+            IconButton(
+              icon: Icon(
+                _isEditing ? Icons.close : Icons.edit,
+                color: Colors.white,
+              ),
+              onPressed: () => setState(() => _isEditing = !_isEditing),
             ),
-            onPressed: () => setState(() => _isEditing = !_isEditing),
-          ),
           if (_isEditing)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -146,7 +156,7 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
           machines: _controller.machines,
           products: _controller.products,
           plots: _plots,
-          initialOperation: widget.operation,
+          initialOperation: widget.operation.copyWith(plotName: _plotName),
           submitText: "Salvar Alterações",
           onSubmit: _update,
         ),
@@ -183,7 +193,7 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         ListTile(
           leading: const Icon(Icons.grid_view, color: AppColors.greenlightOne),
           title: Text(
-            "Talhão: ${(operation.plotName?.isNotEmpty ?? false) ? operation.plotName : 'Fazenda inteira'}",
+            "Talhão: ${(_plotName?.isNotEmpty ?? false) ? _plotName : 'Fazenda inteira'}",
           ),
         ),
         if (operation.usedMachine)

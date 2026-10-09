@@ -14,6 +14,7 @@ import 'package:agro_comercial/features/register_product/register_product_page.d
 import 'package:agro_comercial/features/warehouse/warehouse_details_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_details_state.dart';
 import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 class WarehouseDetailsPage extends StatefulWidget {
@@ -34,7 +35,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _controller.loadInventory(widget.warehouse.id!);
+    _controller.loadInventory(widget.warehouse);
   }
 
   void _toggleSelection(String id) {
@@ -97,8 +98,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                         builder: (context) => const RegisterMachinePage(),
                       ),
                     );
-                    // CORRIGIDO: Alterado de loadMachines para loadInventory
-                    _controller.loadInventory(widget.warehouse.id!);
+                    _controller.loadInventory(widget.warehouse);
                   },
                 ),
                 ListTile(
@@ -119,7 +119,6 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                       color: AppColors.lightkGrey,
                     ),
                   ),
-                  // RESOLVIDO: O seu bloco onTap integrado com sucesso aqui!
                   onTap: () async {
                     Navigator.pop(context);
                     await Navigator.push(
@@ -130,7 +129,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                         ),
                       ),
                     );
-                    _controller.loadInventory(widget.warehouse.id!);
+                    _controller.loadInventory(widget.warehouse);
                   },
                 ),
               ],
@@ -149,7 +148,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           "Tem certeza que deseja excluir os ${selectedIds.length} item(ns) selecionado(s)?",
     );
     if (!confirmed || !mounted) return;
-    _controller.deleteSelectedItems(selectedIds.toList(), widget.warehouse.id!);
+    _controller.deleteSelectedItems(selectedIds.toList(), widget.warehouse);
     setState(() => selectedIds.clear());
   }
 
@@ -307,7 +306,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
               builder: (context) => EditProductPage(product: product),
             ),
           );
-          _controller.loadInventory(widget.warehouse.id!);
+          _controller.loadInventory(widget.warehouse);
         }
       },
       child: Card(
@@ -404,8 +403,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
               builder: (context) => EditMachinePage(machine: machine),
             ),
           );
-          // CORRIGIDO: Alterado de loadMachines para loadInventory
-          _controller.loadInventory(widget.warehouse.id!);
+          _controller.loadInventory(widget.warehouse);
         }
       },
       child: Card(
@@ -471,13 +469,13 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                       children: [
                         _buildInfoTag(
                           Icons.bolt,
-                          "${machine.power} cv",
+                          machine.powerLabel,
                           isSelected,
                         ),
                         const SizedBox(width: 8),
                         _buildInfoTag(
                           Icons.timer_outlined,
-                          "${machine.workingHours}h",
+                          Formatters.hours(machine.workingHours),
                           isSelected,
                         ),
                       ],

@@ -3,18 +3,21 @@ import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/common/models/app_exception.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
+import '../cpf_index_service/cpf_index_service.dart';
 import '../secure_storage.dart';
 import 'auth_service.dart';
 
 class FirebaseAuthService implements AuthService {
-  FirebaseAuthService(this._secureStorage)
+  FirebaseAuthService(this._secureStorage, this._cpfIndexService)
     : _auth = FirebaseAuth.instance,
       _firestore = FirebaseFirestore.instance;
 
   final FirebaseAuth _auth;
   final FirebaseFirestore _firestore;
   final SecureStorageService _secureStorage;
+  final CpfIndexService _cpfIndexService;
 
   @override
   Future<DataResult<UserModel>> signIn({
@@ -36,16 +39,16 @@ class FirebaseAuthService implements AuthService {
 
         if (doc.exists) {
           final data = doc.data()!;
-          return DataResult.success(
-            UserModel(
-              id: result.user!.uid,
-              name: data['name'] ?? result.user!.displayName,
-              email: data['email'] ?? result.user!.email,
-              cpf: data['cpf'],
-              password: password,
-              role: data['role'] ?? 'colaborador',
-            ),
+          final user = UserModel(
+            id: result.user!.uid,
+            name: data['name'] ?? result.user!.displayName,
+            email: data['email'] ?? result.user!.email,
+            cpf: data['cpf'],
+            password: null, // A senha nunca fica guardada no app
+            role: data['role'] ?? 'colaborador',
           );
+          await _ensureCpfIndexed(user);
+          return DataResult.success(user);
         } else {
           return DataResult.success(_createUserModelFromAuthUser(result.user!));
         }
@@ -56,7 +59,7 @@ class FirebaseAuthService implements AuthService {
       // Captura erros de e-mail/senha
       return DataResult.failure(AuthException(code: e.code));
     } catch (e) {
-      // MUDANÇA AQUI: Captura QUALQUER outro erro (como o do banco de dados) para a tela não travar infinitamente!
+      // Qualquer outro erro (ex: banco de dados) vira erro genérico, para a tela não travar
       return DataResult.failure(const GeneralException());
     }
   }
@@ -76,32 +79,49 @@ class FirebaseAuthService implements AuthService {
         password: password,
       );
 
-      if (result.user != null) {
-        // 2. Salva os dados extras DIRETAMENTE no Firestore (Banco de Dados)
-        await _firestore.collection('users').doc(result.user!.uid).set({
-          'name': name,
-          'email': email,
-          'cpf': cpf,
-          'role': role,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+      final user = result.user;
+      if (user == null) return DataResult.failure(const GeneralException());
 
-        // 3. Atualiza o nome no perfil de autenticação
-        await result.user!.updateDisplayName(name);
-
-        return DataResult.success(
-          UserModel(
-            id: result.user!.uid,
-            name: name ?? '',
-            email: email,
-            cpf: cpf,
-            password: password,
-            role: role,
-          ),
-        );
+      // 2. Um CPF por conta: se ele já for de outra pessoa, desfaz a conta
+      // recém-criada
+      try {
+        await _cpfIndexService.ensureAvailable(cpf: cpf, uid: user.uid);
+      } on CpfAlreadyInUseException catch (e) {
+        await user.delete();
+        return DataResult.failure(BusinessException(e.toString()));
       }
 
-      return DataResult.failure(const GeneralException());
+      // 3. Salva o cadastro e reserva o CPF juntos (as regras do Firestore
+      // exigem os dois no mesmo lote)
+      final batch = _firestore.batch();
+      batch.set(_firestore.collection('users').doc(user.uid), {
+        'name': name,
+        'email': email,
+        'cpf': cpf,
+        'role': role,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      _cpfIndexService.addClaimToBatch(
+        batch,
+        cpf: cpf,
+        uid: user.uid,
+        role: role,
+      );
+      await batch.commit();
+
+      // 4. Atualiza o nome no perfil de autenticação
+      await user.updateDisplayName(name);
+
+      return DataResult.success(
+        UserModel(
+          id: user.uid,
+          name: name ?? '',
+          email: email,
+          cpf: cpf,
+          password: null, // A senha nunca fica guardada no app
+          role: role,
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       return DataResult.failure(AuthException(code: e.code));
     } catch (e) {
@@ -141,6 +161,23 @@ class FirebaseAuthService implements AuthService {
       return DataResult.success(token ?? '');
     } catch (e) {
       return DataResult.success('');
+    }
+  }
+
+  // Contas criadas antes do índice de CPF: registra o CPF no primeiro login.
+  // Não impede o login se falhar (ex: CPF repetido entre contas antigas,
+  // que precisa ser resolvido manualmente).
+  Future<void> _ensureCpfIndexed(UserModel user) async {
+    final cpf = user.cpf ?? '';
+    if (user.id == null || CpfIndexService.normalize(cpf).length != 11) return;
+    try {
+      await _cpfIndexService.claimExisting(
+        cpf: cpf,
+        uid: user.id!,
+        role: user.role ?? 'colaborador',
+      );
+    } catch (e) {
+      debugPrint("CPF da conta ${user.id} não foi indexado: $e");
     }
   }
 

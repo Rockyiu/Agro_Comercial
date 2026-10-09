@@ -32,17 +32,20 @@ class HarvestController extends SafeChangeNotifier {
         _changeState(HarvestErrorState("Nenhuma fazenda ativa selecionada."));
         return;
       }
-      var harvests = await _harvestService.getHarvests(farmId);
-      if (onlyMine) {
-        final uid = FirebaseAuth.instance.currentUser?.uid;
-        harvests = harvests.where((h) => h.createdBy == uid).toList();
-      }
+      final harvests = await _harvestService.getHarvests(
+        farmId,
+        createdBy: onlyMine ? FirebaseAuth.instance.currentUser?.uid : null,
+      );
       _changeState(HarvestSuccessState(harvests));
     } catch (e) {
       debugPrint("Erro ao carregar colheitas: $e");
       _changeState(HarvestErrorState("Erro ao carregar a produção."));
     }
   }
+
+  // Id do talhão escolhido, para não perder o vínculo se ele for renomeado
+  String? _plotIdOf(HarvestModel harvest) =>
+      _farmController.selectedFarm?.findPlot(name: harvest.plotName)?.id;
 
   Future<void> saveHarvest(HarvestModel harvest) async {
     _changeState(HarvestLoadingState());
@@ -55,10 +58,11 @@ class HarvestController extends SafeChangeNotifier {
       await _harvestService.createHarvest(
         harvest.copyWith(
           farmId: farmId,
+          plotId: _plotIdOf(harvest),
           createdBy: FirebaseAuth.instance.currentUser?.uid,
         ),
       );
-      await loadHarvests();
+      _changeState(HarvestSavedState());
     } catch (e) {
       debugPrint("Erro ao salvar colheita: $e");
       _changeState(HarvestErrorState("Erro ao salvar a colheita."));
@@ -68,8 +72,10 @@ class HarvestController extends SafeChangeNotifier {
   Future<void> updateHarvest(HarvestModel harvest) async {
     _changeState(HarvestLoadingState());
     try {
-      await _harvestService.updateHarvest(harvest);
-      await loadHarvests();
+      await _harvestService.updateHarvest(
+        harvest.copyWith(plotId: _plotIdOf(harvest)),
+      );
+      _changeState(HarvestSavedState());
     } catch (e) {
       debugPrint("Erro ao atualizar colheita: $e");
       _changeState(HarvestErrorState("Erro ao atualizar a colheita."));
@@ -80,7 +86,7 @@ class HarvestController extends SafeChangeNotifier {
     _changeState(HarvestLoadingState());
     try {
       await _harvestService.deleteHarvest(id);
-      await loadHarvests();
+      _changeState(HarvestSavedState());
     } catch (e) {
       debugPrint("Erro ao excluir colheita: $e");
       _changeState(HarvestErrorState("Erro ao excluir a colheita."));

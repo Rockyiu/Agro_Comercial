@@ -164,10 +164,7 @@ class _TaxpayerIdentificationPageState
                               const Divider(height: 16),
                               _buildInfoRow("Endereço", farm.address),
                               const Divider(height: 16),
-                              _buildInfoRow(
-                                "Área Total",
-                                "${farm.totalArea} (Alqueires/Hectares)",
-                              ),
+                              _buildInfoRow("Área Total", farm.totalAreaLabel),
                             ],
                           ),
                         ),

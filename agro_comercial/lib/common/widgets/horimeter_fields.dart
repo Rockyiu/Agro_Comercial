@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:flutter/material.dart';
@@ -51,7 +52,7 @@ class HorimeterReading {
   static ({HorimeterReading? reading, String? error}) parse({
     required TextEditingController initialController,
     required TextEditingController finalController,
-    int? expectedInitial,
+    double? expectedInitial,
   }) {
     final initial = Parsers.decimal(initialController.text);
     final end = Parsers.decimal(finalController.text);
@@ -59,11 +60,13 @@ class HorimeterReading {
     if (initial == null || end == null) {
       return (reading: null, error: "Preencha o horímetro inicial e final!");
     }
-    if (expectedInitial != null && initial.toInt() != expectedInitial) {
+    // Compara a hora cheia: quem lê só a parte inteira do horímetro
+    // (ex: 1500 com o sistema em 1500,4h) não é bloqueado
+    if (expectedInitial != null && initial.floor() != expectedInitial.floor()) {
       return (
         reading: null,
         error:
-            "Atenção: Horímetro inicial ($initial) não confere com o sistema (${expectedInitial}h).",
+            "Atenção: Horímetro inicial (${Formatters.hours(initial)}) não confere com o sistema (${Formatters.hours(expectedInitial)}).",
       );
     }
     if (end < initial) {

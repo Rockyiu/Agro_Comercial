@@ -73,7 +73,13 @@ class CostController extends SafeChangeNotifier {
     try {
       final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId != null) {
-        allCosts = await _costService.getCostsByFarm(activeFarmId);
+        // Custos de mão de obra (salários, diárias) são só do produtor: para
+        // o colaborador, a própria consulta já vem sem eles
+        final isCollaborator = await isCurrentUserCollaborator();
+        allCosts = await _costService.getCostsByFarm(
+          activeFarmId,
+          includeLabor: !isCollaborator,
+        );
         _state = CostSuccessState(allCosts);
       } else {
         _state = CostErrorState("Nenhuma fazenda ativa selecionada.");
@@ -84,17 +90,23 @@ class CostController extends SafeChangeNotifier {
     notifyListeners();
   }
 
+  // O formulário não conhece a fazenda: o custo é gravado na fazenda ativa,
+  // com o id do talhão escolhido (para não perder o vínculo se ele for
+  // renomeado)
+  CostModel _inActiveFarm(CostModel cost) {
+    final farm = _farmController.selectedFarm;
+    if (farm?.id == null) throw Exception("Fazenda não selecionada");
+    return cost.copyWith(
+      farmId: farm!.id,
+      plotId: farm.findPlot(name: cost.plotName)?.id,
+    );
+  }
+
   Future<void> saveCost(CostModel cost) async {
     _state = CostLoadingState();
     notifyListeners();
     try {
-      // Garante que o custo seja salvo na fazenda ativa
-      final activeFarmId = _farmController.selectedFarm?.id;
-      if (activeFarmId == null) throw Exception("Fazenda não selecionada");
-
-      final costToSave = cost.copyWith(farmId: activeFarmId);
-
-      await _costService.saveCost(costToSave);
+      await _costService.saveCost(_inActiveFarm(cost));
       await loadCosts();
     } catch (e) {
       _state = CostErrorState("Erro ao salvar o custo.");
@@ -106,7 +118,7 @@ class CostController extends SafeChangeNotifier {
     _state = CostLoadingState();
     notifyListeners();
     try {
-      await _costService.updateCost(cost);
+      await _costService.updateCost(_inActiveFarm(cost));
       await loadCosts();
     } catch (e) {
       _state = CostErrorState("Erro ao atualizar o custo.");

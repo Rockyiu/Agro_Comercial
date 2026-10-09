@@ -1,0 +1,38 @@
+rules_version = '2';
+
+// Regras de segurança do Firebase Storage do Gestão Rural.
+// Publicar: firebase deploy --only storage
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Comprovantes (PDF) do Livro Caixa: somente o próprio produtor
+    match /users/{userId}/notas_fiscais/{fileName} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+    }
+
+    // Fotos das máquinas ("{id da máquina}.jpg"): só o dono da fazenda
+    match /machines/{fileName} {
+      function farmOwner() {
+        let machineId = fileName.replace('\\.jpg$', '');
+        let machine = firestore.get(/databases/(default)/documents/machines/$(machineId)).data;
+        return firestore.get(/databases/(default)/documents/farms/$(machine.farmId)).data.ownerId;
+      }
+
+      allow read, delete: if request.auth != null && farmOwner() == request.auth.uid;
+      allow create, update: if request.auth != null
+        && fileName.matches('^[A-Za-z0-9]+\\.jpg$')
+        && farmOwner() == request.auth.uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Qualquer outro caminho é bloqueado
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

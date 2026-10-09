@@ -22,7 +22,8 @@ class MachineCostControllers {
 
   MachineCostControllers([MachineCostData? data]) {
     if (data == null) return;
-    String text(double? value) => value == null ? '' : _plain(value);
+    String text(double? value) =>
+        value == null ? '' : Formatters.editable(value);
     acquisitionValue.text = text(data.acquisitionValue);
     scrapPercent.text = text(data.scrapPercent);
     usefulLifeHours.text = text(data.usefulLifeHours);
@@ -33,14 +34,6 @@ class MachineCostControllers {
     fuelConsumption.text = text(data.fuelConsumption);
     acquisitionDate = data.acquisitionDate;
     fullyDepreciated = data.fullyDepreciated;
-  }
-
-  // 1500.0 -> "1500"; 0.125 -> "0,125"
-  static String _plain(double value) {
-    final text = value == value.roundToDouble()
-        ? value.toStringAsFixed(0)
-        : value.toString();
-    return text.replaceAll('.', ',');
   }
 
   List<TextEditingController> get _all => [

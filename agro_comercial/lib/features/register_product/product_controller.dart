@@ -30,12 +30,10 @@ class ProductController extends SafeChangeNotifier {
         _changeState(ProductErrorState("Erro: Nenhuma fazenda selecionada!"));
         return;
       }
-      if (await _isDuplicate(product)) return;
+      final newProduct = product.copyWith(farmId: activeFarmId);
+      if (await _isDuplicate(newProduct)) return;
 
-      await _productService.createProduct(
-        product.copyWith(farmId: activeFarmId),
-        imageFile,
-      );
+      await _productService.createProduct(newProduct, imageFile);
       _changeState(ProductSuccessState());
     } catch (e) {
       debugPrint("Erro ao salvar produto: $e");
@@ -62,7 +60,8 @@ class ProductController extends SafeChangeNotifier {
     final duplicate = await _productService.checkDuplicateProduct(
       product.name,
       product.brand,
-      product.warehouseId,
+      farmId: product.farmId,
+      warehouseId: product.warehouseId,
       ignoreId: product.id,
     );
     if (duplicate) {

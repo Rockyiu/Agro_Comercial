@@ -43,11 +43,19 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
 
   bool get _isEditing => widget.harvestToEdit != null;
 
-  // Talhões da fazenda + o já salvo na colheita (se foi renomeado/removido)
+  // Talhão da colheita em edição, com o nome atual (se foi renomeado)
+  late final String _editingPlot = widget.harvestToEdit == null
+      ? ''
+      : _farm?.currentPlotName(
+              id: widget.harvestToEdit!.plotId,
+              name: widget.harvestToEdit!.plotName,
+            ) ??
+            widget.harvestToEdit!.plotName;
+
+  // Talhões da fazenda + o da colheita em edição (se foi removido)
   late final List<String> _plots = {
     ...?_farm?.plotNames,
-    if (widget.harvestToEdit?.plotName.isNotEmpty ?? false)
-      widget.harvestToEdit!.plotName,
+    if (_editingPlot.isNotEmpty) _editingPlot,
   }.toList();
 
   @override
@@ -58,19 +66,16 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
 
     final harvest = widget.harvestToEdit;
     if (harvest == null) return;
-    _selectedPlot = harvest.plotName.isEmpty ? null : harvest.plotName;
+    _selectedPlot = _editingPlot.isEmpty ? null : _editingPlot;
     _selectedCrop = harvest.crop.isEmpty ? null : harvest.crop;
     if (HarvestUnits.labels.containsKey(harvest.unit)) {
       _selectedUnit = harvest.unit;
     }
     _date = DateTime.fromMillisecondsSinceEpoch(harvest.dateTimestamp);
-    _quantityController.text = _plain(harvest.quantity);
-    _priceController.text = _plain(harvest.unitPrice);
+    _quantityController.text = Formatters.editable(harvest.quantity);
+    _priceController.text = Formatters.editable(harvest.unitPrice);
     _obsController.text = harvest.observation ?? '';
   }
-
-  static String _plain(double value) =>
-      value.toString().replaceAll(RegExp(r'\.0$'), '').replaceAll('.', ',');
 
   void _refresh() => setState(() {});
 
@@ -87,10 +92,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
   void _onPlotChanged(String? plot) {
     setState(() {
       _selectedPlot = plot;
-      final field = _farm?.plantedFields
-          .where((f) => f['name'].toString() == plot)
-          .firstOrNull;
-      final crop = field?['crop']?.toString() ?? '';
+      final crop = _farm?.findPlot(name: plot)?.crop ?? '';
       if (crop.isNotEmpty) _selectedCrop = crop;
     });
   }

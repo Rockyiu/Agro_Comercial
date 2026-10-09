@@ -212,7 +212,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ADICIONADO: CHAVE SELETORA DE MOTOR
+                  // CHAVE SELETORA DE MOTOR
                   SwitchListTile(
                     title: Text(
                       "Possui motor / Horímetro?",
@@ -230,7 +230,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ADICIONADO: SÓ MOSTRA SE FOR MOTORIZADO
+                  // SÓ MOSTRA SE FOR MOTORIZADO
                   if (_isMotorized)
                     CustomTextFormField(
                       controller: _hoursController,

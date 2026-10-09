@@ -5,6 +5,7 @@ import 'services/auth_service/auth_service.dart';
 import 'services/auth_service/firebase_auth_service.dart';
 import 'services/bookkeeping_service/bookkeeping_service.dart';
 import 'services/cost_service/cost_service.dart';
+import 'services/cpf_index_service/cpf_index_service.dart';
 import 'services/employee_service/employee_service.dart';
 import 'services/farm_service/farm_service.dart';
 import 'services/field_operation_service/field_operation_service.dart';
@@ -59,19 +60,27 @@ void _registerServices() {
     () => const SecureStorageService(),
   );
   locator.registerFactory<AuthService>(
-    () => FirebaseAuthService(locator.get<SecureStorageService>()),
+    () => FirebaseAuthService(
+      locator.get<SecureStorageService>(),
+      locator.get<CpfIndexService>(),
+    ),
   );
 
+  locator.registerFactory<CpfIndexService>(() => CpfIndexService());
+
   locator.registerFactory<FarmService>(() => FarmService());
-  locator.registerFactory<ProfileService>(() => ProfileService());
-  locator.registerFactory<EmployeeService>(() => EmployeeService());
+  locator.registerFactory<ProfileService>(
+    () => ProfileService(locator.get<CpfIndexService>()),
+  );
+  locator.registerFactory<EmployeeService>(
+    () => EmployeeService(locator.get<CpfIndexService>()),
+  );
 
   locator.registerFactory<WarehouseService>(() => WarehouseService());
   locator.registerFactory<MachineService>(() => MachineService());
   locator.registerFactory<ProductService>(() => ProductService());
   locator.registerFactory<StockService>(
     () => StockService(
-      locator.get<WarehouseService>(),
       locator.get<MachineService>(),
       locator.get<ProductService>(),
     ),
@@ -132,7 +141,10 @@ void _registerControllers() {
     ),
   );
   locator.registerFactory<SignUpController>(
-    () => SignUpController(locator.get<AuthService>()),
+    () => SignUpController(
+      locator.get<AuthService>(),
+      locator.get<SecureStorageService>(),
+    ),
   );
   locator.registerFactory<ForgotPasswordController>(
     () => ForgotPasswordController(locator.get<AuthService>()),

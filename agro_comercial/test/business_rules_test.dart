@@ -2,9 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:agro_comercial/common/models/bookkeeping_model.dart';
 import 'package:agro_comercial/common/models/cost_model.dart';
+import 'package:agro_comercial/common/models/farm_model.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/utils/unit_converter.dart';
 import 'package:agro_comercial/features/cash_book/cash_book_year_controller.dart';
 import 'package:agro_comercial/features/cash_book/consolidation_controller.dart';
@@ -32,7 +35,7 @@ ProductModel _product({
 
 MachineModel _machine({
   String id = 'm1',
-  int workingHours = 100,
+  double workingHours = 100,
   bool isMotorized = true,
 }) {
   return MachineModel(
@@ -123,6 +126,20 @@ void main() {
       expect(result.single.workingHours, 94);
     });
 
+    test('soma frações de hora (operações curtas não se perdem)', () {
+      // Antes as horas eram arredondadas: 3 operações de 0,4 h somavam 0
+      final result = StockService.calculateMachines(
+        [_machine()],
+        restore: const [],
+        consume: const [
+          MachineUsage(machineId: 'm1', hours: 0.4),
+          MachineUsage(machineId: 'm1', hours: 0.4),
+          MachineUsage(machineId: 'm1', hours: 0.4),
+        ],
+      );
+      expect(result.single.workingHours, closeTo(101.2, 1e-9));
+    });
+
     test('não altera máquinas sem motor', () {
       final result = StockService.calculateMachines(
         [_machine(isMotorized: false)],
@@ -139,6 +156,30 @@ void main() {
         consume: const [],
       );
       expect(result.single.workingHours, 0);
+    });
+  });
+
+  group('Parsers.money', () {
+    test('entende o formato brasileiro', () {
+      expect(Parsers.money('1.500,50'), 1500.5);
+      expect(Parsers.money('1500,50'), 1500.5);
+      expect(Parsers.money('R\$ 1.234.567,89'), 1234567.89);
+    });
+
+    test('ponto como casa decimal não multiplica o valor', () {
+      // Antes "1500.50" virava 150050
+      expect(Parsers.money('1500.50'), 1500.5);
+      expect(Parsers.money('7.5'), 7.5);
+    });
+
+    test('ponto como milhar sem vírgula', () {
+      expect(Parsers.money('1.500'), 1500);
+      expect(Parsers.money('1.500.000'), 1500000);
+    });
+
+    test('texto inválido devolve null', () {
+      expect(Parsers.money(''), isNull);
+      expect(Parsers.money('abc'), isNull);
     });
   });
 
@@ -189,5 +230,70 @@ void main() {
     expect(anos, contains(atual - 16));
     expect(anos, isNot(contains(atual - 17)));
     expect(anos.last, atual - 30); // ano de um lançamento antigo também aparece
+  });
+
+  group('Talhões', () {
+    test('talhões antigos sem id recebem ids estáveis e distintos', () {
+      FarmModel load() => FarmModel.fromMap({
+        'name': 'Fazenda',
+        'plantedFields': [
+          {'name': 'Talhão 1', 'area': 10},
+          {'name': 'talhão 1', 'area': '5,5'}, // nome repetido
+        ],
+      });
+      final farm = load();
+      expect(farm.plots[0].id, isNot(farm.plots[1].id));
+      expect(load().plots.map((p) => p.id), farm.plots.map((p) => p.id));
+      expect(farm.plots[1].area, 5.5);
+    });
+
+    test('renomear guarda o nome anterior e voltar ao nome o remove', () {
+      final plot = PlotModel.create(name: 'Talhão 1', area: 10, crop: 'Soja');
+      final renamed = plot.update(name: 'Norte', area: 10, crop: 'Soja');
+      expect(renamed.id, plot.id);
+      expect(renamed.formerNames, ['Talhão 1']);
+      expect(renamed.answersTo('talhão 1'), isTrue);
+
+      final back = renamed.update(name: 'Talhão 1', area: 10, crop: 'Soja');
+      expect(back.formerNames, ['Norte']);
+    });
+
+    test('lançamento acha o talhão pelo id, nome atual ou anterior', () {
+      final farm = FarmModel(
+        name: 'Fazenda',
+        cadPro: '',
+        address: '',
+        totalArea: '',
+        plots: const [
+          PlotModel(
+            id: 'a',
+            name: 'Norte',
+            area: 10,
+            crop: '',
+            formerNames: ['Talhão 1'],
+          ),
+          PlotModel(id: 'b', name: 'Talhão 1', area: 5, crop: ''),
+        ],
+      );
+      expect(farm.findPlot(id: 'a', name: 'qualquer')?.id, 'a');
+      // Nome atual tem prioridade sobre o nome antigo de outro talhão
+      expect(farm.findPlot(name: 'Talhão 1')?.id, 'b');
+      expect(farm.currentPlotName(id: 'a', name: 'Talhão 1'), 'Norte');
+      expect(farm.currentPlotName(name: 'Removido'), 'Removido');
+      expect(farm.findPlot(name: ''), isNull);
+    });
+  });
+
+  test('Custo grava laborCost para as regras esconderem a mão de obra', () {
+    CostModel cost(String category) => CostModel(
+      farmId: 'f1',
+      type: 'Variável',
+      category: category,
+      value: 10,
+      dateTimestamp: 0,
+    );
+    expect(cost('Mão-de-obra temporária').toMap()['laborCost'], isTrue);
+    expect(cost('Mão-de-obra fixa').toMap()['laborCost'], isTrue);
+    expect(cost('Insumos').toMap()['laborCost'], isFalse);
   });
 }

@@ -27,15 +27,18 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
   bool _isEditing = false;
   bool _isProcessing = false;
 
+  final _farm = locator.get<FarmController>().selectedFarm;
+
   // Talhões cadastrados na fazenda ativa
-  final List<String> _plots =
-      locator
-          .get<FarmController>()
-          .selectedFarm
-          ?.plantedFields
-          .map((field) => field['name'].toString())
-          .toList() ??
-      [];
+  late final List<String> _plots = _farm?.plotNames ?? [];
+
+  // Nome atual do talhão do lançamento (acompanha renomeações)
+  late final String _plotName =
+      _farm?.currentPlotName(
+        id: widget.operation.plotId,
+        name: widget.operation.plotName,
+      ) ??
+      widget.operation.plotName;
 
   @override
   void initState() {
@@ -100,13 +103,14 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
         backgroundColor: AppColors.greenlightOne,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isEditing ? Icons.close : Icons.edit,
-              color: Colors.white,
+          if (_controller.canModify(widget.operation.createdBy))
+            IconButton(
+              icon: Icon(
+                _isEditing ? Icons.close : Icons.edit,
+                color: Colors.white,
+              ),
+              onPressed: () => setState(() => _isEditing = !_isEditing),
             ),
-            onPressed: () => setState(() => _isEditing = !_isEditing),
-          ),
           if (_isEditing)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -152,7 +156,7 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
           machines: _controller.machines,
           products: _controller.products,
           plots: _plots,
-          initialOperation: widget.operation,
+          initialOperation: widget.operation.copyWith(plotName: _plotName),
           submitText: "Salvar Alterações",
           onSubmit: _update,
         ),
@@ -167,7 +171,7 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          "${operation.type} - ${operation.plotName}",
+          "${operation.type} - $_plotName",
           style: AppTextStyles.midText20.copyWith(
             color: AppColors.greenlightOne,
             fontWeight: FontWeight.bold,

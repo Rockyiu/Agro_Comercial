@@ -26,7 +26,7 @@ Future<FarmModel?> showFarmSelectorDialog(
                 ),
                 title: Text(farm.name),
                 subtitle: Text(
-                  'Área: ${farm.totalArea} | Talhões: ${farm.plantedFields.length}',
+                  'Área: ${farm.totalAreaLabel} | Talhões: ${farm.plots.length}',
                 ),
                 onTap: () => Navigator.pop(dialogContext, farm),
               );

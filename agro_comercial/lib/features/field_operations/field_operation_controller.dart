@@ -27,6 +27,14 @@ class FieldOperationController extends SafeChangeNotifier {
   List<ProductModel> products = [];
   bool isLoadingResources = true;
 
+  // O produtor (dono da fazenda) altera e exclui qualquer lançamento; o
+  // colaborador, só os que ele mesmo registrou
+  bool canModify(String? createdBy) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    return _farmController.selectedFarm?.ownerId == uid || createdBy == uid;
+  }
+
   void _changeState(FieldOperationState newState) {
     _state = newState;
     notifyListeners();
@@ -127,6 +135,7 @@ class FieldOperationController extends SafeChangeNotifier {
       id: id,
       type: form.type,
       plotName: form.plotName,
+      plotId: _farmController.selectedFarm?.findPlot(name: form.plotName)?.id,
       dateTimestamp: dateTimestamp,
       farmId: farmId,
       createdBy: createdBy,
@@ -175,9 +184,9 @@ class FieldOperationController extends SafeChangeNotifier {
         machines: machines,
         consumeProducts: _productUsages(newOperation),
         consumeMachines: _machineUsages(newOperation),
+        alsoWrite: (batch) =>
+            _operationService.addCreateToBatch(batch, newOperation),
       );
-
-      await _operationService.saveFieldOperation(newOperation);
       await loadOperationsData();
     } on InsufficientStockException catch (e) {
       _changeState(FieldOperationErrorState(e.toString()));
@@ -224,9 +233,9 @@ class FieldOperationController extends SafeChangeNotifier {
         restoreMachines: _machineUsages(oldOp),
         consumeProducts: _productUsages(updatedOperation),
         consumeMachines: _machineUsages(updatedOperation),
+        alsoWrite: (batch) =>
+            _operationService.addUpdateToBatch(batch, updatedOperation),
       );
-
-      await _operationService.updateFieldOperation(updatedOperation);
       await loadOperationsData();
     } on InsufficientStockException catch (e) {
       _changeState(
@@ -246,8 +255,9 @@ class FieldOperationController extends SafeChangeNotifier {
         machines: machines,
         restoreProducts: _productUsages(op),
         restoreMachines: _machineUsages(op),
+        alsoWrite: (batch) =>
+            _operationService.addDeleteToBatch(batch, [op.id!]),
       );
-      await _operationService.deleteFieldOperation(op.id!);
       await loadOperationsData();
     } catch (e) {
       _changeState(FieldOperationErrorState("Erro ao excluir."));
@@ -277,9 +287,11 @@ class FieldOperationController extends SafeChangeNotifier {
         machines: machines,
         restoreProducts: toDelete.expand(_productUsages).toList(),
         restoreMachines: toDelete.expand(_machineUsages).toList(),
+        alsoWrite: (batch) => _operationService.addDeleteToBatch(
+          batch,
+          toDelete.map((op) => op.id!),
+        ),
       );
-
-      await _operationService.deleteMultipleFieldOperations(ids);
       await loadOperationsData();
     } catch (e) {
       _changeState(FieldOperationErrorState("Erro ao excluir em lote."));

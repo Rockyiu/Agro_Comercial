@@ -5,6 +5,7 @@ import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/harvest_model.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
@@ -82,10 +83,15 @@ class _FarmReportBuilder {
   final double dieselPrice;
   final ReportWarnings warnings;
 
-  late final List<PlotReport> plots = _buildPlots();
-  late final Map<String, PlotReport> _plotsByName = {
-    for (final plot in plots) _normalize(plot.plotName): plot,
+  // Talhões do relatório, pelo id do talhão na fazenda
+  late final Map<String, PlotReport> _plotsById = {
+    for (final plot in farm.plots)
+      if (plot.name.isNotEmpty) plot.id: _plotReport(plot),
   };
+  // Fazenda sem talhões: tudo vai para a área total
+  late final List<PlotReport> plots = _plotsById.isEmpty
+      ? [_totalAreaReport()]
+      : _plotsById.values.toList();
   late final List<double> _weights = _areaWeights();
   late final Map<String, MachineModel> _machines = {
     for (final m in input.machines)
@@ -101,8 +107,6 @@ class _FarmReportBuilder {
   _FarmReportBuilder(this.input, this.period, this.dieselPrice, this.warnings);
 
   FarmModel get farm => input.farm;
-
-  static String _normalize(String name) => name.trim().toLowerCase();
 
   void build() {
     for (final op in input.operations) {
@@ -125,33 +129,29 @@ class _FarmReportBuilder {
 
   // --- Talhões e rateio ---
 
-  List<PlotReport> _buildPlots() {
-    PlotReport plot(String name, double area, String crop) => PlotReport(
+  PlotReport _plotReport(PlotModel plot) {
+    if (plot.area <= 0) {
+      warnings.plotsWithoutArea.add("${plot.name} (${farm.name})");
+    }
+    return PlotReport(
       farmId: farm.id ?? '',
       farmName: farm.name,
-      plotName: name,
-      crop: crop,
-      areaHa: AreaUnits.toHectares(area, farm.areaUnit),
+      plotName: plot.name,
+      crop: plot.crop,
+      areaHa: AreaUnits.toHectares(plot.area, farm.areaUnit),
     );
-
-    final result = <PlotReport>[];
-    for (final field in farm.plantedFields) {
-      final name = field['name']?.toString().trim() ?? '';
-      if (name.isEmpty) continue;
-      final rawArea = field['area'];
-      final area = rawArea is num
-          ? rawArea.toDouble()
-          : Parsers.decimal(rawArea?.toString() ?? '') ?? 0;
-      if (area <= 0) warnings.plotsWithoutArea.add("$name (${farm.name})");
-      result.add(plot(name, area, field['crop']?.toString() ?? ''));
-    }
-
-    // Fazenda sem talhões: tudo vai para a área total
-    if (result.isEmpty) {
-      result.add(plot('Área total', Parsers.decimal(farm.totalArea) ?? 0, ''));
-    }
-    return result;
   }
+
+  PlotReport _totalAreaReport() => PlotReport(
+    farmId: farm.id ?? '',
+    farmName: farm.name,
+    plotName: 'Área total',
+    crop: '',
+    areaHa: AreaUnits.toHectares(
+      Parsers.decimal(farm.totalArea) ?? 0,
+      farm.areaUnit,
+    ),
+  );
 
   // Participação de cada talhão no rateio (pela área; sem áreas, partes iguais)
   List<double> _areaWeights() {
@@ -160,14 +160,16 @@ class _FarmReportBuilder {
     return [for (final p in plots) p.areaHa / totalArea];
   }
 
-  // Talhão do lançamento, ou null quando o valor deve ser rateado
-  PlotReport? _resolvePlot(String? plotName) {
-    final name = plotName?.trim() ?? '';
-    if (name.isEmpty) {
+  // Talhão do lançamento, ou null quando o valor deve ser rateado. Pelo id
+  // do talhão; lançamentos antigos (sem id) pelo nome atual ou anterior.
+  PlotReport? _resolvePlot(String? plotId, String? plotName) {
+    final hasId = plotId?.isNotEmpty ?? false;
+    final hasName = plotName?.trim().isNotEmpty ?? false;
+    if (!hasId && !hasName) {
       warnings.sharedRecords++;
       return null;
     }
-    final plot = _plotsByName[_normalize(name)];
+    final plot = _plotsById[farm.findPlot(id: plotId, name: plotName)?.id];
     if (plot == null) warnings.unmatchedPlotRecords++;
     return plot;
   }
@@ -193,7 +195,7 @@ class _FarmReportBuilder {
         (op.usedProducts && op.appliedProducts.isNotEmpty) ||
         (op.usedMachine && (op.machineHours ?? 0) > 0);
     if (!hasCost) return;
-    final target = _resolvePlot(op.plotName);
+    final target = _resolvePlot(op.plotId, op.plotName);
 
     if (op.usedProducts) {
       for (final applied in op.appliedProducts) {
@@ -238,7 +240,7 @@ class _FarmReportBuilder {
   void _addFieldOperation(FieldOperationModel op) {
     final hasCost = (op.dosage ?? 0) > 0 || (op.machineHours ?? 0) > 0;
     if (!hasCost) return;
-    final target = _resolvePlot(op.plotName);
+    final target = _resolvePlot(op.plotId, op.plotName);
     final operation = op.type;
 
     _addInput(
@@ -357,7 +359,7 @@ class _FarmReportBuilder {
       warnings.ignoredHourlyCosts++;
       return;
     }
-    final target = _resolvePlot(cost.plotName);
+    final target = _resolvePlot(cost.plotId, cost.plotName);
     final observation = cost.observation?.trim() ?? '';
     final description = observation.isEmpty
         ? cost.category
@@ -377,7 +379,7 @@ class _FarmReportBuilder {
   }
 
   void _addHarvest(HarvestModel harvest) {
-    final target = _resolvePlot(harvest.plotName);
+    final target = _resolvePlot(harvest.plotId, harvest.plotName);
     _allocate(target, (plot, share, isShared) {
       plot.production.add(
         ProductionLine(

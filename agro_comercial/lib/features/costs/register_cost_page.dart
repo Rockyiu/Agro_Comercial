@@ -4,6 +4,8 @@ import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/cost_categories.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
@@ -12,6 +14,7 @@ import 'package:agro_comercial/common/models/cost_model.dart';
 import 'package:agro_comercial/locator.dart';
 
 import 'cost_controller.dart';
+import 'cost_state.dart';
 
 class RegisterCostPage extends StatefulWidget {
   final CostModel? costToEdit;
@@ -37,11 +40,20 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       ? DateTime.fromMillisecondsSinceEpoch(widget.costToEdit!.dateTimestamp)
       : DateTime.now();
 
-  // Talhões da fazenda ativa + o já salvo no custo (se foi renomeado/removido)
+  final _farm = locator.get<FarmController>().selectedFarm;
+
+  // Talhão do custo em edição, com o nome atual (se foi renomeado)
+  late final String? _editingPlot =
+      _farm?.currentPlotName(
+        id: widget.costToEdit?.plotId,
+        name: widget.costToEdit?.plotName,
+      ) ??
+      widget.costToEdit?.plotName;
+
+  // Talhões da fazenda ativa + o do custo em edição (se foi removido)
   late final List<String> _plots = {
-    ...?locator.get<FarmController>().selectedFarm?.plotNames,
-    if (widget.costToEdit?.plotName?.isNotEmpty ?? false)
-      widget.costToEdit!.plotName!,
+    ...?_farm?.plotNames,
+    if (_editingPlot?.isNotEmpty ?? false) _editingPlot!,
   }.toList();
 
   final _valueController = TextEditingController();
@@ -78,7 +90,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
     setState(() {
       _isCollaborator = isCollaborator;
       _selectedType = cost?.type ?? CostCategories.variable;
-      if (cost?.plotName?.isNotEmpty ?? false) _selectedPlot = cost!.plotName;
+      if (_editingPlot?.isNotEmpty ?? false) _selectedPlot = _editingPlot;
 
       if (cost != null) {
         _selectedCategory = cost.category;
@@ -132,10 +144,9 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
     if (picked != null) setState(() => _costDate = picked);
   }
 
-  double _parse(TextEditingController controller) {
-    if (controller.text.isEmpty) return 0.0;
-    return double.tryParse(controller.text.replaceAll(',', '.')) ?? 0.0;
-  }
+  // Aceita "1.500.000,00", "1500000" ou "7.5" (valores, horas e taxas)
+  double _parse(TextEditingController controller) =>
+      Parsers.money(controller.text) ?? 0.0;
 
   void _showDeleteDialog() {
     showDialog(
@@ -248,8 +259,18 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         calcData = {'vm': _parse(_vmController)};
         finalValue = _costController.calcJurosBenfeitoria(calcData['vm']);
       } else {
-        finalValue = _parse(_valueController);
+        finalValue = Parsers.money(_valueController.text) ?? 0;
         calcData = {};
+      }
+
+      // Campo da fórmula vazio ou zerado (ex: vida útil 0) gera divisão por
+      // zero: não grava valor infinito ou negativo
+      if (!finalValue.isFinite || finalValue <= 0) {
+        setState(() => _isProcessing = false);
+        context.showErrorSnackBar(
+          "Confira os valores informados: o custo calculado é inválido.",
+        );
+        return;
       }
 
       final newCost = CostModel(
@@ -271,6 +292,12 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       }
 
       if (!mounted) return;
+      final state = _costController.state;
+      if (state is CostErrorState) {
+        setState(() => _isProcessing = false);
+        context.showErrorSnackBar(state.message);
+        return;
+      }
       Navigator.pop(context, true);
     }
   }
@@ -395,7 +422,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
 
   @override
   Widget build(BuildContext context) {
-    // CORREÇÃO: Adicionadas chaves { } no if do _isLoading
+    // Adicionadas chaves { } no if do _isLoading
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CustomCircularProgressIndicator()),

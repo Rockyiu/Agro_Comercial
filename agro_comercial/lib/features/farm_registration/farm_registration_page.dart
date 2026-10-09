@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/crop_options.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
@@ -91,12 +92,12 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
 
   void _onSaveButtonPressed() {
     if (_formKey.currentState?.validate() ?? false) {
-      List<Map<String, dynamic>> plantedFields = _fieldControllers.map((c) {
-        return {
-          'name': c['name']!.text.trim(),
-          'area': double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
-          'crop': c['crop']!.text.trim(),
-        };
+      final plots = _fieldControllers.map((c) {
+        return PlotModel.create(
+          name: c['name']!.text.trim(),
+          area: double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
+          crop: c['crop']!.text.trim(),
+        );
       }).toList();
 
       _farmController.saveFarm(
@@ -104,7 +105,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
         cadPro: _cadProController.text.trim(),
         address: _addressController.text.trim(),
         totalArea: _totalAreaController.text.trim(),
-        plantedFields: plantedFields,
+        plots: plots,
         areaUnit: _areaUnit,
       );
     }
@@ -241,8 +242,12 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                 child: CustomTextFormField(
                                   controller: controllers['name']!,
                                   labelText: "Identificação (Ex: Talhão 1)",
-                                  validator: (v) =>
-                                      v!.isEmpty ? "Obrigatório" : null,
+                                  validator: (v) => Validator.validatePlotName(
+                                    v,
+                                    _fieldControllers.map(
+                                      (c) => c['name']!.text,
+                                    ),
+                                  ),
                                 ),
                               ),
                               if (_fieldControllers.length > 1)

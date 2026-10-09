@@ -15,7 +15,7 @@ class BookkeepingPage extends StatefulWidget {
   const BookkeepingPage({super.key});
 
   @override
-  // ADICIONADO: SingleTickerProviderStateMixin é necessário para o TabController manual
+  // SingleTickerProviderStateMixin é necessário para o TabController manual
   State<BookkeepingPage> createState() => _BookkeepingPageState();
 }
 
@@ -25,7 +25,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
   // Ano-calendário compartilhado com Consolidação e Relatórios
   final _yearController = locator.get<CashBookYearController>();
 
-  // ADICIONADO: Controlador manual das abas
+  // Controlador manual das abas
   late TabController _tabController;
 
   final List<String> _meses = [
@@ -124,7 +124,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
 
   @override
   Widget build(BuildContext context) {
-    // ADICIONADO: Verifica a largura da tela. Se for maior que 600 pixels, considera como PC/Tablet
+    // Verifica a largura da tela. Se for maior que 600 pixels, considera como PC/Tablet
     final bool isDesktop = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
@@ -186,7 +186,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
             ),
         ],
 
-        // NOVIDADE: A TabBar só aparece na AppBar se for Desktop/PC!
+        // A TabBar só aparece na AppBar se for Desktop/PC!
         bottom: isDesktop
             ? TabBar(
                 controller: _tabController,

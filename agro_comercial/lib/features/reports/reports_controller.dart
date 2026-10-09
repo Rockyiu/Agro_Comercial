@@ -119,7 +119,7 @@ class ReportsController extends SafeChangeNotifier {
     final (operations, fieldOperations, costs, harvests, resources) = await (
       _operationService.getOperations(farmId),
       _fieldOperationService.getFieldOperations(farmId),
-      _costService.getCostsByFarm(farmId),
+      _costService.getCostsByFarm(farmId, includeLabor: true),
       _harvestService.getHarvests(farmId),
       _stockService.loadFarmResources(farmId),
     ).wait;

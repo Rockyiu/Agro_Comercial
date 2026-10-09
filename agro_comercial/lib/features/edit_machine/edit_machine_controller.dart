@@ -1,5 +1,5 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
-import 'dart:io'; // CORRIGIDO: Adicionado o import do File
+import 'dart:io';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'edit_machine_state.dart';

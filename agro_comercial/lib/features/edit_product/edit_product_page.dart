@@ -1,6 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
@@ -44,7 +45,9 @@ class _EditProductPageState extends State<EditProductPage> {
       text: product.quantity.toString(),
     );
     _priceController = TextEditingController(
-      text: product.unitPrice?.toString().replaceAll('.', ',') ?? '',
+      text: product.unitPrice == null
+          ? ''
+          : Formatters.editable(product.unitPrice!),
     );
 
     _extraKey = product.attributes.containsKey('campo_extra_1')
@@ -163,7 +166,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                // ADICIONADO: Texto informativo exibindo a medida da embalagem
+                // Texto informativo exibindo a medida da embalagem
                 Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(

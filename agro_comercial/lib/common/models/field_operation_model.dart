@@ -2,6 +2,8 @@ class FieldOperationModel {
   final String? id;
   final String type; // 'Vistoria' ou 'Aplicação'
   final String plotName; // Nome/Número do Talhão
+  final String?
+  plotId; // Id do talhão (PlotModel.id); vazio em lançamentos antigos
   final int dateTimestamp;
   final String farmId;
   final String? createdBy; // UID de quem registrou a vistoria/aplicação
@@ -19,12 +21,13 @@ class FieldOperationModel {
 
   final String? machineId;
   final String? machineName;
-  final double? machineHours; // ADICIONADO: Para podermos estornar depois
+  final double? machineHours; // Para podermos estornar depois
 
   FieldOperationModel({
     this.id,
     required this.type,
     required this.plotName,
+    this.plotId,
     required this.dateTimestamp,
     required this.farmId,
     this.createdBy,
@@ -38,7 +41,7 @@ class FieldOperationModel {
     this.productUnit,
     this.machineId,
     this.machineName,
-    this.machineHours, // ADICIONADO
+    this.machineHours,
   });
 
   bool get isInspection => type == 'Vistoria';
@@ -47,6 +50,7 @@ class FieldOperationModel {
     String? id,
     String? type,
     String? plotName,
+    String? plotId,
     int? dateTimestamp,
     String? farmId,
     String? createdBy,
@@ -66,6 +70,7 @@ class FieldOperationModel {
       id: id ?? this.id,
       type: type ?? this.type,
       plotName: plotName ?? this.plotName,
+      plotId: plotId ?? this.plotId,
       dateTimestamp: dateTimestamp ?? this.dateTimestamp,
       farmId: farmId ?? this.farmId,
       createdBy: createdBy ?? this.createdBy,
@@ -88,6 +93,7 @@ class FieldOperationModel {
       if (id != null) 'id': id,
       'type': type,
       'plotName': plotName,
+      'plotId': plotId,
       'dateTimestamp': dateTimestamp,
       'farmId': farmId,
       'createdBy': createdBy,
@@ -110,6 +116,7 @@ class FieldOperationModel {
       id: map['id'],
       type: map['type'] ?? 'Vistoria',
       plotName: map['plotName'] ?? '',
+      plotId: map['plotId'],
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
       farmId: map['farmId'] ?? '',
@@ -124,7 +131,7 @@ class FieldOperationModel {
       productUnit: map['productUnit'],
       machineId: map['machineId'],
       machineName: map['machineName'],
-      machineHours: (map['machineHours'] as num?)?.toDouble(), // ADICIONADO
+      machineHours: (map['machineHours'] as num?)?.toDouble(),
     );
   }
 }

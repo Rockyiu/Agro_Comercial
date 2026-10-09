@@ -1,11 +1,14 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/features/sign_up/sing_up_state.dart';
 import 'package:agro_comercial/services/auth_service/auth_service.dart';
+import 'package:agro_comercial/services/cpf_index_service/cpf_index_service.dart';
+import 'package:agro_comercial/services/secure_storage.dart';
 
 class SignUpController extends SafeChangeNotifier {
   final AuthService _authService;
+  final SecureStorageService _secureStorageService;
 
-  SignUpController(this._authService);
+  SignUpController(this._authService, this._secureStorageService);
 
   SingUpState _state = SignUpinitialState();
   SingUpState get state => _state;
@@ -25,31 +28,28 @@ class SignUpController extends SafeChangeNotifier {
     _changeState(SignUpLoadingState());
 
     try {
-      // Limpa a formatação do CPF (remove pontos e traços)
-      String cleanCpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');
-
-      // Salva a resposta em uma variável 'result' para analisarmos
       final result = await _authService.signUp(
-        name: name,
-        email: email,
-        cpf: cleanCpf,
+        name: name.trim(),
+        email: email.trim(),
+        // O CPF é salvo só com números (sem pontos e traço)
+        cpf: CpfIndexService.normalize(cpf),
         password: password,
         role: role,
       );
 
-      // Usando o método fold() do seu DataResult para lidar com a resposta
-      result.fold(
-        (error) {
-          // Se deu erro no Firebase (ex: email repetido, senha fraca), avisa a tela
-          _changeState(SignUpErrorState(error.message));
-        },
-        (user) {
-          // Se deu tudo certo, comemoramos o sucesso e mandamos para a tela de Fazenda
+      await result.fold(
+        (error) async => _changeState(SignUpErrorState(error.message)),
+        (user) async {
+          // Mantém a sessão: ao reabrir o app o Splash entra direto
+          await _secureStorageService.write(
+            key: SecureStorageService.currentUserKey,
+            value: user.toJson(),
+          );
           _changeState(SignUpSuccessState());
         },
       );
     } catch (e) {
-      _changeState(SignUpErrorState(e.toString()));
+      _changeState(SignUpErrorState("Erro ao criar a conta. Tente novamente."));
     }
   }
 }

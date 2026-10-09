@@ -11,11 +11,20 @@ class HarvestService {
 
   // Só usa filtro de igualdade para não exigir índice composto no Firestore;
   // a ordenação (mais recente primeiro) é feita localmente.
-  Future<List<HarvestModel>> getHarvests(String farmId) async {
-    final snapshot = await _firestore
+  // [createdBy]: só as registradas por esse usuário (colaborador). O filtro
+  // vai na consulta, e não na tela, para ele não receber as colheitas (e
+  // receitas) dos outros.
+  Future<List<HarvestModel>> getHarvests(
+    String farmId, {
+    String? createdBy,
+  }) async {
+    var query = _firestore
         .collection('harvests')
-        .where('farmId', isEqualTo: farmId)
-        .get();
+        .where('farmId', isEqualTo: farmId);
+    if (createdBy != null) {
+      query = query.where('createdBy', isEqualTo: createdBy);
+    }
+    final snapshot = await query.get();
     final harvests = snapshot.docs
         .map((doc) => HarvestModel.fromMap(doc.data()))
         .toList();

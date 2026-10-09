@@ -49,7 +49,6 @@ class CashBookPage extends StatelessWidget {
           subtitle: 'Lançamentos de receitas e despesas',
           icon: Icons.edit_document,
           onTap: () {
-            // AGORA SIM ELE VAI ABRIR A NOSSA TELA NOVA!
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const BookkeepingPage()),
@@ -67,8 +66,7 @@ class CashBookPage extends StatelessWidget {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    ChartOfAccountsPage(), // Abre a nossa nova tela
+                builder: (context) => const ChartOfAccountsPage(),
               ),
             );
           },

@@ -37,7 +37,7 @@ class RegisterMachineController extends SafeChangeNotifier {
 
   Future<void> loadWarehouses() async {
     try {
-      // CORREÇÃO: Carregar armazéns apenas da fazenda ativa para não vincular máquina a galpão errado
+      // Carregar armazéns apenas da fazenda ativa para não vincular máquina a galpão errado
       final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId != null) {
         warehouses = await _warehouseService.getWarehouses(activeFarmId);
@@ -70,7 +70,7 @@ class RegisterMachineController extends SafeChangeNotifier {
         return;
       }
 
-      // CORREÇÃO: Pegar o ID da fazenda ativa
+      // Pegar o ID da fazenda ativa
       final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId == null) {
         _changeState(
@@ -79,8 +79,8 @@ class RegisterMachineController extends SafeChangeNotifier {
         return;
       }
 
-      // Aceita "1500", "1500,5" ou "1500.5" (arredonda para horas inteiras)
-      final hours = Parsers.decimal(workingHoursStr)?.round() ?? 0;
+      // Aceita "1500", "1500,5" ou "1500.5"
+      final hours = Parsers.decimal(workingHoursStr) ?? 0;
 
       final newMachine = MachineModel(
         name: name.trim(),
@@ -89,8 +89,7 @@ class RegisterMachineController extends SafeChangeNotifier {
         power: power.trim(),
         workingHours: hours,
         warehouseId: warehouseId,
-        farmId:
-            activeFarmId, // CORREÇÃO: Agora garantido com a variável correta
+        farmId: activeFarmId,
         isMotorized: isMotorized,
         imageUrl: null,
         costData: costData,

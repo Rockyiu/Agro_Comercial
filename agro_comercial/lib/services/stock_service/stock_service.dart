@@ -8,7 +8,6 @@ import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/unit_converter.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
-import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 
 // Quantidade de um produto usada em uma operação (na unidade escolhida pelo usuário)
 class ProductUsage {
@@ -58,36 +57,21 @@ class ProductNotFoundException implements Exception {
 // Centraliza a baixa/estorno de produtos e o horímetro das máquinas usados
 // pelas operações e pelas vistorias/aplicações.
 class StockService {
-  final WarehouseService _warehouseService;
   final MachineService _machineService;
   final ProductService _productService;
 
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
-  StockService(
-    this._warehouseService,
-    this._machineService,
-    this._productService,
-  );
+  StockService(this._machineService, this._productService);
 
   // Máquinas e produtos de todos os armazéns da fazenda (buscados em paralelo)
   Future<({List<MachineModel> machines, List<ProductModel> products})>
   loadFarmResources(String farmId) async {
-    final warehouses = await _warehouseService.getWarehouses(farmId);
-
-    final (machinesByWarehouse, productsByWarehouse) = await (
-      Future.wait(
-        warehouses.map((w) => _machineService.getMachinesByWarehouse(w.id!)),
-      ),
-      Future.wait(
-        warehouses.map((w) => _productService.getProductsByWarehouse(w.id!)),
-      ),
+    final (machines, products) = await (
+      _machineService.getMachinesByFarm(farmId),
+      _productService.getProductsByFarm(farmId),
     ).wait;
-
-    return (
-      machines: machinesByWarehouse.expand((list) => list).toList(),
-      products: productsByWarehouse.expand((list) => list).toList(),
-    );
+    return (machines: machines, products: products);
   }
 
   // Aplica no estoque a troca de um consumo antigo por um novo:
@@ -101,6 +85,14 @@ class StockService {
   // (batch), então o estoque nunca fica pela metade: ou tudo é aplicado,
   // ou nada é (ex: falta de estoque de um dos produtos).
   //
+  // [alsoWrite] adiciona ao MESMO lote a gravação do lançamento (operação,
+  // vistoria/aplicação). Assim o estoque só muda se o lançamento for salvo,
+  // e vice-versa.
+  //
+  // O estoque e o horímetro são gravados como incremento (diferença), e não
+  // como valor final: dois usuários lançando ao mesmo tempo não apagam a
+  // baixa um do outro.
+  //
   // As listas [products] e [machines] (em memória) também são atualizadas.
   Future<void> applyUsage({
     required List<ProductModel> products,
@@ -109,6 +101,7 @@ class StockService {
     List<ProductUsage> consumeProducts = const [],
     List<MachineUsage> restoreMachines = const [],
     List<MachineUsage> consumeMachines = const [],
+    void Function(WriteBatch batch)? alsoWrite,
   }) async {
     final updatedProducts = calculateProducts(
       products,
@@ -121,19 +114,30 @@ class StockService {
       consume: consumeMachines,
     );
 
-    if (updatedProducts.isEmpty && updatedMachines.isEmpty) return;
+    if (updatedProducts.isEmpty &&
+        updatedMachines.isEmpty &&
+        alsoWrite == null) {
+      return;
+    }
+
+    final originalProducts = {for (final p in products) p.id: p};
+    final originalMachines = {for (final m in machines) m.id: m};
 
     final batch = _firestore.batch();
     for (final product in updatedProducts) {
+      final delta = product.quantity - originalProducts[product.id]!.quantity;
       batch.update(_firestore.collection('products').doc(product.id), {
-        'quantity': product.quantity,
+        'quantity': FieldValue.increment(delta),
       });
     }
     for (final machine in updatedMachines) {
+      final delta =
+          machine.workingHours - originalMachines[machine.id]!.workingHours;
       batch.update(_firestore.collection('machines').doc(machine.id), {
-        'workingHours': machine.workingHours,
+        'workingHours': FieldValue.increment(delta),
       });
     }
+    alsoWrite?.call(batch);
     await batch.commit();
 
     _replaceById(products, updatedProducts, (p) => p.id);
@@ -192,7 +196,7 @@ class StockService {
     required List<MachineUsage> restore,
     required List<MachineUsage> consume,
   }) {
-    final newHours = <String, int>{};
+    final newHours = <String, double>{};
     final byId = {for (final m in machines) m.id: m};
 
     // Apenas máquinas motorizadas têm horímetro
@@ -209,14 +213,14 @@ class StockService {
       final machine = motorized(usage.machineId);
       if (machine == null) continue;
       final current = newHours[machine.id!] ?? machine.workingHours;
-      newHours[machine.id!] = max(0, current - usage.hours.round());
+      newHours[machine.id!] = max(0.0, current - usage.hours);
     }
 
     for (final usage in consume) {
       final machine = motorized(usage.machineId);
       if (machine == null) continue;
       final current = newHours[machine.id!] ?? machine.workingHours;
-      newHours[machine.id!] = current + usage.hours.round();
+      newHours[machine.id!] = current + usage.hours;
     }
 
     return [

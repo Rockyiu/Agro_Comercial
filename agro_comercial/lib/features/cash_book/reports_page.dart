@@ -62,12 +62,13 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Future<void> _prepararDados() async {
-    // 1. Garante que os dados financeiros mais recentes estejam calculados
-    _consolidationController.carregarCalculos();
-    _bookkeepingController.carregarLancamentos();
-
-    // 2. Busca nome e CPF do produtor logado
-    await _profileController.loadProfile();
+    // Dados financeiros mais recentes + nome e CPF do produtor logado.
+    // A tela só libera a geração do PDF depois que tudo carregou.
+    await Future.wait([
+      _consolidationController.carregarCalculos(),
+      _bookkeepingController.carregarLancamentos(),
+      _profileController.loadProfile(),
+    ]);
     if (!mounted) return;
 
     final state = _profileController.state;
@@ -299,12 +300,7 @@ class _ReportsPageState extends State<ReportsPage> {
             return [
               buildCabecalho("EXTRATO DO LIVRO CAIXA"),
               pw.TableHelper.fromTextArray(
-                headers: [
-                  'Data',
-                  'Conta',
-                  'Histórico',
-                  'Valor (R\$)',
-                ], // <--- CORRIGIDO AQUI!
+                headers: ['Data', 'Conta', 'Histórico', 'Valor (R\$)'],
                 data: data,
                 headerStyle: pw.TextStyle(
                   color: PdfColors.white,

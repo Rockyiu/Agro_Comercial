@@ -8,6 +8,8 @@ class OperationModel {
   // Talhão onde a operação foi feita. Vazio = fazenda inteira (nos relatórios
   // o custo é rateado entre os talhões pela área)
   final String? plotName;
+  final String?
+  plotId; // Id do talhão (PlotModel.id); vazio em lançamentos antigos
 
   // Maquinário utilizado
   final bool usedMachine;
@@ -32,6 +34,7 @@ class OperationModel {
     required this.dateTimestamp,
     this.createdBy,
     this.plotName,
+    this.plotId,
     required this.usedMachine,
     this.machineId,
     this.machineName,
@@ -50,6 +53,7 @@ class OperationModel {
     int? dateTimestamp,
     String? createdBy,
     String? plotName,
+    String? plotId,
     bool? usedMachine,
     String? machineId,
     String? machineName,
@@ -67,6 +71,7 @@ class OperationModel {
       dateTimestamp: dateTimestamp ?? this.dateTimestamp,
       createdBy: createdBy ?? this.createdBy,
       plotName: plotName ?? this.plotName,
+      plotId: plotId ?? this.plotId,
       usedMachine: usedMachine ?? this.usedMachine,
       machineId: machineId ?? this.machineId,
       machineName: machineName ?? this.machineName,
@@ -87,6 +92,7 @@ class OperationModel {
       'dateTimestamp': dateTimestamp,
       'createdBy': createdBy,
       'plotName': plotName,
+      'plotId': plotId,
       'usedMachine': usedMachine,
       'machineId': machineId,
       'machineName': machineName,
@@ -108,6 +114,7 @@ class OperationModel {
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
       createdBy: map['createdBy'],
       plotName: map['plotName'],
+      plotId: map['plotId'],
       usedMachine: map['usedMachine'] ?? false,
       machineId: map['machineId'],
       machineName: map['machineName'],

@@ -3,6 +3,8 @@ class HarvestModel {
   final String? id;
   final String farmId;
   final String plotName; // Talhão colhido
+  final String?
+  plotId; // Id do talhão (PlotModel.id); vazio em lançamentos antigos
   final String crop; // Cultura do talhão no momento da colheita
   final int dateTimestamp;
   final double quantity;
@@ -15,6 +17,7 @@ class HarvestModel {
     this.id,
     required this.farmId,
     required this.plotName,
+    this.plotId,
     required this.crop,
     required this.dateTimestamp,
     required this.quantity,
@@ -30,6 +33,7 @@ class HarvestModel {
     String? id,
     String? farmId,
     String? plotName,
+    String? plotId,
     String? crop,
     int? dateTimestamp,
     double? quantity,
@@ -42,6 +46,7 @@ class HarvestModel {
       id: id ?? this.id,
       farmId: farmId ?? this.farmId,
       plotName: plotName ?? this.plotName,
+      plotId: plotId ?? this.plotId,
       crop: crop ?? this.crop,
       dateTimestamp: dateTimestamp ?? this.dateTimestamp,
       quantity: quantity ?? this.quantity,
@@ -57,6 +62,7 @@ class HarvestModel {
       if (id != null) 'id': id,
       'farmId': farmId,
       'plotName': plotName,
+      'plotId': plotId,
       'crop': crop,
       'dateTimestamp': dateTimestamp,
       'quantity': quantity,
@@ -72,6 +78,7 @@ class HarvestModel {
       id: map['id'],
       farmId: map['farmId'] ?? '',
       plotName: map['plotName'] ?? '',
+      plotId: map['plotId'],
       crop: map['crop'] ?? '',
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,

@@ -10,6 +10,11 @@ class GeneralException extends AppException {
     : super(message: "Ocorreu um erro. Tente novamente.");
 }
 
+// Regra de negócio violada, com a mensagem pronta para o usuário
+class BusinessException extends AppException {
+  const BusinessException(String message) : super(message: message);
+}
+
 class AuthException extends AppException {
   final String code;
 

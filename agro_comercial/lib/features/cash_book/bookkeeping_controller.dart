@@ -1,5 +1,4 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../../common/models/bookkeeping_model.dart';
@@ -36,11 +35,11 @@ class BookkeepingController extends SafeChangeNotifier {
   // --- 2. ADICIONAR OU EDITAR LANÇAMENTO (CREATE/UPDATE) ---
   Future<bool> salvarLancamento(
     BookkeepingModel lancamento, {
-    File? arquivoPdf,
+    Uint8List? arquivoPdf,
   }) async {
     _changeState(BookkeepingLoadingState());
     try {
-      await _bookkeepingService.saveEntry(lancamento, pdfFile: arquivoPdf);
+      await _bookkeepingService.saveEntry(lancamento, pdfBytes: arquivoPdf);
       // Recarrega a lista após salvar
       await carregarLancamentos();
       return true;
@@ -53,9 +52,22 @@ class BookkeepingController extends SafeChangeNotifier {
 
   // --- 3. EXCLUIR MÚLTIPLOS LANÇAMENTOS (DELETE) ---
   Future<void> excluirLancamentos(List<String> idsSelecionados) async {
+    // Comprovantes (PDF) dos lançamentos, para apagar junto
+    final current = _state;
+    final ids = idsSelecionados.toSet();
+    final pdfUrls = current is BookkeepingSuccessState
+        ? [
+            for (final l in current.lancamentos)
+              if (ids.contains(l.id)) l.pdfUrl,
+          ]
+        : const <String?>[];
+
     _changeState(BookkeepingLoadingState());
     try {
-      await _bookkeepingService.deleteEntries(idsSelecionados);
+      await _bookkeepingService.deleteEntries(
+        idsSelecionados,
+        pdfUrls: pdfUrls,
+      );
       await carregarLancamentos(); // Atualiza a tela
     } catch (e) {
       _changeState(

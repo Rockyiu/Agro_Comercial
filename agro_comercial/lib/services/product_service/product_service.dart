@@ -14,11 +14,24 @@ class ProductService {
     await docRef.set(map);
   }
 
-  Future<List<ProductModel>> getProductsByWarehouse(String warehouseId) async {
-    final snapshot = await _firestore
+  // Toda consulta filtra pela fazenda: é o que as regras do Firestore usam
+  // para liberar a leitura
+  Future<List<ProductModel>> getProductsByFarm(String farmId) => _query(
+    _firestore.collection('products').where('farmId', isEqualTo: farmId),
+  );
+
+  Future<List<ProductModel>> getProductsByWarehouse({
+    required String farmId,
+    required String warehouseId,
+  }) => _query(
+    _firestore
         .collection('products')
-        .where('warehouseId', isEqualTo: warehouseId)
-        .get();
+        .where('farmId', isEqualTo: farmId)
+        .where('warehouseId', isEqualTo: warehouseId),
+  );
+
+  Future<List<ProductModel>> _query(Query<Map<String, dynamic>> query) async {
+    final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => ProductModel.fromMap(doc.data()))
         .toList();
@@ -54,13 +67,17 @@ class ProductService {
   // ("Glifosato" == " glifosato"). [ignoreId]: o próprio produto, na edição.
   Future<bool> checkDuplicateProduct(
     String name,
-    String brand,
-    String warehouseId, {
+    String brand, {
+    required String farmId,
+    required String warehouseId,
     String? ignoreId,
   }) async {
     String normalize(String value) => value.trim().toLowerCase();
 
-    final products = await getProductsByWarehouse(warehouseId);
+    final products = await getProductsByWarehouse(
+      farmId: farmId,
+      warehouseId: warehouseId,
+    );
     return products.any(
       (p) =>
           p.id != ignoreId &&

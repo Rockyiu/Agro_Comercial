@@ -83,7 +83,7 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller.deleteWarehouse(widget.warehouse.id!);
+              _controller.deleteWarehouse(widget.warehouse);
             },
             child: const Text(
               "Sim, excluir",

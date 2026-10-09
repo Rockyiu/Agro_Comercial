@@ -3,7 +3,7 @@ class ProductModel {
   final String name;
   final String brand;
   final double quantity;
-  final double measure; // ADICIONADO: Tamanho da embalagem (Ex: 1 ou 1000)
+  final double measure; // Tamanho da embalagem (Ex: 1 ou 1000)
   final String unit; // kg, L, un, ml, mg
   final String category;
   final String warehouseId;

@@ -33,10 +33,12 @@ class WarehouseController extends SafeChangeNotifier {
   }
 
   Future<void> deleteSelectedWarehouses(List<String> ids) async {
+    final farmId = _farmController.selectedFarm?.id;
+    if (farmId == null) return;
     _state = WarehouseLoadingState();
     notifyListeners();
     try {
-      await _warehouseService.deleteMultipleWarehouses(ids);
+      await _warehouseService.deleteMultipleWarehouses(farmId, ids);
       await loadWarehouseData();
     } catch (e) {
       _state = WarehouseErrorState("Erro ao excluir armazéns.");

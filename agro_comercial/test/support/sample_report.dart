@@ -5,6 +5,7 @@ import 'package:agro_comercial/common/models/harvest_model.dart';
 import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/features/reports/production_report_calculator.dart';
@@ -87,10 +88,10 @@ ProductionReport buildSampleReport() {
     address: '',
     totalArea: '43',
     areaUnit: AreaUnits.alqueire,
-    plantedFields: [
-      {'name': 'Talhão 12', 'area': 7.64, 'crop': 'Soja'},
-      {'name': 'Talhão 3', 'area': 20.0, 'crop': 'Soja'},
-      {'name': 'Talhão 5', 'area': 15.36, 'crop': 'Milho'},
+    plots: [
+      PlotModel.fromMap({'name': 'Talhão 12', 'area': 7.64, 'crop': 'Soja'}),
+      PlotModel.fromMap({'name': 'Talhão 3', 'area': 20.0, 'crop': 'Soja'}),
+      PlotModel.fromMap({'name': 'Talhão 5', 'area': 15.36, 'crop': 'Milho'}),
     ],
   );
 

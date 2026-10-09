@@ -2,9 +2,28 @@ import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 // Cards usados no histórico de atividades (Home do produtor e do colaborador)
+
+// Ex: "Talhão 3 • Trator T250 • 2,5h"
+String _operationDetails(OperationModel op) {
+  final plot = op.plotName ?? '';
+  final hours = op.machineHours;
+  return [
+    plot.isEmpty ? 'Fazenda inteira' : plot,
+    if (op.usedMachine && op.machineName != null) op.machineName!,
+    if (op.usedMachine && hours != null) Formatters.hours(hours),
+  ].join(' • ');
+}
+
+// Ex: "Aplicou Glifosato com Pulverizador 4630"
+String _applicationDetails(FieldOperationModel op) {
+  final product = op.productName ?? 'produto';
+  final machine = op.machineName;
+  return machine == null ? 'Aplicou $product' : 'Aplicou $product com $machine';
+}
 
 class OperationActivityCard extends StatelessWidget {
   final OperationModel operation;
@@ -24,10 +43,9 @@ class OperationActivityCard extends StatelessWidget {
       onTap: onTap,
       iconColor: Colors.orange,
       icon: Icons.agriculture,
-      label: 'Operação de Máquina',
-      title: operation.machineName ?? 'Máquina Indefinida',
-      subtitle:
-          'Operou por ${operation.machineHours ?? 0} hrs - ${operation.title}',
+      label: 'Operação',
+      title: operation.title,
+      subtitle: _operationDetails(operation),
       registeredBy: registeredBy,
     );
   }
@@ -57,7 +75,7 @@ class FieldOperationActivityCard extends StatelessWidget {
       title: 'Talhão: ${fieldOperation.plotName}',
       subtitle: isVistoria
           ? (fieldOperation.condition ?? 'Vistoria concluída')
-          : 'Aplicou ${fieldOperation.productName ?? 'Produto'} com ${fieldOperation.machineName ?? 'Máquina'}',
+          : _applicationDetails(fieldOperation),
       registeredBy: registeredBy,
     );
   }

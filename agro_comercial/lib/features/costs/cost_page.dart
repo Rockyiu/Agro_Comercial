@@ -83,7 +83,6 @@ class _CostPageState extends State<CostPage> {
         builder: (context, child) {
           final state = _costController.state;
 
-          // CORREÇÃO AQUI: Adição das chaves { } nos blocos IF
           if (state is CostLoadingState) {
             return const Center(child: CustomCircularProgressIndicator());
           }

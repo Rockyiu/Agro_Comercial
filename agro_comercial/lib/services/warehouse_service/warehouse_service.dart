@@ -40,30 +40,40 @@ class WarehouseService {
     });
   }
 
-  Future<void> deleteWarehouseAndContents(String warehouseId) =>
-      deleteMultipleWarehouses([warehouseId]);
+  Future<void> deleteWarehouseAndContents(WarehouseModel warehouse) =>
+      deleteMultipleWarehouses(warehouse.farmId, [warehouse.id!]);
 
-  // Exclui os armazéns junto com as máquinas e produtos de cada um (cascata)
-  Future<void> deleteMultipleWarehouses(List<String> warehouseIds) async {
+  // Exclui os armazéns junto com as máquinas e produtos de cada um (cascata),
+  // tudo em um único lote
+  Future<void> deleteMultipleWarehouses(
+    String farmId,
+    List<String> warehouseIds,
+  ) async {
+    Future<List<DocumentReference>> contents(
+      String collection,
+      String id,
+    ) async {
+      final snapshot = await _firestore
+          .collection(collection)
+          .where('farmId', isEqualTo: farmId)
+          .where('warehouseId', isEqualTo: id)
+          .get();
+      return snapshot.docs.map((doc) => doc.reference).toList();
+    }
+
+    final refs = await Future.wait([
+      for (final id in warehouseIds) ...[
+        contents('machines', id),
+        contents('products', id),
+      ],
+    ]);
+
     final batch = _firestore.batch();
-
+    for (final ref in refs.expand((list) => list)) {
+      batch.delete(ref);
+    }
     for (final id in warehouseIds) {
       batch.delete(_firestore.collection('warehouses').doc(id));
-
-      final (machines, products) = await (
-        _firestore
-            .collection('machines')
-            .where('warehouseId', isEqualTo: id)
-            .get(),
-        _firestore
-            .collection('products')
-            .where('warehouseId', isEqualTo: id)
-            .get(),
-      ).wait;
-
-      for (final doc in [...machines.docs, ...products.docs]) {
-        batch.delete(doc.reference);
-      }
     }
     await batch.commit();
   }

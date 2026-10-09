@@ -1,8 +1,12 @@
-import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'package:agro_comercial/common/models/app_exception.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'package:agro_comercial/services/cpf_index_service/cpf_index_service.dart';
 import 'package:agro_comercial/services/profile_service/profile_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
-import 'profile_state.dart'; // ADICIONADO: Puxando as classes do arquivo correto
+import 'profile_state.dart';
 
 class ProfileController extends SafeChangeNotifier {
   final ProfileService _profileService;
@@ -28,17 +32,39 @@ class ProfileController extends SafeChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> saveProfile(UserModel profile, {String? newPassword}) async {
+  // Salva o perfil e devolve a mensagem para mostrar ao usuário. Em caso de
+  // erro o estado não muda, para o formulário (e o que foi digitado)
+  // continuar na tela.
+  Future<({bool ok, String message})> saveProfile(
+    UserModel profile, {
+    String? newPassword,
+  }) async {
     try {
-      await _profileService.updateProfile(profile, newPassword: newPassword);
-      await loadProfile();
-      return true;
-    } catch (e) {
-      _state = ProfileErrorState(
-        "Erro de Segurança: Modificações de e-mail ou senha exigem que você faça login novamente.",
+      final emailVerificationSent = await _profileService.updateProfile(
+        profile,
+        newPassword: newPassword,
       );
-      notifyListeners();
-      return false;
+      await loadProfile();
+      return (
+        ok: true,
+        message: emailVerificationSent
+            ? "Perfil atualizado! Confirme o novo e-mail pelo link que enviamos para ele."
+            : "Perfil atualizado com sucesso!",
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        return (
+          ok: false,
+          message:
+              "Por segurança, para alterar e-mail ou senha saia da conta e entre novamente.",
+        );
+      }
+      return (ok: false, message: AuthException(code: e.code).message);
+    } on CpfAlreadyInUseException catch (e) {
+      return (ok: false, message: e.toString());
+    } catch (e) {
+      debugPrint("Erro ao salvar o perfil: $e");
+      return (ok: false, message: "Erro ao salvar o perfil. Tente novamente.");
     }
   }
 }

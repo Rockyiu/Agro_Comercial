@@ -66,7 +66,7 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
-      // ADICIONADO: A barra superior com o botão de voltar!
+      // Barra superior (com voltar) só quando a tela não é uma aba
       appBar: widget.showAppBar
           ? AppBar(
               title: Text(
@@ -120,6 +120,8 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                     itemBuilder: (context, index) {
                       final op = state.operations[index];
                       final isSelected = selectedIds.contains(op.id);
+                      // Colaborador só seleciona (para excluir) o que registrou
+                      final canModify = _controller.canModify(op.createdBy);
 
                       return Card(
                         elevation: isSelected ? 0 : 2,
@@ -138,10 +140,12 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          onLongPress: () => _toggleSelection(op.id!),
+                          onLongPress: canModify
+                              ? () => _toggleSelection(op.id!)
+                              : null,
                           onTap: () async {
                             if (selectedIds.isNotEmpty) {
-                              _toggleSelection(op.id!);
+                              if (canModify) _toggleSelection(op.id!);
                             } else {
                               await Navigator.push(
                                 context,

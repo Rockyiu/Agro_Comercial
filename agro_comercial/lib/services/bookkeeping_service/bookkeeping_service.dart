@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/models/bookkeeping_model.dart';
 
 // Lançamentos do Livro Caixa: users -> ID do Produtor -> bookkeeping
@@ -30,15 +29,19 @@ class BookkeepingService {
         .toList();
   }
 
-  // Cria ou edita um lançamento; se houver PDF novo, envia para o Storage
-  Future<void> saveEntry(BookkeepingModel entry, {File? pdfFile}) async {
+  // Cria ou edita um lançamento. Se vier um PDF novo ([pdfBytes]), ele é
+  // enviado para a pasta privada do produtor e o anterior é apagado.
+  Future<void> saveEntry(BookkeepingModel entry, {Uint8List? pdfBytes}) async {
     String? pdfUrl = entry.pdfUrl;
 
-    if (pdfFile != null) {
-      final fileName =
-          'notas_fiscais/${_userId}_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final upload = await _storage.ref(fileName).putFile(pdfFile);
+    if (pdfBytes != null) {
+      final path =
+          'users/$_userId/notas_fiscais/${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final upload = await _storage
+          .ref(path)
+          .putData(pdfBytes, SettableMetadata(contentType: 'application/pdf'));
       pdfUrl = await upload.ref.getDownloadURL();
+      await _deletePdf(entry.pdfUrl);
     }
 
     // O tipo (Entrada/Saída) é recalculado pela conta dentro do model
@@ -61,11 +64,26 @@ class BookkeepingService {
     }
   }
 
-  Future<void> deleteEntries(List<String> ids) async {
+  // [pdfUrls]: comprovantes dos lançamentos, apagados depois deles
+  Future<void> deleteEntries(
+    List<String> ids, {
+    Iterable<String?> pdfUrls = const [],
+  }) async {
     final batch = _firestore.batch();
     for (final id in ids) {
       batch.delete(_collection.doc(id));
     }
     await batch.commit();
+    await Future.wait(pdfUrls.map(_deletePdf));
+  }
+
+  // O arquivo pode já ter sido apagado; nesse caso o erro é ignorado
+  Future<void> _deletePdf(String? url) async {
+    if (url == null || url.isEmpty) return;
+    try {
+      await _storage.refFromURL(url).delete();
+    } catch (e) {
+      debugPrint("Comprovante não apagado ($url): $e");
+    }
   }
 }

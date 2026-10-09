@@ -10,6 +10,7 @@ import 'package:agro_comercial/common/widgets/machine_cost_fields.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_machine_controller.dart';
@@ -47,7 +48,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
     _modelController = TextEditingController(text: widget.machine.model);
     _powerController = TextEditingController(text: widget.machine.power);
     _hoursController = TextEditingController(
-      text: widget.machine.workingHours.toString(),
+      text: Formatters.editable(widget.machine.workingHours),
     );
 
     _controller.addListener(_handleStateChange);
@@ -301,8 +302,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
                       brand: _brandController.text.trim(),
                       model: _modelController.text.trim(),
                       power: _powerController.text.trim(),
-                      workingHours:
-                          Parsers.decimal(_hoursController.text)?.round() ?? 0,
+                      workingHours: Parsers.decimal(_hoursController.text) ?? 0,
                       // Campos apagados: grava os dados de custo vazios
                       costData:
                           _costControllers.toCostData() ??

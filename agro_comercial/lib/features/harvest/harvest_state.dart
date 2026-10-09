@@ -11,6 +11,9 @@ class HarvestSuccessState extends HarvestState {
   HarvestSuccessState(this.harvests);
 }
 
+// Gravação concluída (cadastro, edição ou exclusão)
+class HarvestSavedState extends HarvestState {}
+
 class HarvestErrorState extends HarvestState {
   final String message;
   HarvestErrorState(this.message);

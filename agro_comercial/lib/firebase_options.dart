@@ -72,5 +72,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'agro-comercial.firebasestorage.app',
     iosBundleId: 'dev.vinicius.agrocomercil.agroComercial',
   );
-
 }

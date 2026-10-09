@@ -9,7 +9,7 @@ class UserModel {
   final String? role;
   final String? phone;
   final String? imageUrl;
-  final String? managerId; // ADICIONADO: O ID do gerente dono da fazenda
+  final String? managerId; // O ID do gerente dono da fazenda
   // Colaborador liberado pelo produtor para registrar Produção/Colheita.
   // Só é gravado pela tela "Minha Equipe" (EmployeeService), por isso fica
   // fora do toMap: salvar o perfil não pode apagar nem alterar a liberação.

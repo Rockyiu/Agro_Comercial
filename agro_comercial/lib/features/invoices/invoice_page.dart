@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/locator.dart';
 
@@ -22,7 +23,7 @@ class _InvoicePageState extends State<InvoicePage> {
   @override
   void initState() {
     super.initState();
-    // Assim que a tela abre, busca as notas do banco local (SQLite)
+    // Assim que a tela abre, busca as notas guardadas no aparelho
     _invoiceController.loadInvoices();
   }
 
@@ -30,6 +31,11 @@ class _InvoicePageState extends State<InvoicePage> {
   String _formatDate(int timestamp) {
     final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
     return DateFormat('dd/MM/yyyy HH:mm').format(date);
+  }
+
+  Future<void> _openPdf(String filePath) async {
+    final error = await _invoiceController.openPdf(filePath);
+    if (error != null && mounted) context.showErrorSnackBar(error);
   }
 
   @override
@@ -55,7 +61,7 @@ class _InvoicePageState extends State<InvoicePage> {
         builder: (context, child) {
           final state = _invoiceController.state;
 
-          // Tela de Carregamento com mensagem dinâmica (ex: "Conectando à SEFAZ...")
+          // Tela de Carregamento
           if (state is InvoiceLoadingState) {
             return Center(
               child: Column(
@@ -102,15 +108,10 @@ class _InvoicePageState extends State<InvoicePage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    "Nenhuma nota fiscal baixada.",
+                    "Nenhuma nota fiscal no aparelho.",
                     style: AppTextStyles.smallText.copyWith(
                       color: AppColors.grey,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Clique no botão + para baixar",
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
               ),
@@ -168,25 +169,13 @@ class _InvoicePageState extends State<InvoicePage> {
                       color: Colors.grey,
                       size: 20,
                     ),
-                    onTap: () {
-                      // Chama a função do controlador que abre o visualizador de PDF do celular
-                      _invoiceController.openPdf(invoice.pdfFilePath);
-                    },
+                    onTap: () => _openPdf(invoice.pdfFilePath),
                   ),
                 );
               },
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
-        tooltip: "Baixar Novas Notas",
-        onPressed: () {
-          // Inicia o processo: Escolher pasta -> Baixar novas -> Atualizar lista
-          _invoiceController.downloadNewInvoices();
-        },
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

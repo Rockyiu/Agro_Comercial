@@ -32,11 +32,11 @@ class EditWarehouseController extends SafeChangeNotifier {
     }
   }
 
-  Future<void> deleteWarehouse(String warehouseId) async {
+  Future<void> deleteWarehouse(WarehouseModel warehouse) async {
     _state = EditWarehouseLoadingState();
     notifyListeners();
     try {
-      await _warehouseService.deleteWarehouseAndContents(warehouseId);
+      await _warehouseService.deleteWarehouseAndContents(warehouse);
       _state = EditWarehouseSuccessState();
       notifyListeners();
     } catch (e) {
