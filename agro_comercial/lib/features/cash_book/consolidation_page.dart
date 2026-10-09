@@ -1,9 +1,11 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'consolidation_controller.dart';
+import 'widgets/year_selector.dart';
 
 class ConsolidationPage extends StatefulWidget {
   const ConsolidationPage({super.key});
@@ -84,8 +86,28 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
             );
           }
 
-          // Decide qual layout renderizar com base no tamanho da tela!
-          return isDesktop ? _buildDesktopTable() : _buildMobileList();
+          return Column(
+            children: [
+              // Filtro do ano-calendário consolidado
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                color: AppColors.greenlightOne.withValues(alpha: 0.05),
+                child: YearSelector(
+                  year: _controller.anoSelecionado,
+                  years: _controller.anosDisponiveis,
+                  onChanged: _controller.selecionarAno,
+                ),
+              ),
+              // Decide qual layout renderizar com base no tamanho da tela!
+              Expanded(
+                child: isDesktop ? _buildDesktopTable() : _buildMobileList(),
+              ),
+            ],
+          );
         },
       ),
     );
@@ -208,34 +230,22 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
+                      DataCell(Text(Formatters.decimal(resumo.receitas))),
+                      DataCell(Text(Formatters.decimal(resumo.despesas))),
                       DataCell(
-                        Text(_controller.formatarMoeda(resumo.receitas)),
-                      ),
-                      DataCell(
-                        Text(_controller.formatarMoeda(resumo.despesas)),
+                        Text(Formatters.decimal(resumo.despesasNaoDedutiveis)),
                       ),
                       DataCell(
                         Text(
-                          _controller.formatarMoeda(
-                            resumo.despesasNaoDedutiveis,
-                          ),
+                          Formatters.decimal(resumo.adiantamentosAnteriores),
                         ),
                       ),
                       DataCell(
-                        Text(
-                          _controller.formatarMoeda(
-                            resumo.adiantamentosAnteriores,
-                          ),
-                        ),
+                        Text(Formatters.decimal(resumo.adiantamentosAtuais)),
                       ),
                       DataCell(
                         Text(
-                          _controller.formatarMoeda(resumo.adiantamentosAtuais),
-                        ),
-                      ),
-                      DataCell(
-                        Text(
-                          _controller.formatarMoeda(resultado),
+                          Formatters.decimal(resultado),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: resultado < 0
@@ -265,23 +275,19 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
-                          _controller.totalGeral.receitas,
-                        ),
+                        Formatters.decimal(_controller.totalGeral.receitas),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
-                          _controller.totalGeral.despesas,
-                        ),
+                        Formatters.decimal(_controller.totalGeral.despesas),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
+                        Formatters.decimal(
                           _controller.totalGeral.despesasNaoDedutiveis,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -289,7 +295,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
+                        Formatters.decimal(
                           _controller.totalGeral.adiantamentosAnteriores,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -297,7 +303,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
+                        Formatters.decimal(
                           _controller.totalGeral.adiantamentosAtuais,
                         ),
                         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -305,9 +311,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
                     ),
                     DataCell(
                       Text(
-                        _controller.formatarMoeda(
-                          _controller.totalGeral.resultadoMes,
-                        ),
+                        Formatters.decimal(_controller.totalGeral.resultadoMes),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -370,7 +374,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              "R\$ ${_controller.formatarMoeda(resultadoFinal)}",
+              "R\$ ${Formatters.decimal(resultadoFinal)}",
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 32,
@@ -422,7 +426,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
           ),
           subtitle: Text(
             hasData
-                ? "Saldo: R\$ ${_controller.formatarMoeda(resultado)}"
+                ? "Saldo: R\$ ${Formatters.decimal(resultado)}"
                 : "Sem movimentação",
             style: TextStyle(
               color: hasData
@@ -498,7 +502,7 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
             ),
           ),
           Text(
-            "${isSaida && valor > 0 ? '-' : ''} R\$ ${_controller.formatarMoeda(valor)}",
+            "${isSaida && valor > 0 ? '-' : ''} R\$ ${Formatters.decimal(valor)}",
             style: TextStyle(
               color: isWhiteText
                   ? Colors.white

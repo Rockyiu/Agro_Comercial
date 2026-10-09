@@ -1,25 +1,31 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'bookkeeping_controller.dart';
 import 'bookkeeping_state.dart';
+import 'cash_book_year_controller.dart';
 import 'register_bookkeeping_page.dart';
+import 'widgets/year_selector.dart';
 
 class BookkeepingPage extends StatefulWidget {
   const BookkeepingPage({super.key});
 
   @override
-  // ADICIONADO: SingleTickerProviderStateMixin é necessário para o TabController manual
+  // SingleTickerProviderStateMixin é necessário para o TabController manual
   State<BookkeepingPage> createState() => _BookkeepingPageState();
 }
 
 class _BookkeepingPageState extends State<BookkeepingPage>
     with SingleTickerProviderStateMixin {
   final _controller = locator.get<BookkeepingController>();
+  // Ano-calendário compartilhado com Consolidação e Relatórios
+  final _yearController = locator.get<CashBookYearController>();
 
-  // ADICIONADO: Controlador manual das abas
+  // Controlador manual das abas
   late TabController _tabController;
 
   final List<String> _meses = [
@@ -50,19 +56,45 @@ class _BookkeepingPageState extends State<BookkeepingPage>
     );
 
     // Fica escutando as abas. Se o usuário arrastar a tela no celular, atualiza o Dropdown
-    _tabController.addListener(() {
-      if (mounted) setState(() {});
-    });
+    _tabController.addListener(_refresh);
+    _yearController.addListener(_refresh);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.carregarLancamentos();
     });
   }
 
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    // O controller do ano é compartilhado (singleton): só remove o listener
+    _yearController.removeListener(_refresh);
     _tabController.dispose();
     super.dispose();
+  }
+
+  Widget _buildYearSelector() {
+    // Reconstrói quando os lançamentos carregam (anos antigos entram na lista)
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
+        return YearSelector(
+          year: _yearController.year,
+          years: _yearController.availableYears(
+            state is BookkeepingSuccessState ? state.lancamentos : const [],
+          ),
+          onChanged: (ano) {
+            // Seleções de outro ano não fazem sentido no ano novo
+            _itensSelecionados.clear();
+            _yearController.changeYear(ano);
+          },
+        );
+      },
+    );
   }
 
   void _toggleSelecao(String id) {
@@ -75,26 +107,24 @@ class _BookkeepingPageState extends State<BookkeepingPage>
     });
   }
 
-  void _excluirSelecionados() async {
+  Future<void> _excluirSelecionados() async {
     await _controller.excluirLancamentos(_itensSelecionados.toList());
+    if (!mounted) return;
 
-    setState(() {
-      _itensSelecionados.clear();
-    });
+    setState(() => _itensSelecionados.clear());
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Lançamentos excluídos com sucesso!"),
-          backgroundColor: Colors.red,
-        ),
-      );
+    // Só confirma o sucesso se a exclusão realmente deu certo
+    final state = _controller.state;
+    if (state is BookkeepingErrorState) {
+      context.showErrorSnackBar(state.message);
+    } else {
+      context.showSuccessSnackBar("Lançamentos excluídos com sucesso!");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // ADICIONADO: Verifica a largura da tela. Se for maior que 600 pixels, considera como PC/Tablet
+    // Verifica a largura da tela. Se for maior que 600 pixels, considera como PC/Tablet
     final bool isDesktop = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
@@ -156,7 +186,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
             ),
         ],
 
-        // NOVIDADE: A TabBar só aparece na AppBar se for Desktop/PC!
+        // A TabBar só aparece na AppBar se for Desktop/PC!
         bottom: isDesktop
             ? TabBar(
                 controller: _tabController,
@@ -173,51 +203,61 @@ class _BookkeepingPageState extends State<BookkeepingPage>
 
       body: Column(
         children: [
-          // NOVIDADE: Filtro de Mês (Dropdown) exclusivo para versão de Celular
-          if (!isDesktop)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: AppColors.greenlightOne.withValues(alpha: 0.05),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _tabController.index,
-                    icon: const Icon(
-                      Icons.arrow_drop_down_circle,
-                      color: AppColors.greenlightOne,
-                    ),
-                    isExpanded: true,
-                    items: List.generate(12, (index) {
-                      return DropdownMenuItem(
-                        value: index,
-                        child: Text(
-                          "Mês de Referência: ${_meses[index]}",
-                          style: AppTextStyles.inputText.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.grey,
-                          ),
+          // Filtros: Mês (Dropdown só no celular; no PC são as abas) + Ano
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: AppColors.greenlightOne.withValues(alpha: 0.05),
+            child: Row(
+              children: [
+                if (!isDesktop) ...[
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.greenlightOne.withValues(alpha: 0.3),
                         ),
-                      );
-                    }),
-                    onChanged: (int? novoMes) {
-                      if (novoMes != null) {
-                        // Faz a tela deslizar suavemente para o mês escolhido
-                        _tabController.animateTo(novoMes);
-                      }
-                    },
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _tabController.index,
+                          icon: const Icon(
+                            Icons.arrow_drop_down_circle,
+                            color: AppColors.greenlightOne,
+                          ),
+                          isExpanded: true,
+                          items: List.generate(12, (index) {
+                            return DropdownMenuItem(
+                              value: index,
+                              child: Text(
+                                _meses[index],
+                                style: AppTextStyles.inputText.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.grey,
+                                ),
+                              ),
+                            );
+                          }),
+                          onChanged: (int? novoMes) {
+                            if (novoMes != null) {
+                              // Faz a tela deslizar suavemente para o mês escolhido
+                              _tabController.animateTo(novoMes);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(flex: 2, child: _buildYearSelector()),
+              ],
             ),
+          ),
 
           // LISTA DE LANÇAMENTOS
           Expanded(
@@ -251,13 +291,17 @@ class _BookkeepingPageState extends State<BookkeepingPage>
                     controller: _tabController,
                     children: List.generate(12, (indexMes) {
                       final lancamentosDoMes = todosLancamentos
-                          .where((l) => l.mes == indexMes)
+                          .where(
+                            (l) =>
+                                l.mes == indexMes &&
+                                l.ano == _yearController.year,
+                          )
                           .toList();
 
                       if (lancamentosDoMes.isEmpty) {
                         return Center(
                           child: Text(
-                            "Nenhum lançamento em ${_meses[indexMes]}.",
+                            "Nenhum lançamento em ${_meses[indexMes]} de ${_yearController.year}.",
                             style: AppTextStyles.inputText.copyWith(
                               color: AppColors.grey,
                             ),
@@ -338,7 +382,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: Text(
-                                "R\$ ${item.valor.toStringAsFixed(2)}",
+                                Formatters.currency(item.valor),
                                 style: AppTextStyles.inputText.copyWith(
                                   color: isEntrada ? Colors.blue : Colors.red,
                                   fontWeight: FontWeight.bold,
@@ -371,6 +415,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
               builder: (context) => RegisterBookkeepingPage(
                 mesBloqueado: tabIndex,
                 nomeMes: _meses[tabIndex].substring(0, 3),
+                anoInicial: _yearController.year,
               ),
             ),
           );

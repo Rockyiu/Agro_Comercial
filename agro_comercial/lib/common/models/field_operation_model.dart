@@ -2,8 +2,11 @@ class FieldOperationModel {
   final String? id;
   final String type; // 'Vistoria' ou 'Aplicação'
   final String plotName; // Nome/Número do Talhão
+  final String?
+  plotId; // Id do talhão (PlotModel.id); vazio em lançamentos antigos
   final int dateTimestamp;
   final String farmId;
+  final String? createdBy; // UID de quem registrou a vistoria/aplicação
 
   final String? condition;
   final String? observations;
@@ -12,38 +15,99 @@ class FieldOperationModel {
   final String? productName;
   final double? dosage;
   final String? dosageUnit;
+  // Preço do insumo no dia do lançamento, por unidade do estoque (productUnit)
+  final double? unitPrice;
+  final String? productUnit;
 
   final String? machineId;
   final String? machineName;
-  final double? machineHours; // ADICIONADO: Para podermos estornar depois
+  final double? machineHours; // Para podermos estornar depois
 
   FieldOperationModel({
     this.id,
     required this.type,
     required this.plotName,
+    this.plotId,
     required this.dateTimestamp,
     required this.farmId,
+    this.createdBy,
     this.condition,
     this.observations,
     this.productId,
     this.productName,
     this.dosage,
     this.dosageUnit,
+    this.unitPrice,
+    this.productUnit,
     this.machineId,
     this.machineName,
-    this.machineHours, // ADICIONADO
+    this.machineHours,
   });
+
+  bool get isInspection => type == 'Vistoria';
+
+  FieldOperationModel copyWith({
+    String? id,
+    String? type,
+    String? plotName,
+    String? plotId,
+    int? dateTimestamp,
+    String? farmId,
+    String? createdBy,
+    String? condition,
+    String? observations,
+    String? productId,
+    String? productName,
+    double? dosage,
+    String? dosageUnit,
+    double? unitPrice,
+    String? productUnit,
+    String? machineId,
+    String? machineName,
+    double? machineHours,
+  }) {
+    return FieldOperationModel(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      plotName: plotName ?? this.plotName,
+      plotId: plotId ?? this.plotId,
+      dateTimestamp: dateTimestamp ?? this.dateTimestamp,
+      farmId: farmId ?? this.farmId,
+      createdBy: createdBy ?? this.createdBy,
+      condition: condition ?? this.condition,
+      observations: observations ?? this.observations,
+      productId: productId ?? this.productId,
+      productName: productName ?? this.productName,
+      dosage: dosage ?? this.dosage,
+      dosageUnit: dosageUnit ?? this.dosageUnit,
+      unitPrice: unitPrice ?? this.unitPrice,
+      productUnit: productUnit ?? this.productUnit,
+      machineId: machineId ?? this.machineId,
+      machineName: machineName ?? this.machineName,
+      machineHours: machineHours ?? this.machineHours,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
-      'type': type, 'plotName': plotName, 'dateTimestamp': dateTimestamp,
-      'farmId': farmId, 'condition': condition, 'observations': observations,
-      'productId': productId, 'productName': productName, 'dosage': dosage,
+      'type': type,
+      'plotName': plotName,
+      'plotId': plotId,
+      'dateTimestamp': dateTimestamp,
+      'farmId': farmId,
+      'createdBy': createdBy,
+      'condition': condition,
+      'observations': observations,
+      'productId': productId,
+      'productName': productName,
+      'dosage': dosage,
       'dosageUnit': dosageUnit,
+      'unitPrice': unitPrice,
+      'productUnit': productUnit,
       'machineId': machineId,
       'machineName': machineName,
-      'machineHours': machineHours, // ADICIONADO
+      'machineHours': machineHours,
     };
   }
 
@@ -52,18 +116,22 @@ class FieldOperationModel {
       id: map['id'],
       type: map['type'] ?? 'Vistoria',
       plotName: map['plotName'] ?? '',
+      plotId: map['plotId'],
       dateTimestamp:
           map['dateTimestamp'] ?? DateTime.now().millisecondsSinceEpoch,
       farmId: map['farmId'] ?? '',
+      createdBy: map['createdBy'],
       condition: map['condition'],
       observations: map['observations'],
       productId: map['productId'],
       productName: map['productName'],
       dosage: (map['dosage'] as num?)?.toDouble(),
       dosageUnit: map['dosageUnit'],
+      unitPrice: (map['unitPrice'] as num?)?.toDouble(),
+      productUnit: map['productUnit'],
       machineId: map['machineId'],
       machineName: map['machineName'],
-      machineHours: (map['machineHours'] as num?)?.toDouble(), // ADICIONADO
+      machineHours: (map['machineHours'] as num?)?.toDouble(),
     );
   }
 }

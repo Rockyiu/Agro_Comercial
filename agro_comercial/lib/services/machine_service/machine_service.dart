@@ -19,36 +19,38 @@ class MachineService {
 
   Future<void> createMachine(MachineModel machine, File? imageFile) async {
     final docRef = _firestore.collection('machines').doc();
-    String? imageUrl;
 
-    if (imageFile != null) {
-      imageUrl = await _uploadImage(docRef.id, imageFile);
-    }
-
-    final machineWithId = MachineModel(
-      id: docRef.id,
-      name: machine.name,
-      model: machine.model,
-      brand: machine.brand,
-      power: machine.power,
-      workingHours: machine.workingHours,
-      imageUrl: imageUrl,
-      warehouseId: machine.warehouseId,
-      farmId: machine.farmId,
-    );
-
-    final map = machineWithId.toMap();
+    // copyWith preserva todos os campos (inclusive isMotorized, que antes
+    // era perdido aqui e toda máquina era salva como motorizada)
+    final map = machine.copyWith(id: docRef.id).toMap();
     map['createdAt'] = DateTime.now().millisecondsSinceEpoch;
-
     await docRef.set(map);
+
+    // A foto vai depois: as regras do Storage conferem a fazenda da máquina
+    if (imageFile != null) {
+      final imageUrl = await _uploadImage(docRef.id, imageFile);
+      if (imageUrl != null) await docRef.update({'imageUrl': imageUrl});
+    }
   }
 
-  Future<List<MachineModel>> getMachinesByWarehouse(String warehouseId) async {
-    final snapshot = await _firestore
-        .collection('machines')
-        .where('warehouseId', isEqualTo: warehouseId)
-        .get();
+  // Toda consulta filtra pela fazenda: é o que as regras do Firestore usam
+  // para liberar a leitura
+  Future<List<MachineModel>> getMachinesByFarm(String farmId) => _query(
+    _firestore.collection('machines').where('farmId', isEqualTo: farmId),
+  );
 
+  Future<List<MachineModel>> getMachinesByWarehouse({
+    required String farmId,
+    required String warehouseId,
+  }) => _query(
+    _firestore
+        .collection('machines')
+        .where('farmId', isEqualTo: farmId)
+        .where('warehouseId', isEqualTo: warehouseId),
+  );
+
+  Future<List<MachineModel>> _query(Query<Map<String, dynamic>> query) async {
+    final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => MachineModel.fromMap(doc.data()))
         .toList();
@@ -58,7 +60,8 @@ class MachineService {
     String? imageUrl = machine.imageUrl;
 
     if (newImageFile != null) {
-      imageUrl = await _uploadImage(machine.id!, newImageFile);
+      // Se o envio falhar, mantém a foto que já existia
+      imageUrl = await _uploadImage(machine.id!, newImageFile) ?? imageUrl;
     }
 
     await _firestore.collection('machines').doc(machine.id).update({
@@ -68,11 +71,17 @@ class MachineService {
       'power': machine.power,
       'workingHours': machine.workingHours,
       'imageUrl': imageUrl,
+      'costData': machine.costData?.toMap(),
     });
   }
 
   Future<void> deleteMachine(String machineId) async {
     await _firestore.collection('machines').doc(machineId).delete();
+    await _deleteImage(machineId);
+  }
+
+  // A máquina pode não ter foto; nesse caso o Storage lança erro e ignoramos
+  Future<void> _deleteImage(String machineId) async {
     try {
       await _storage.ref().child('machines').child('$machineId.jpg').delete();
     } catch (_) {}
@@ -82,14 +91,11 @@ class MachineService {
     final batch = _firestore.batch();
 
     for (String id in machineIds) {
-      final docRef = _firestore.collection('machines').doc(id);
-      batch.delete(docRef);
-
-      try {
-        await _storage.ref().child('machines').child('$id.jpg').delete();
-      } catch (_) {}
+      batch.delete(_firestore.collection('machines').doc(id));
     }
-
     await batch.commit();
+
+    // Apaga as fotos em paralelo depois de remover os registros
+    await Future.wait(machineIds.map(_deleteImage));
   }
 }

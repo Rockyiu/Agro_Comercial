@@ -19,6 +19,7 @@ class CustomTextFormField extends StatefulWidget {
   final String? helperText;
   final VoidCallback? onEditingComplete;
   final FocusNode? focusNode; // 1. Declaração da variável adicionada aqui
+  final bool enabled;
 
   const CustomTextFormField({
     super.key,
@@ -37,6 +38,7 @@ class CustomTextFormField extends StatefulWidget {
     this.helperText,
     this.onEditingComplete,
     this.focusNode, // 2. Adicionado ao construtor
+    this.enabled = true,
   });
 
   @override
@@ -64,6 +66,7 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: TextFormField(
         focusNode: widget.focusNode,
+        enabled: widget.enabled,
         onChanged: (value) {
           if (value.length == 1) {
             setState(() {
@@ -91,7 +94,7 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           errorMaxLines: 3,
           helperText: _helperText,
           helperMaxLines: 3,
-          errorStyle: const TextStyle(color: Colors.yellow),
+          errorStyle: const TextStyle(color: Colors.red),
           suffixIcon: widget.suffixIcon,
           hintText: widget.hintText,
           floatingLabelBehavior: FloatingLabelBehavior.always,

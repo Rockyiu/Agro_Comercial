@@ -1,14 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/services/employee_service/employee_service.dart';
-import 'package:agro_comercial/locator.dart'; // ADICIONADO
-import 'package:agro_comercial/features/farm/farm_controller.dart'; // ADICIONADO
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'employee_state.dart';
 
-class EmployeeController extends ChangeNotifier {
+class EmployeeController extends SafeChangeNotifier {
   final EmployeeService _employeeService;
+  final FarmController _farmController;
 
-  EmployeeController(this._employeeService);
+  EmployeeController(this._employeeService, this._farmController);
 
   EmployeeState _state = EmployeeInitialState();
   EmployeeState get state => _state;
@@ -17,8 +17,8 @@ class EmployeeController extends ChangeNotifier {
     _state = EmployeeLoadingState();
     notifyListeners();
     try {
-      // CORREÇÃO: Busca apenas os funcionários da fazenda ativa
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      // Busca apenas os funcionários da fazenda ativa
+      final activeFarmId = _farmController.selectedFarm?.id;
 
       if (activeFarmId != null) {
         final employeesList = await _employeeService.getEmployees(activeFarmId);
@@ -36,17 +36,48 @@ class EmployeeController extends ChangeNotifier {
     _state = EmployeeLoadingState();
     notifyListeners();
     try {
-      // CORREÇÃO: Registra o funcionário na fazenda ativa em vez do UID do admin
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-
-      if (activeFarmId != null) {
-        // Atenção: O seu inviteEmployee no EmployeeService vai precisar aceitar esse farmId
-        await _employeeService.inviteEmployee(name, cpf, activeFarmId);
+      // Registra o funcionário na fazenda ativa
+      final activeFarmId = _farmController.selectedFarm?.id;
+      if (activeFarmId == null) {
+        _state = EmployeeErrorState("Nenhuma fazenda ativa selecionada.");
+        notifyListeners();
+        return;
       }
+
+      await _employeeService.inviteEmployee(name, cpf, activeFarmId);
       await loadEmployees();
+    } on EmployeeNotFoundException catch (e) {
+      // Mensagem específica (ex: CPF sem cadastro no app) em vez da genérica
+      _state = EmployeeErrorState(e.message);
+      notifyListeners();
     } catch (e) {
       _state = EmployeeErrorState("Erro ao autorizar funcionário.");
       notifyListeners();
+    }
+  }
+
+  // Libera/bloqueia Produção/Colheita para o colaborador. A lista é atualizada
+  // na hora (sem tela de carregamento) e volta ao valor anterior se falhar.
+  // Retorna false em caso de erro, para a tela avisar.
+  Future<bool> setHarvestPermission(UserModel employee, bool allowed) async {
+    final current = _state;
+    if (employee.id == null || current is! EmployeeSuccessState) return false;
+
+    void replace(bool value) {
+      _state = EmployeeSuccessState([
+        for (final e in (_state as EmployeeSuccessState).employees)
+          e.id == employee.id ? e.copyWith(canRegisterHarvest: value) : e,
+      ]);
+      notifyListeners();
+    }
+
+    replace(allowed);
+    try {
+      await _employeeService.setHarvestPermission(employee.id!, allowed);
+      return true;
+    } catch (e) {
+      if (_state is EmployeeSuccessState) replace(!allowed);
+      return false;
     }
   }
 

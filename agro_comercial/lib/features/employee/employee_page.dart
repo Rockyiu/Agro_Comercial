@@ -1,3 +1,6 @@
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
@@ -36,44 +39,41 @@ class _EmployeePageState extends State<EmployeePage> {
     });
   }
 
-  void _showDeleteDialog({UserModel? singleEmp}) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          singleEmp != null ? "Excluir Funcionário" : "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
-          singleEmp != null
-              ? "Deseja revogar o acesso de ${singleEmp.name} ao sistema?"
-              : "Deseja revogar o acesso dos ${selectedEmployees.length} funcionários?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (singleEmp != null) {
-                _controller.deleteSingleEmployee(singleEmp);
-              } else {
-                _controller.deleteSelectedEmployees(selectedEmployees.toList());
-                setState(() => selectedEmployees.clear());
-              }
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showDeleteDialog({UserModel? singleEmp}) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: singleEmp != null ? "Excluir Funcionário" : "Excluir Selecionados",
+      message: singleEmp != null
+          ? "Deseja revogar o acesso de ${singleEmp.name} ao sistema?"
+          : "Deseja revogar o acesso dos ${selectedEmployees.length} funcionários?",
     );
+    if (!confirmed || !mounted) return;
+    if (singleEmp != null) {
+      _controller.deleteSingleEmployee(singleEmp);
+    } else {
+      _controller.deleteSelectedEmployees(selectedEmployees.toList());
+      setState(() => selectedEmployees.clear());
+    }
+  }
+
+  Future<void> _setHarvestPermission(UserModel emp, bool allowed) async {
+    final ok = await _controller.setHarvestPermission(emp, allowed);
+    if (!mounted) return;
+    if (!ok) {
+      context.showErrorSnackBar("Não foi possível alterar a permissão.");
+      return;
+    }
+    context.showSuccessSnackBar(
+      allowed
+          ? "${emp.name} agora pode registrar Produção / Colheita."
+          : "Produção / Colheita bloqueada para ${emp.name}.",
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -120,40 +120,10 @@ class _EmployeePageState extends State<EmployeePage> {
             return Column(
               children: [
                 if (selectedEmployees.isNotEmpty)
-                  Container(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${selectedEmployees.length} selecionado(s)",
-                          style: AppTextStyles.inputText.copyWith(
-                            color: AppColors.greenlightOne,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: AppColors.grey,
-                              ),
-                              onPressed: () =>
-                                  setState(() => selectedEmployees.clear()),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _showDeleteDialog(),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  SelectionActionBar(
+                    label: "${selectedEmployees.length} selecionado(s)",
+                    onClear: () => setState(() => selectedEmployees.clear()),
+                    onDelete: _showDeleteDialog,
                   ),
                 Expanded(
                   child: ListView.builder(
@@ -184,37 +154,58 @@ class _EmployeePageState extends State<EmployeePage> {
                           borderRadius: BorderRadius.circular(12),
                           onLongPress: () => _toggleSelection(emp),
                           onTap: () {
-                            if (selectedEmployees.isNotEmpty)
+                            if (selectedEmployees.isNotEmpty) {
                               _toggleSelection(emp);
+                            }
                           },
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.greenlightOne
-                                  .withValues(alpha: 0.1),
-                              child: const Icon(
-                                Icons.person,
-                                color: AppColors.greenlightOne,
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: AppColors.greenlightOne
+                                      .withValues(alpha: 0.1),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: AppColors.greenlightOne,
+                                  ),
+                                ),
+                                title: Text(
+                                  emp.name ?? '',
+                                  style: AppTextStyles.inputText.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "CPF: ${emp.cpf ?? 'Não informado'}",
+                                ),
+                                trailing: selectedEmployees.isEmpty
+                                    ? IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.redAccent,
+                                        ),
+                                        onPressed: () =>
+                                            _showDeleteDialog(singleEmp: emp),
+                                      )
+                                    : null,
                               ),
-                            ),
-                            title: Text(
-                              emp.name ?? '',
-                              style: AppTextStyles.inputText.copyWith(
-                                fontWeight: FontWeight.bold,
+                              // Permissões que o produtor pode liberar
+                              SwitchListTile(
+                                dense: true,
+                                secondary: const Icon(
+                                  Icons.grass,
+                                  color: AppColors.greenlightOne,
+                                ),
+                                title: const Text(
+                                  "Pode registrar Produção / Colheita",
+                                ),
+                                activeThumbColor: AppColors.greenlightOne,
+                                value: emp.canRegisterHarvest,
+                                onChanged: selectedEmployees.isEmpty
+                                    ? (v) => _setHarvestPermission(emp, v)
+                                    : null,
                               ),
-                            ),
-                            subtitle: Text(
-                              "CPF: ${emp.cpf ?? 'Não informado'}",
-                            ),
-                            trailing: selectedEmployees.isEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.delete_outline,
-                                      color: Colors.redAccent,
-                                    ),
-                                    onPressed: () =>
-                                        _showDeleteDialog(singleEmp: emp),
-                                  )
-                                : null,
+                            ],
                           ),
                         ),
                       );

@@ -8,31 +8,30 @@ class ProductService {
   Future<void> createProduct(ProductModel product, File? imageFile) async {
     final docRef = _firestore.collection('products').doc();
 
-    // CORRIGIDO: Agora repassamos o 'measure' para a instância do ProductModel
-    final productWithId = ProductModel(
-      id: docRef.id,
-      name: product.name,
-      brand: product.brand,
-      quantity: product.quantity,
-      measure: product.measure, // <--- ADICIONADO AQUI PARA RESOLVER O ERRO
-      unit: product.unit,
-      category: product.category,
-      warehouseId: product.warehouseId,
-      farmId: product.farmId,
-      imageUrl: null, // Upload desativado temporariamente devido ao plano Spark
-      attributes: product.attributes,
-    );
-
-    final map = productWithId.toMap();
+    // Upload de imagem desativado temporariamente devido ao plano Spark
+    final map = product.copyWith(id: docRef.id).toMap()..['imageUrl'] = null;
     map['createdAt'] = DateTime.now().millisecondsSinceEpoch;
     await docRef.set(map);
   }
 
-  Future<List<ProductModel>> getProductsByWarehouse(String warehouseId) async {
-    final snapshot = await _firestore
+  // Toda consulta filtra pela fazenda: é o que as regras do Firestore usam
+  // para liberar a leitura
+  Future<List<ProductModel>> getProductsByFarm(String farmId) => _query(
+    _firestore.collection('products').where('farmId', isEqualTo: farmId),
+  );
+
+  Future<List<ProductModel>> getProductsByWarehouse({
+    required String farmId,
+    required String warehouseId,
+  }) => _query(
+    _firestore
         .collection('products')
-        .where('warehouseId', isEqualTo: warehouseId)
-        .get();
+        .where('farmId', isEqualTo: farmId)
+        .where('warehouseId', isEqualTo: warehouseId),
+  );
+
+  Future<List<ProductModel>> _query(Query<Map<String, dynamic>> query) async {
+    final snapshot = await query.get();
     return snapshot.docs
         .map((doc) => ProductModel.fromMap(doc.data()))
         .toList();
@@ -43,11 +42,11 @@ class ProductService {
       'name': product.name,
       'brand': product.brand,
       'quantity': product.quantity,
-      'measure': product
-          .measure, // <--- ADICIONADO: Mantém o banco atualizado se houver edição
+      'measure': product.measure,
       'unit': product.unit,
       'category': product.category,
       'attributes': product.attributes,
+      'unitPrice': product.unitPrice,
     });
   }
 
@@ -63,18 +62,27 @@ class ProductService {
     await batch.commit();
   }
 
+  // Já existe outro produto com o mesmo nome e marca neste armazém?
+  // A comparação ignora maiúsculas/minúsculas e espaços nas pontas
+  // ("Glifosato" == " glifosato"). [ignoreId]: o próprio produto, na edição.
   Future<bool> checkDuplicateProduct(
     String name,
-    String brand,
-    String warehouseId,
-  ) async {
-    final snapshot = await _firestore
-        .collection('products')
-        .where('warehouseId', isEqualTo: warehouseId)
-        .where('name', isEqualTo: name)
-        .where('brand', isEqualTo: brand)
-        .get();
+    String brand, {
+    required String farmId,
+    required String warehouseId,
+    String? ignoreId,
+  }) async {
+    String normalize(String value) => value.trim().toLowerCase();
 
-    return snapshot.docs.isNotEmpty;
+    final products = await getProductsByWarehouse(
+      farmId: farmId,
+      warehouseId: warehouseId,
+    );
+    return products.any(
+      (p) =>
+          p.id != ignoreId &&
+          normalize(p.name) == normalize(name) &&
+          normalize(p.brand) == normalize(brand),
+    );
   }
 }

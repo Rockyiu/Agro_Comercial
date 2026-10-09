@@ -4,29 +4,28 @@ import 'package:agro_comercial/common/models/operation_model.dart';
 class OperationService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> createOperation(OperationModel operation) async {
-    final docRef = _firestore.collection('operations').doc();
+  CollectionReference<Map<String, dynamic>> get _collection =>
+      _firestore.collection('operations');
 
-    final operationWithId = OperationModel(
-      id: docRef.id,
-      title: operation.title,
-      description: operation.description,
-      farmId: operation.farmId,
-      dateTimestamp: operation.dateTimestamp,
-      usedMachine: operation.usedMachine,
-      machineId: operation.machineId,
-      machineName: operation.machineName,
-      machineHours: operation.machineHours,
-      usedProducts: operation.usedProducts,
-      appliedProducts: operation.appliedProducts,
-    );
+  // Gravações dentro do lote do estoque (StockService.applyUsage), para a
+  // operação e a baixa de estoque serem salvas juntas ou nenhuma delas
+  void addCreateToBatch(WriteBatch batch, OperationModel operation) {
+    final docRef = _collection.doc();
+    batch.set(docRef, operation.copyWith(id: docRef.id).toMap());
+  }
 
-    await docRef.set(operationWithId.toMap());
+  void addUpdateToBatch(WriteBatch batch, OperationModel operation) {
+    batch.update(_collection.doc(operation.id), operation.toMap());
+  }
+
+  void addDeleteToBatch(WriteBatch batch, Iterable<String> ids) {
+    for (final id in ids) {
+      batch.delete(_collection.doc(id));
+    }
   }
 
   Future<List<OperationModel>> getOperations(String farmId) async {
-    final snapshot = await _firestore
-        .collection('operations')
+    final snapshot = await _collection
         .where('farmId', isEqualTo: farmId)
         .orderBy('dateTimestamp', descending: true)
         .get();
@@ -35,22 +34,21 @@ class OperationService {
         .toList();
   }
 
-  Future<void> updateOperation(OperationModel operation) async {
-    await _firestore
-        .collection('operations')
-        .doc(operation.id)
-        .update(operation.toMap());
-  }
-
-  Future<void> deleteOperation(String operationId) async {
-    await _firestore.collection('operations').doc(operationId).delete();
-  }
-
-  Future<void> deleteMultipleOperations(List<String> ids) async {
-    final batch = _firestore.batch();
-    for (String id in ids) {
-      batch.delete(_firestore.collection('operations').doc(id));
-    }
-    await batch.commit();
+  // Operações registradas por um usuário específico (ex: colaborador) na fazenda.
+  // Só usa filtros de igualdade para não exigir índice composto no Firestore;
+  // a ordenação é feita localmente.
+  Future<List<OperationModel>> getOperationsByUser(
+    String farmId,
+    String userId,
+  ) async {
+    final snapshot = await _collection
+        .where('farmId', isEqualTo: farmId)
+        .where('createdBy', isEqualTo: userId)
+        .get();
+    final operations = snapshot.docs
+        .map((doc) => OperationModel.fromMap(doc.data()))
+        .toList();
+    operations.sort((a, b) => b.dateTimestamp.compareTo(a.dateTimestamp));
+    return operations;
   }
 }

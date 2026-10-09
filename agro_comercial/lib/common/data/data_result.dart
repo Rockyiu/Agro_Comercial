@@ -1,4 +1,4 @@
-// lib/common/models/data_result.dart
+// lib/common/data/data_result.dart
 
 import 'package:agro_comercial/common/models/app_exception.dart';
 
@@ -6,18 +6,18 @@ class DataResult<T> {
   final T? _data;
   final AppException? _error;
 
-  DataResult.success(this._data) : _error = null;
-  DataResult.failure(this._error) : _data = null;
+  DataResult.success(T data) : _data = data, _error = null;
+  DataResult.failure(AppException error) : _data = null, _error = error;
 
-  // Método que decide se vai retornar os Dados (Home) ou o Erro (BottomSheet)
-  void fold(
-    Function(AppException error) onFailure,
-    Function(T data) onSuccess,
+  // Decide se segue com os Dados (ex: Home) ou com o Erro (ex: BottomSheet).
+  // Devolve o que o callback retornar, então também pode ser aguardado:
+  // await result.fold((e) async {...}, (data) async {...});
+  R fold<R>(
+    R Function(AppException error) onFailure,
+    R Function(T data) onSuccess,
   ) {
-    if (_error != null) {
-      onFailure(_error);
-    } else if (_data != null) {
-      onSuccess(_data as T);
-    }
+    final error = _error;
+    if (error != null) return onFailure(error);
+    return onSuccess(_data as T);
   }
 }

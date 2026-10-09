@@ -3,6 +3,7 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/machine_cost_fields.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
   final _modelController = TextEditingController();
   final _powerController = TextEditingController();
   final _hoursController = TextEditingController();
+  final _costControllers = MachineCostControllers();
 
   WarehouseModel? _selectedWarehouse;
   bool _isMotorized = true; // NOVA VARIÁVEL DE ESTADO
@@ -68,6 +70,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
     _modelController.dispose();
     _powerController.dispose();
     _hoursController.dispose();
+    _costControllers.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -209,7 +212,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ADICIONADO: CHAVE SELETORA DE MOTOR
+                  // CHAVE SELETORA DE MOTOR
                   SwitchListTile(
                     title: Text(
                       "Possui motor / Horímetro?",
@@ -221,13 +224,13 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                       "Desmarque para implementos manuais, aplicadores costais, etc.",
                       style: AppTextStyles.smallText,
                     ),
-                    activeColor: AppColors.greenlightOne,
+                    activeThumbColor: AppColors.greenlightOne,
                     value: _isMotorized,
                     onChanged: (val) => setState(() => _isMotorized = val),
                   ),
                   const SizedBox(height: 16),
 
-                  // ADICIONADO: SÓ MOSTRA SE FOR MOTORIZADO
+                  // SÓ MOSTRA SE FOR MOTORIZADO
                   if (_isMotorized)
                     CustomTextFormField(
                       controller: _hoursController,
@@ -235,6 +238,11 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                       hintText: "Ex: 50 (Fica 0 se vazio)",
                       keyboardType: TextInputType.number,
                     ),
+                  const SizedBox(height: 16),
+                  MachineCostFields(
+                    controllers: _costControllers,
+                    isMotorized: _isMotorized,
+                  ),
                   const SizedBox(height: 32),
 
                   PrimaryButton(
@@ -252,6 +260,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                               : "",
                           warehouseId: _selectedWarehouse!.id!,
                           isMotorized: _isMotorized,
+                          costData: _costControllers.toCostData(),
                           imageFile: null,
                         );
                       }

@@ -1,15 +1,15 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
-import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'register_warehouse_state.dart';
 
-class RegisterWarehouseController extends ChangeNotifier {
+class RegisterWarehouseController extends SafeChangeNotifier {
   final WarehouseService _warehouseService;
+  final FarmController _farmController;
 
-  RegisterWarehouseController(this._warehouseService);
+  RegisterWarehouseController(this._warehouseService, this._farmController);
 
   RegisterWarehouseState _state = RegisterWarehouseInitialState();
   RegisterWarehouseState get state => _state;
@@ -32,8 +32,8 @@ class RegisterWarehouseController extends ChangeNotifier {
         return;
       }
 
-      // CORREÇÃO: Pegando o ID da Fazenda Ativa
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      // Pegando o ID da Fazenda Ativa
+      final activeFarmId = _farmController.selectedFarm?.id;
 
       if (activeFarmId == null) {
         _changeState(

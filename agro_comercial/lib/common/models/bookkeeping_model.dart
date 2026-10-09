@@ -49,7 +49,7 @@ class BookkeepingModel {
       id: documentId,
       dia: map['dia']?.toInt() ?? 1,
       mes: map['mes']?.toInt() ?? 0,
-      ano: map['ano']?.toInt() ?? 2026,
+      ano: map['ano']?.toInt() ?? DateTime.now().year,
       conta: map['conta'] ?? '',
       historico: map['historico'] ?? '',
       valor: map['valor']?.toDouble() ?? 0.0,

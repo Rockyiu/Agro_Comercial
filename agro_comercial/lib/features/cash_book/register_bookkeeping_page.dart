@@ -1,9 +1,14 @@
-import 'dart:io';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/chart_of_accounts.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
 
 import 'bookkeeping_controller.dart';
@@ -12,14 +17,16 @@ import '../../common/models/bookkeeping_model.dart';
 class RegisterBookkeepingPage extends StatefulWidget {
   final int mesBloqueado; // 0 = Jan, 1 = Fev...
   final String nomeMes;
-  final BookkeepingModel?
-  dadosEdicao; // CORRIGIDO: Agora recebe o Model correto!
+  final BookkeepingModel? dadosEdicao;
+  // Ano sugerido para um lançamento novo (o ano selecionado na Escrituração)
+  final int? anoInicial;
 
   const RegisterBookkeepingPage({
     super.key,
     required this.mesBloqueado,
     required this.nomeMes,
     this.dadosEdicao,
+    this.anoInicial,
   });
 
   @override
@@ -36,39 +43,23 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
   final _controller = locator.get<BookkeepingController>();
 
   int _diaSelecionado = DateTime.now().day;
-  int _anoSelecionado = 2026;
+  late int _anoSelecionado = widget.anoInicial ?? DateTime.now().year;
   String? _contaSelecionada;
 
-  File? _arquivoPdfUpload;
+  Uint8List? _arquivoPdfUpload;
   String? _nomeArquivoPdfExibicao;
   bool _isSaving = false;
 
-  final List<String> _contasDisponiveis = [
-    "101 - Venda de Produtos Agrícolas (Grãos, Hortaliças)",
-    "102 - Venda de Produtos Pecuários (Gado, Leite)",
-    "103 - Venda de Subprodutos e Derivados",
-    "104 - Receitas de Arrendamento Rural",
-    "199 - Outras Receitas Rurais",
-    "201 - Insumos (Sementes, Fertilizantes, Defensivos)",
-    "202 - Combustíveis e Lubrificantes",
-    "203 - Manutenção de Maquinário e Implementos",
-    "204 - Folha de Pagamento e Encargos (Mão de Obra)",
-    "205 - Aquisição de Animais",
-    "206 - Compra de Tratores e Equipamentos",
-    "299 - Outras Despesas Dedutíveis",
-    "301 - Multas e Juros de Mora",
-    "302 - Despesas Pessoais do Produtor",
-    "303 - Aquisição de Terra Nua",
-    "399 - Outras Despesas Não Dedutíveis",
-    "401 - Recebidos até ano anterior p/ entrega neste ano",
-    "501 - Recebidos neste ano para entrega futura",
-  ];
+  // Plano de Contas (+ a conta já salva, caso ela não exista mais no plano)
+  late final List<String> _contasDisponiveis = {
+    ...ChartOfAccounts.accountLabels,
+    ?widget.dadosEdicao?.conta,
+  }.toList();
 
   @override
   void initState() {
     super.initState();
-    int ultimoDiaDoMes = DateTime(2026, widget.mesBloqueado + 2, 0).day;
-    if (_diaSelecionado > ultimoDiaDoMes) _diaSelecionado = ultimoDiaDoMes;
+    _ajustarDiaAoMes();
 
     // Se estiver no modo de edição, preenche os campos usando o Model
     if (widget.dadosEdicao != null) {
@@ -86,23 +77,57 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
     }
   }
 
-  void _escolherPdf() {
-    // Espaço reservado para a implementação do file_picker
+  // Quantidade de dias do mês no ano selecionado (fevereiro muda no bissexto)
+  int get _diasNoMes =>
+      DateTime(_anoSelecionado, widget.mesBloqueado + 2, 0).day;
+
+  // Evita um dia que não existe no mês (ex: 31 em abril, 29/02 em ano comum)
+  void _ajustarDiaAoMes() {
+    if (_diaSelecionado > _diasNoMes) _diaSelecionado = _diasNoMes;
+  }
+
+  Future<void> _escolherPdf() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true, // bytes funcionam no celular, no PC e na web
+    );
+    final file = result?.files.singleOrNull;
+    if (file == null || file.bytes == null || !mounted) return;
+
+    if (file.size > _tamanhoMaximoPdf) {
+      context.showErrorSnackBar("O PDF deve ter no máximo 10 MB.");
+      return;
+    }
     setState(() {
-      _nomeArquivoPdfExibicao =
-          "nota_fiscal_${_diaSelecionado}_${widget.nomeMes}.pdf";
-      // _arquivoPdfUpload = File('caminho_do_arquivo'); // Lógica futura
+      _arquivoPdfUpload = file.bytes;
+      _nomeArquivoPdfExibicao = file.name;
     });
+  }
+
+  static const _tamanhoMaximoPdf = 10 * 1024 * 1024;
+
+  Future<void> _excluir() async {
+    final confirmado = await showConfirmDialog(
+      context,
+      title: "Excluir Lançamento",
+      message: "Deseja realmente excluir este lançamento do Livro Caixa?",
+    );
+    if (!confirmado) return;
+    await _controller.excluirLancamentos([widget.dadosEdicao!.id!]);
+    if (mounted) Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final bool isEdicao = widget.dadosEdicao != null;
-    final List<int> anosPermitidos = List.generate(17, (index) => 2026 - index);
-    final List<int> diasDoMes = List.generate(
-      DateTime(_anoSelecionado, widget.mesBloqueado + 2, 0).day,
-      (index) => index + 1,
-    );
+    // Do ano atual até 16 anos atrás (+ o ano do lançamento, se for mais antigo)
+    final anoAtual = DateTime.now().year;
+    final List<int> anosPermitidos = {
+      for (int i = 0; i <= 16; i++) anoAtual - i,
+      _anoSelecionado,
+    }.toList()..sort((a, b) => b.compareTo(a));
+    final List<int> diasDoMes = List.generate(_diasNoMes, (index) => index + 1);
 
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
@@ -117,11 +142,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
           if (isEdicao)
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.white),
-              onPressed: () async {
-                // Permite apagar a nota de dentro da tela de edição também
-                await _controller.excluirLancamentos([widget.dadosEdicao!.id!]);
-                if (mounted) Navigator.pop(context);
-              },
+              onPressed: _excluir,
             ),
         ],
       ),
@@ -149,6 +170,11 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                         Expanded(
                           flex: 2,
                           child: DropdownButtonFormField<int>(
+                            // Recria o campo quando o dia é ajustado pela
+                            // troca de ano (ex: 29/02 -> 28/02)
+                            key: ValueKey(
+                              'dia_${_anoSelecionado}_$_diaSelecionado',
+                            ),
                             decoration: const InputDecoration(
                               labelText: "Dia",
                               border: OutlineInputBorder(),
@@ -197,8 +223,10 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                                   ),
                                 )
                                 .toList(),
-                            onChanged: (val) =>
-                                setState(() => _anoSelecionado = val!),
+                            onChanged: (val) => setState(() {
+                              _anoSelecionado = val!;
+                              _ajustarDiaAoMes();
+                            }),
                           ),
                         ),
                       ],
@@ -245,7 +273,14 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      validator: (v) => v!.isEmpty ? "Preencha o valor" : null,
+                      validator: (v) {
+                        final valor = Parsers.money(v ?? '');
+                        if (valor == null) return "Informe um valor válido";
+                        if (valor <= 0) {
+                          return "O valor deve ser maior que zero";
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 32),
 
@@ -308,11 +343,6 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                         if (_formKey.currentState!.validate()) {
                           setState(() => _isSaving = true);
 
-                          // Transforma a string de valor para um double aceito pelo Dart
-                          String valorTratado = _valorController.text
-                              .replaceAll('.', '')
-                              .replaceAll(',', '.');
-
                           final novoLancamento = BookkeepingModel(
                             id: widget
                                 .dadosEdicao
@@ -322,7 +352,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             ano: _anoSelecionado,
                             conta: _contaSelecionada!,
                             historico: _obsController.text.trim(),
-                            valor: double.tryParse(valorTratado) ?? 0.0,
+                            valor: Parsers.money(_valorController.text)!,
                             pdfUrl: widget.dadosEdicao?.pdfUrl,
                           );
 
@@ -332,20 +362,15 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             arquivoPdf: _arquivoPdfUpload,
                           );
 
-                          if (mounted) {
+                          if (context.mounted) {
                             setState(() => _isSaving = false);
                             if (sucesso) {
                               Navigator.pop(
                                 context,
                               ); // Volta para a tela principal
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Falha ao salvar. Verifique sua conexão.",
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
+                              context.showErrorSnackBar(
+                                "Falha ao salvar. Verifique sua conexão.",
                               );
                             }
                           }

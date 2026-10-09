@@ -1,21 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
+import 'edit_warehouse_state.dart';
 
-abstract class EditWarehouseState {}
-
-class EditWarehouseInitialState extends EditWarehouseState {}
-
-class EditWarehouseLoadingState extends EditWarehouseState {}
-
-class EditWarehouseSuccessState extends EditWarehouseState {}
-
-class EditWarehouseErrorState extends EditWarehouseState {
-  final String message;
-  EditWarehouseErrorState(this.message);
-}
-
-class EditWarehouseController extends ChangeNotifier {
+class EditWarehouseController extends SafeChangeNotifier {
   final WarehouseService _warehouseService;
 
   EditWarehouseController(this._warehouseService);
@@ -44,11 +32,11 @@ class EditWarehouseController extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteWarehouse(String warehouseId) async {
+  Future<void> deleteWarehouse(WarehouseModel warehouse) async {
     _state = EditWarehouseLoadingState();
     notifyListeners();
     try {
-      await _warehouseService.deleteWarehouseAndContents(warehouseId);
+      await _warehouseService.deleteWarehouseAndContents(warehouse);
       _state = EditWarehouseSuccessState();
       notifyListeners();
     } catch (e) {

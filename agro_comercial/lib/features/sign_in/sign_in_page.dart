@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/keys.dart';
+import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -11,12 +12,6 @@ import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-// --- ADICIONADOS PARA A VERIFICAÇÃO ---
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:agro_comercial/features/home/collaborator_home_page.dart';
 
 import '../../locator.dart';
 import 'sign_in_controller.dart';
@@ -61,66 +56,20 @@ class _SignInPageState extends State<SignInPage> {
         builder: (context) => const CustomCircularProgressIndicator(),
       );
     } else if (state is SignInStateSuccess) {
-      Navigator.pop(context); // Remove o loading
-
-      SharedPreferences.getInstance().then((prefs) {
-        prefs.setBool('keepConnected', _keepConnected);
-      });
-
-      // AQUI CHAMAMOS A VERIFICAÇÃO EM VEZ DE IR DIRETO PRA HOME
-      _redirectBasedOnRole();
+      Navigator.pop(context);
+      // Colaborador e produtor têm telas iniciais diferentes
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        state.isCollaborator ? NamedRoute.collaboratorHome : NamedRoute.home,
+        (route) => false,
+      );
     } else if (state is SignInStateError) {
-      Navigator.pop(context); // Remove o loading
+      Navigator.pop(context);
       customModalBottomSheet(
         context,
         content: state.message,
         buttonText: "Tentar novamente",
       );
-    }
-  }
-
-  // Função que vai no banco ver se é Admin ou Colaborador
-  Future<void> _redirectBasedOnRole() async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const CustomCircularProgressIndicator(),
-    );
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      bool isCollaborator = false;
-
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        final data = doc.data();
-
-        if (data != null) {
-          if (data['role'] == 'colaborador' || data['tipo'] == 'colaborador') {
-            isCollaborator = true;
-          }
-        }
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context);
-
-      // Redirecionamento Dinâmico
-      if (isCollaborator) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const CollaboratorHomePage()),
-        );
-      } else {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     }
   }
 
@@ -130,6 +79,7 @@ class _SignInPageState extends State<SignInPage> {
       _signInController.signIn(
         email: _emailController.text,
         password: _passwordController.text,
+        keepConnected: _keepConnected,
       );
     } else {
       log("Erro de validação ao logar");
@@ -163,6 +113,9 @@ class _SignInPageState extends State<SignInPage> {
                   hintText: "email@email.com",
                   keyboardType: TextInputType.emailAddress,
                   validator: Validator.validateEmail,
+                  // Permite que o Tab ou o botão Próximo mude o foco
+                  textInputAction: TextInputAction.next,
+                  onEditingComplete: () => FocusScope.of(context).nextFocus(),
                 ),
                 PasswordFormField(
                   key: Keys.signInPasswordField,
@@ -170,6 +123,8 @@ class _SignInPageState extends State<SignInPage> {
                   labelText: "Sua senha",
                   hintText: "*********",
                   validator: Validator.validatePassword,
+                  // Como é o último campo, ele confirma a ação
+                  textInputAction: TextInputAction.done,
                   onEditingComplete: _onSignInButtonPressed,
                 ),
                 Row(
@@ -208,8 +163,9 @@ class _SignInPageState extends State<SignInPage> {
             alignment: Alignment.centerRight,
             child: TextButton(
               key: Keys.forgotPasswordButton,
+              // pushNamed (e não popAndPushNamed) para o "voltar" retornar ao login
               onPressed: () =>
-                  Navigator.popAndPushNamed(context, '/forgot_password'),
+                  Navigator.pushNamed(context, NamedRoute.forgotPassword),
               child: const Text('Esqueceu a senha?'),
             ),
           ),

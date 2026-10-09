@@ -52,6 +52,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _emailController.dispose();
     _cpfController.dispose();
     _passwordController.dispose();
+    _signUpController.dispose();
     super.dispose();
   }
 
@@ -70,7 +71,6 @@ class _SignUpPageState extends State<SignUpPage> {
         Navigator.pop(context);
 
         if (_selectedRole == 'admin') {
-          // Admin vai para o registo da fazenda
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -78,7 +78,6 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           );
         } else {
-          // AQUI ESTÁ A CORREÇÃO: Colaborador vai para a tela dele!
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -103,7 +102,6 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
-      // SafeArea garante que o app não invada a área da câmera/bateria
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
@@ -127,8 +125,10 @@ class _SignUpPageState extends State<SignUpPage> {
                       labelText: "SEU NOME",
                       hintText: "Nome Completo",
                       inputFormatters: [UpperCaseTextInputFormatter()],
-                      validator: Validator
-                          .validateName, // <-- Voltou a usar o Validator global
+                      validator: Validator.validateName,
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).nextFocus(),
                     ),
                     const SizedBox(height: 16),
                     CustomTextFormField(
@@ -137,6 +137,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       hintText: "Apenas números",
                       keyboardType: TextInputType.number,
                       validator: Validator.validateCPF,
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).nextFocus(),
                     ),
                     const SizedBox(height: 16),
                     CustomTextFormField(
@@ -145,6 +148,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       hintText: "email@email.com",
                       keyboardType: TextInputType.emailAddress,
                       validator: Validator.validateEmail,
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).nextFocus(),
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -199,6 +205,9 @@ class _SignUpPageState extends State<SignUpPage> {
                       validator: Validator.validatePassword,
                       helperText:
                           "No mínimo 8 caracteres, um caracter especial, número e letra maiúscula",
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).nextFocus(),
                     ),
                     const SizedBox(height: 16),
                     PasswordFormField(
@@ -208,6 +217,8 @@ class _SignUpPageState extends State<SignUpPage> {
                         _passwordController.text,
                         value,
                       ),
+                      textInputAction: TextInputAction.done,
+                      onEditingComplete: _onSignUpButtonPressed,
                     ),
                   ],
                 ),

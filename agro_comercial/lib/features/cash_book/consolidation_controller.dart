@@ -1,7 +1,9 @@
-import 'package:agro_comercial/common/models/bookkeeping_model.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../common/models/bookkeeping_model.dart';
+import '../../services/bookkeeping_service/bookkeeping_service.dart';
+import 'cash_book_year_controller.dart';
 
 // Modelo exclusivo para as somas da tabela
 class ResumoMensal {
@@ -15,19 +17,59 @@ class ResumoMensal {
   double get resultadoMes =>
       (receitas + adiantamentosAnteriores + adiantamentosAtuais) -
       (despesas + despesasNaoDedutiveis);
+
+  // Soma o valor na coluna correspondente ao grupo da conta (1xx a 5xx)
+  void adicionar(String conta, double valor) {
+    switch (conta.isEmpty ? '' : conta[0]) {
+      case '1':
+        receitas += valor;
+      case '2':
+        despesas += valor;
+      case '3':
+        despesasNaoDedutiveis += valor;
+      case '4':
+        adiantamentosAnteriores += valor;
+      case '5':
+        adiantamentosAtuais += valor;
+    }
+  }
+
+  void somar(ResumoMensal outro) {
+    receitas += outro.receitas;
+    despesas += outro.despesas;
+    despesasNaoDedutiveis += outro.despesasNaoDedutiveis;
+    adiantamentosAnteriores += outro.adiantamentosAnteriores;
+    adiantamentosAtuais += outro.adiantamentosAtuais;
+  }
 }
 
-class ConsolidationController extends ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class ConsolidationController extends SafeChangeNotifier {
+  final BookkeepingService _bookkeepingService;
+  final CashBookYearController _yearController;
+
+  ConsolidationController(this._bookkeepingService, this._yearController) {
+    // Ao trocar o ano, recalcula com os lançamentos já carregados
+    _yearController.addListener(_onYearChanged);
+  }
 
   bool isLoading = false;
   String? errorMessage;
 
-  // Lista com os 12 meses zerados
+  // Todos os lançamentos (de todos os anos), usados para trocar de ano sem
+  // buscar de novo no banco
+  List<BookkeepingModel> _lancamentos = [];
+
+  // Lista com os 12 meses do ano selecionado
   List<ResumoMensal> resumoAno = List.generate(12, (_) => ResumoMensal());
   // Variável para a última linha da tabela
   ResumoMensal totalGeral = ResumoMensal();
+
+  int get anoSelecionado => _yearController.year;
+
+  // Anos disponíveis no seletor (inclui anos com lançamentos antigos)
+  List<int> get anosDisponiveis => _yearController.availableYears(_lancamentos);
+
+  void selecionarAno(int ano) => _yearController.changeYear(ano);
 
   Future<void> carregarCalculos() async {
     isLoading = true;
@@ -35,66 +77,43 @@ class ConsolidationController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final userId = _auth.currentUser!.uid;
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('bookkeeping')
-          .get();
-
-      // Zera tudo antes de recalcular
-      resumoAno = List.generate(12, (_) => ResumoMensal());
-      totalGeral = ResumoMensal();
-
-      // LAÇO 1: Classifica cada nota fiscal no seu mês e coluna corretos
-      for (var doc in snapshot.docs) {
-        final item = BookkeepingModel.fromMap(doc.data(), doc.id);
-        int mes = item.mes;
-
-        if (item.conta.startsWith('1'))
-          resumoAno[mes].receitas += item.valor;
-        else if (item.conta.startsWith('2'))
-          resumoAno[mes].despesas += item.valor;
-        else if (item.conta.startsWith('3'))
-          resumoAno[mes].despesasNaoDedutiveis += item.valor;
-        else if (item.conta.startsWith('4'))
-          resumoAno[mes].adiantamentosAnteriores += item.valor;
-        else if (item.conta.startsWith('5'))
-          resumoAno[mes].adiantamentosAtuais += item.valor;
-      }
-
-      // LAÇO 2: Calcula a soma total de todas as colunas para a última linha
-      for (var mes in resumoAno) {
-        totalGeral.receitas += mes.receitas;
-        totalGeral.despesas += mes.despesas;
-        totalGeral.despesasNaoDedutiveis += mes.despesasNaoDedutiveis;
-        totalGeral.adiantamentosAnteriores += mes.adiantamentosAnteriores;
-        totalGeral.adiantamentosAtuais += mes.adiantamentosAtuais;
-      }
+      _lancamentos = await _bookkeepingService.getEntries();
+      _calcular();
     } catch (e) {
-      errorMessage = "Erro ao calcular a consolidação: $e";
+      debugPrint("Erro ao calcular a consolidação: $e");
+      errorMessage = "Erro ao calcular a consolidação.";
     } finally {
       isLoading = false;
       notifyListeners(); // Avisa a tela que as contas terminaram!
     }
   }
 
-  // Função utilitária para formatar a moeda no padrão brasileiro (100.000,00)
-  String formatarMoeda(double valor) {
-    String s = valor.abs().toStringAsFixed(2);
-    List<String> parts = s.split('.');
-    String intPart = parts[0];
-    String decPart = parts[1];
-    String result = "";
-    int count = 0;
-    for (int i = intPart.length - 1; i >= 0; i--) {
-      result = intPart[i] + result;
-      count++;
-      if (count == 3 && i > 0) {
-        result = ".$result";
-        count = 0;
-      }
+  void _onYearChanged() {
+    _calcular();
+    notifyListeners();
+  }
+
+  // Soma os lançamentos do ano selecionado, mês a mês
+  void _calcular() {
+    final meses = List.generate(12, (_) => ResumoMensal());
+    final total = ResumoMensal();
+
+    // Classifica cada lançamento do ano no seu mês e coluna corretos
+    for (final item in _lancamentos.where((l) => l.ano == anoSelecionado)) {
+      meses[item.mes].adicionar(item.conta, item.valor);
     }
-    return "${valor < 0 ? '-' : ''}$result,$decPart";
+    // Soma de todas as colunas para a última linha
+    for (final mes in meses) {
+      total.somar(mes);
+    }
+
+    resumoAno = meses;
+    totalGeral = total;
+  }
+
+  @override
+  void dispose() {
+    _yearController.removeListener(_onYearChanged);
+    super.dispose();
   }
 }

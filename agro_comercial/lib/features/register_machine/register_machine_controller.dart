@@ -1,4 +1,7 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
@@ -6,16 +9,20 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 
-import 'package:agro_comercial/locator.dart'; // ADICIONADO
-import 'package:agro_comercial/features/farm/farm_controller.dart'; // ADICIONADO
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 
 import 'register_machine_state.dart';
 
-class RegisterMachineController extends ChangeNotifier {
+class RegisterMachineController extends SafeChangeNotifier {
   final MachineService _machineService;
   final WarehouseService _warehouseService;
+  final FarmController _farmController;
 
-  RegisterMachineController(this._machineService, this._warehouseService);
+  RegisterMachineController(
+    this._machineService,
+    this._warehouseService,
+    this._farmController,
+  );
 
   RegisterMachineState _state = RegisterMachineInitialState();
   RegisterMachineState get state => _state;
@@ -30,8 +37,8 @@ class RegisterMachineController extends ChangeNotifier {
 
   Future<void> loadWarehouses() async {
     try {
-      // CORREÇÃO: Carregar armazéns apenas da fazenda ativa para não vincular máquina a galpão errado
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      // Carregar armazéns apenas da fazenda ativa para não vincular máquina a galpão errado
+      final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId != null) {
         warehouses = await _warehouseService.getWarehouses(activeFarmId);
       }
@@ -52,6 +59,7 @@ class RegisterMachineController extends ChangeNotifier {
     required String warehouseId,
     required bool isMotorized,
     required File? imageFile,
+    MachineCostData? costData,
   }) async {
     _changeState(RegisterMachineLoadingState());
 
@@ -62,8 +70,8 @@ class RegisterMachineController extends ChangeNotifier {
         return;
       }
 
-      // CORREÇÃO: Pegar o ID da fazenda ativa
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      // Pegar o ID da fazenda ativa
+      final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId == null) {
         _changeState(
           RegisterMachineErrorState("Nenhuma fazenda ativa selecionada."),
@@ -71,10 +79,8 @@ class RegisterMachineController extends ChangeNotifier {
         return;
       }
 
-      int hours = 0;
-      if (workingHoursStr.trim().isNotEmpty) {
-        hours = int.tryParse(workingHoursStr.trim()) ?? 0;
-      }
+      // Aceita "1500", "1500,5" ou "1500.5"
+      final hours = Parsers.decimal(workingHoursStr) ?? 0;
 
       final newMachine = MachineModel(
         name: name.trim(),
@@ -83,10 +89,10 @@ class RegisterMachineController extends ChangeNotifier {
         power: power.trim(),
         workingHours: hours,
         warehouseId: warehouseId,
-        farmId:
-            activeFarmId, // CORREÇÃO: Agora garantido com a variável correta
+        farmId: activeFarmId,
         isMotorized: isMotorized,
         imageUrl: null,
+        costData: costData,
       );
 
       await _machineService.createMachine(newMachine, imageFile);

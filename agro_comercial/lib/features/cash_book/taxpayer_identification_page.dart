@@ -2,8 +2,9 @@ import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // ADICIONADO: Importação do banco de dados
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/features/profile/profile_controller.dart';
+import 'package:agro_comercial/features/profile/profile_state.dart';
 import 'package:flutter/material.dart';
 
 class TaxpayerIdentificationPage extends StatefulWidget {
@@ -17,9 +18,10 @@ class TaxpayerIdentificationPage extends StatefulWidget {
 class _TaxpayerIdentificationPageState
     extends State<TaxpayerIdentificationPage> {
   final _farmController = locator.get<FarmController>();
-  final _currentUser = FirebaseAuth.instance.currentUser;
+  final _profileController = locator.get<ProfileController>();
 
-  // Variável de estado para guardar o CPF na tela
+  // Variáveis de estado para guardar nome e CPF na tela
+  String _userName = "Carregando...";
   String _userCpf = "Carregando...";
 
   @override
@@ -32,39 +34,34 @@ class _TaxpayerIdentificationPageState
     });
   }
 
-  // Busca o CPF lá no documento do usuário no Firestore
-  Future<void> _loadUserCpf() async {
-    if (_currentUser == null) return;
-
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users') // Verifica se a sua coleção chama 'users' mesmo
-          .doc(_currentUser.uid)
-          .get();
-
-      if (doc.exists && doc.data() != null) {
-        String cpfSalvo = doc.data()!['cpf'] ?? "CPF não cadastrado";
-
-        if (mounted) {
-          setState(() {
-            _userCpf = _formatarCpf(cpfSalvo);
-          });
-        }
-      } else {
-        if (mounted) setState(() => _userCpf = "Documento não encontrado");
-      }
-    } catch (e) {
-      if (mounted) setState(() => _userCpf = "Erro ao buscar CPF");
-    }
+  @override
+  void dispose() {
+    _profileController.dispose();
+    super.dispose();
   }
 
-  // Devolve a máscara (pontos e traço) que havíamos tirado no SignUp
-  String _formatarCpf(String cpf) {
-    String numeros = cpf.replaceAll(RegExp(r'[^0-9]'), '');
-    if (numeros.length == 11) {
-      return "${numeros.substring(0, 3)}.${numeros.substring(3, 6)}.${numeros.substring(6, 9)}-${numeros.substring(9, 11)}";
-    }
-    return cpf;
+  // Busca nome e CPF do produtor logado
+  Future<void> _loadUserCpf() async {
+    await _profileController.loadProfile();
+    if (!mounted) return;
+
+    final state = _profileController.state;
+    setState(() {
+      if (state is ProfileSuccessState) {
+        final name = state.profile.name;
+        final cpf = state.profile.cpf;
+        _userName = (name == null || name.isEmpty)
+            ? "Nome não informado"
+            : name;
+        // Devolve a máscara (pontos e traço) que tiramos no cadastro
+        _userCpf = (cpf == null || cpf.isEmpty)
+            ? "CPF não cadastrado"
+            : Formatters.cpf(cpf);
+      } else {
+        _userName = "Erro ao carregar";
+        _userCpf = "Erro ao buscar CPF";
+      }
+    });
   }
 
   @override
@@ -103,10 +100,7 @@ class _TaxpayerIdentificationPageState
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildInfoRow(
-                          "Nome Completo",
-                          _currentUser?.displayName ?? "Nome não informado",
-                        ),
+                        _buildInfoRow("Nome Completo", _userName),
                         const Divider(height: 24),
                         // O CPF AGORA É PUXADO DA NOSSA VARIÁVEL DINÂMICA
                         _buildInfoRow("CPF", _userCpf),
@@ -170,10 +164,7 @@ class _TaxpayerIdentificationPageState
                               const Divider(height: 16),
                               _buildInfoRow("Endereço", farm.address),
                               const Divider(height: 16),
-                              _buildInfoRow(
-                                "Área Total",
-                                "${farm.totalArea} (Alqueires/Hectares)",
-                              ),
+                              _buildInfoRow("Área Total", farm.totalAreaLabel),
                             ],
                           ),
                         ),

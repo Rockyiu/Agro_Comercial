@@ -1,9 +1,10 @@
 import 'dart:typed_data';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:agro_comercial/features/profile/profile_controller.dart';
+import 'package:agro_comercial/features/profile/profile_state.dart';
 import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -12,6 +13,7 @@ import 'package:printing/printing.dart';
 import 'bookkeeping_controller.dart';
 import 'bookkeeping_state.dart';
 import 'consolidation_controller.dart';
+import 'widgets/year_selector.dart';
 
 class ReportsPage extends StatefulWidget {
   const ReportsPage({super.key});
@@ -24,6 +26,7 @@ class _ReportsPageState extends State<ReportsPage> {
   // Conectando aos nossos motores de dados reais
   final _consolidationController = locator.get<ConsolidationController>();
   final _bookkeepingController = locator.get<BookkeepingController>();
+  final _profileController = locator.get<ProfileController>();
 
   // Variáveis para armazenar os dados do usuário
   String _cpfUsuario = "Carregando...";
@@ -59,34 +62,36 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Future<void> _prepararDados() async {
-    // 1. Garante que os dados financeiros mais recentes estejam calculados
-    _consolidationController.carregarCalculos();
-    _bookkeepingController.carregarLancamentos();
+    // Dados financeiros mais recentes + nome e CPF do produtor logado.
+    // A tela só libera a geração do PDF depois que tudo carregou.
+    await Future.wait([
+      _consolidationController.carregarCalculos(),
+      _bookkeepingController.carregarLancamentos(),
+      _profileController.loadProfile(),
+    ]);
+    if (!mounted) return;
 
-    // 2. Busca os dados reais do usuário logado no Firestore
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists) {
-          setState(() {
-            _cpfUsuario = doc.data()?['cpf'] ?? "CPF não cadastrado";
-            _nomeUsuario =
-                doc.data()?['nome'] ?? user.displayName ?? "Produtor Rural";
-          });
-        }
-      }
-    } catch (e) {
-      setState(() {
+    final state = _profileController.state;
+    setState(() {
+      if (state is ProfileSuccessState) {
+        final cpf = state.profile.cpf;
+        _cpfUsuario = (cpf == null || cpf.isEmpty)
+            ? "CPF não cadastrado"
+            : Formatters.cpf(cpf);
+        final nome = state.profile.name;
+        _nomeUsuario = (nome == null || nome.isEmpty) ? "Produtor Rural" : nome;
+      } else {
         _cpfUsuario = "Erro ao carregar";
         _nomeUsuario = "Erro ao carregar";
-      });
-    } finally {
-      setState(() => _carregandoDados = false);
-    }
+      }
+      _carregandoDados = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileController.dispose();
+    super.dispose();
   }
 
   // ===========================================================================
@@ -163,7 +168,7 @@ class _ReportsPageState extends State<ReportsPage> {
                       ),
                     ),
                     pw.Text(
-                      "2026",
+                      "${_consolidationController.anoSelecionado}",
                       style: pw.TextStyle(
                         fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
@@ -201,38 +206,30 @@ class _ReportsPageState extends State<ReportsPage> {
               final res = _consolidationController.resumoAno[index];
               return [
                 _mesesSigla[index],
-                _consolidationController.formatarMoeda(res.receitas),
-                _consolidationController.formatarMoeda(res.despesas),
-                _consolidationController.formatarMoeda(
-                  res.despesasNaoDedutiveis,
-                ),
-                _consolidationController.formatarMoeda(
-                  res.adiantamentosAnteriores,
-                ),
-                _consolidationController.formatarMoeda(res.adiantamentosAtuais),
-                _consolidationController.formatarMoeda(res.resultadoMes),
+                Formatters.decimal(res.receitas),
+                Formatters.decimal(res.despesas),
+                Formatters.decimal(res.despesasNaoDedutiveis),
+                Formatters.decimal(res.adiantamentosAnteriores),
+                Formatters.decimal(res.adiantamentosAtuais),
+                Formatters.decimal(res.resultadoMes),
               ];
             });
 
             // Adicionando a linha do Total Geral
             data.add([
               'TOTAL',
-              _consolidationController.formatarMoeda(
-                _consolidationController.totalGeral.receitas,
-              ),
-              _consolidationController.formatarMoeda(
-                _consolidationController.totalGeral.despesas,
-              ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(_consolidationController.totalGeral.receitas),
+              Formatters.decimal(_consolidationController.totalGeral.despesas),
+              Formatters.decimal(
                 _consolidationController.totalGeral.despesasNaoDedutiveis,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.adiantamentosAnteriores,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.adiantamentosAtuais,
               ),
-              _consolidationController.formatarMoeda(
+              Formatters.decimal(
                 _consolidationController.totalGeral.resultadoMes,
               ),
             ]);
@@ -279,14 +276,19 @@ class _ReportsPageState extends State<ReportsPage> {
             final state = _bookkeepingController.state;
             List<List<String>> data = [];
 
-            if (state is BookkeepingSuccessState &&
-                state.lancamentos.isNotEmpty) {
-              data = state.lancamentos.map((l) {
+            final ano = _consolidationController.anoSelecionado;
+            final lancamentosDoAno = [
+              if (state is BookkeepingSuccessState)
+                ...state.lancamentos.where((l) => l.ano == ano),
+            ];
+
+            if (lancamentosDoAno.isNotEmpty) {
+              data = lancamentosDoAno.map((l) {
                 return [
                   "${l.dia.toString().padLeft(2, '0')}/${(l.mes + 1).toString().padLeft(2, '0')}/${l.ano}",
                   l.conta.split(' - ')[0],
                   l.historico,
-                  _consolidationController.formatarMoeda(l.valor),
+                  Formatters.decimal(l.valor),
                 ];
               }).toList();
             } else {
@@ -298,12 +300,7 @@ class _ReportsPageState extends State<ReportsPage> {
             return [
               buildCabecalho("EXTRATO DO LIVRO CAIXA"),
               pw.TableHelper.fromTextArray(
-                headers: [
-                  'Data',
-                  'Conta',
-                  'Histórico',
-                  'Valor (R\$)',
-                ], // <--- CORRIGIDO AQUI!
+                headers: ['Data', 'Conta', 'Histórico', 'Valor (R\$)'],
                 data: data,
                 headerStyle: pw.TextStyle(
                   color: PdfColors.white,
@@ -488,6 +485,17 @@ class _ReportsPageState extends State<ReportsPage> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Ano-calendário dos relatórios (o mesmo da Escrituração
+                      // e da Consolidação)
+                      ListenableBuilder(
+                        listenable: _consolidationController,
+                        builder: (context, _) => YearSelector(
+                          year: _consolidationController.anoSelecionado,
+                          years: _consolidationController.anosDisponiveis,
+                          onChanged: _consolidationController.selecionarAno,
+                        ),
                       ),
                       const Divider(height: 32),
 

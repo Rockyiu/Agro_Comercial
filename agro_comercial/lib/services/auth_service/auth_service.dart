@@ -15,9 +15,23 @@ abstract class AuthService {
     required String password,
   });
 
+  // Sai da conta e apaga o usuário salvo no aparelho
   Future<void> signOut();
+
+  // Aguarda o Firebase restaurar a sessão salva e diz se há usuário logado
+  Future<bool> hasActiveSession();
+
+  Future<bool> isCurrentUserCollaborator();
 
   Future<DataResult<String>> userToken();
 
   Future<DataResult<bool>> forgotPassword(String email);
+
+  // Valida o código (oobCode) do link de redefinição e devolve o e-mail da conta
+  Future<DataResult<String>> verifyPasswordResetCode(String code);
+
+  Future<DataResult<bool>> confirmPasswordReset({
+    required String code,
+    required String newPassword,
+  });
 }

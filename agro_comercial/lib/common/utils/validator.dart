@@ -20,6 +20,15 @@ class Validator {
     return null;
   }
 
+  // Nome do talhão: obrigatório e sem repetir outro talhão da fazenda
+  // ([allNames] inclui o próprio campo)
+  static String? validatePlotName(String? value, Iterable<String> allNames) {
+    final name = value?.trim().toLowerCase() ?? '';
+    if (name.isEmpty) return "Obrigatório";
+    final repeated = allNames.where((n) => n.trim().toLowerCase() == name);
+    return repeated.length > 1 ? "Já existe um talhão com esse nome" : null;
+  }
+
   static String? validateEmail(String? value) {
     final condition = RegExp(
       r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
@@ -113,5 +122,11 @@ class Validator {
       return "Digite apenas números válidos";
     }
     return null;
+  }
+
+  // Campo numérico opcional: vazio é aceito, mas se preenchido deve ser número
+  static String? validateOptionalDecimal(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return validateNumber(value);
   }
 }

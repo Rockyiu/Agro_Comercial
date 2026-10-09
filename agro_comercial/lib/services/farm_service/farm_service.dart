@@ -18,23 +18,27 @@ class FarmService {
     }).toList();
   }
 
+  // Busca a fazenda à qual o colaborador foi vinculado (campo 'farmId' em users/{uid})
+  Future<FarmModel?> getFarmByCollaborator(String userId) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+    final farmId = userDoc.data()?['farmId'] as String?;
+    if (farmId == null || farmId.isEmpty) return null;
+
+    final farmDoc = await _firestore.collection('farms').doc(farmId).get();
+    final data = farmDoc.data();
+    if (data == null) return null;
+
+    data['id'] = farmDoc.id;
+    return FarmModel.fromMap(data);
+  }
+
   // Salva a fazenda no banco
   Future<void> createFarm(FarmModel farm) async {
     await _firestore.collection('farms').add(farm.toMap());
   }
 
   Future<void> updateFarm(FarmModel farm) async {
-    try {
-      if (farm.id == null) throw Exception("ID da fazenda não pode ser nulo.");
-
-      await FirebaseFirestore.instance
-          .collection(
-            'farms',
-          ) // Confirme se o nome da sua coleção no Firebase é 'farms' mesmo
-          .doc(farm.id)
-          .update(farm.toMap());
-    } catch (e) {
-      throw Exception("Erro ao atualizar fazenda no Firebase: $e");
-    }
+    if (farm.id == null) throw Exception("ID da fazenda não pode ser nulo.");
+    await _firestore.collection('farms').doc(farm.id).update(farm.toMap());
   }
 }

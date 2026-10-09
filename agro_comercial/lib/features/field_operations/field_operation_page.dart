@@ -1,3 +1,5 @@
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'package:agro_comercial/common/widgets/selection_action_bar.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -10,7 +12,11 @@ import 'field_operation_controller.dart';
 import 'field_operation_state.dart';
 
 class FieldOperationPage extends StatefulWidget {
-  const FieldOperationPage({super.key});
+  // false quando a tela é exibida como aba de outra (ex: Home do colaborador),
+  // que já tem a própria barra de título
+  final bool showAppBar;
+
+  const FieldOperationPage({super.key, this.showAppBar = true});
 
   @override
   State<FieldOperationPage> createState() => _FieldOperationPageState();
@@ -39,53 +45,38 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
     });
   }
 
-  void _showDeleteMultipleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
-          "Deseja apagar as ${selectedIds.length} operações de campo?",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteSelectedOperations(selectedIds.toList());
-              setState(() => selectedIds.clear());
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showDeleteMultipleDialog() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Selecionados",
+      message: "Deseja apagar as ${selectedIds.length} operações de campo?",
     );
+    if (!confirmed || !mounted) return;
+    _controller.deleteSelectedOperations(selectedIds.toList());
+    setState(() => selectedIds.clear());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
-      // ADICIONADO: A barra superior com o botão de voltar!
-      appBar: AppBar(
-        title: Text(
-          "Vistorias e Aplicações",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      // Barra superior (com voltar) só quando a tela não é uma aba
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: Text(
+                "Vistorias e Aplicações",
+                style: AppTextStyles.midText20.copyWith(color: Colors.white),
+              ),
+              backgroundColor: AppColors.greenlightOne,
+              iconTheme: const IconThemeData(color: Colors.white),
+            )
+          : null,
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
@@ -117,40 +108,10 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
             return Column(
               children: [
                 if (selectedIds.isNotEmpty)
-                  Container(
-                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "${selectedIds.length} selecionada(s)",
-                          style: AppTextStyles.inputText.copyWith(
-                            color: AppColors.greenlightOne,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.close,
-                                color: AppColors.grey,
-                              ),
-                              onPressed: () =>
-                                  setState(() => selectedIds.clear()),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: _showDeleteMultipleDialog,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  SelectionActionBar(
+                    label: "${selectedIds.length} selecionada(s)",
+                    onClear: () => setState(() => selectedIds.clear()),
+                    onDelete: _showDeleteMultipleDialog,
                   ),
                 Expanded(
                   child: ListView.builder(
@@ -159,6 +120,8 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                     itemBuilder: (context, index) {
                       final op = state.operations[index];
                       final isSelected = selectedIds.contains(op.id);
+                      // Colaborador só seleciona (para excluir) o que registrou
+                      final canModify = _controller.canModify(op.createdBy);
 
                       return Card(
                         elevation: isSelected ? 0 : 2,
@@ -177,10 +140,12 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                         ),
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          onLongPress: () => _toggleSelection(op.id!),
+                          onLongPress: canModify
+                              ? () => _toggleSelection(op.id!)
+                              : null,
                           onTap: () async {
                             if (selectedIds.isNotEmpty) {
-                              _toggleSelection(op.id!);
+                              if (canModify) _toggleSelection(op.id!);
                             } else {
                               await Navigator.push(
                                 context,

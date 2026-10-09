@@ -1,10 +1,12 @@
-import 'package:flutter/foundation.dart';
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
+import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/services/farm_service/farm_service.dart';
 import 'farm_registration_state.dart';
 
-class FarmRegistrationController extends ChangeNotifier {
+class FarmRegistrationController extends SafeChangeNotifier {
   final FarmService _farmService;
 
   FarmRegistrationController(this._farmService);
@@ -18,13 +20,13 @@ class FarmRegistrationController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ATUALIZADO: Recebendo os novos parâmetros totalArea e plantedFields
   Future<void> saveFarm({
     required String name,
     required String cadPro,
     required String address,
     required String totalArea,
-    required List<Map<String, dynamic>> plantedFields,
+    required List<PlotModel> plots,
+    String areaUnit = AreaUnits.hectare,
   }) async {
     _changeState(FarmRegistrationLoadingState());
 
@@ -41,8 +43,9 @@ class FarmRegistrationController extends ChangeNotifier {
         cadPro: cadPro,
         address: address,
         totalArea: totalArea,
-        plantedFields: plantedFields,
+        plots: plots,
         ownerId: user.uid, // Vincula ao dono atual!
+        areaUnit: areaUnit,
       );
 
       // Salva de verdade no Firebase

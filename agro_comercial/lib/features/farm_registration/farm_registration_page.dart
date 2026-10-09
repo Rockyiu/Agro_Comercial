@@ -1,5 +1,9 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/crop_options.dart';
+import 'package:agro_comercial/common/models/plot_model.dart';
+import 'package:agro_comercial/common/utils/area_units.dart';
+import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -31,21 +35,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
 
   final List<Map<String, TextEditingController>> _fieldControllers = [];
 
-  // A SUA LISTA DE CULTURAS VOLTOU AQUI!
-  final List<String> _cropOptions = [
-    'Soja',
-    'Milho',
-    'Trigo',
-    'Café',
-    'Cana-de-açúcar',
-    'Feijão',
-    'Cenoura',
-    'Tomate',
-    'Algodão',
-    'Laranja',
-    'Pastagem',
-    'Outro',
-  ];
+  String _areaUnit = AreaUnits.hectare;
 
   @override
   void initState() {
@@ -102,12 +92,12 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
 
   void _onSaveButtonPressed() {
     if (_formKey.currentState?.validate() ?? false) {
-      List<Map<String, dynamic>> plantedFields = _fieldControllers.map((c) {
-        return {
-          'name': c['name']!.text.trim(),
-          'area': double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
-          'crop': c['crop']!.text.trim(),
-        };
+      final plots = _fieldControllers.map((c) {
+        return PlotModel.create(
+          name: c['name']!.text.trim(),
+          area: double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
+          crop: c['crop']!.text.trim(),
+        );
       }).toList();
 
       _farmController.saveFarm(
@@ -115,7 +105,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
         cadPro: _cadProController.text.trim(),
         address: _addressController.text.trim(),
         totalArea: _totalAreaController.text.trim(),
-        plantedFields: plantedFields,
+        plots: plots,
+        areaUnit: _areaUnit,
       );
     }
   }
@@ -133,6 +124,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
       controllers['area']?.dispose();
       controllers['crop']?.dispose();
     }
+    _farmController.dispose();
     super.dispose();
   }
 
@@ -192,9 +184,15 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                       : null,
                 ),
                 const SizedBox(height: 16),
+                AreaUnitSelector(
+                  value: _areaUnit,
+                  onChanged: (unit) => setState(() => _areaUnit = unit),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                ),
+                const SizedBox(height: 8),
                 CustomTextFormField(
                   controller: _totalAreaController,
-                  labelText: "Área Total (Alqueires ou Hectares)",
+                  labelText: "Área Total (${AreaUnits.shortLabel(_areaUnit)})",
                   hintText: "Ex: 50",
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -244,8 +242,12 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                 child: CustomTextFormField(
                                   controller: controllers['name']!,
                                   labelText: "Identificação (Ex: Talhão 1)",
-                                  validator: (v) =>
-                                      v!.isEmpty ? "Obrigatório" : null,
+                                  validator: (v) => Validator.validatePlotName(
+                                    v,
+                                    _fieldControllers.map(
+                                      (c) => c['name']!.text,
+                                    ),
+                                  ),
                                 ),
                               ),
                               if (_fieldControllers.length > 1)
@@ -265,7 +267,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                               Expanded(
                                 child: CustomTextFormField(
                                   controller: controllers['area']!,
-                                  labelText: "Área Plantada",
+                                  labelText:
+                                      "Área Plantada (${AreaUnits.shortLabel(_areaUnit)})",
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -280,7 +283,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                               Expanded(
                                 child: DropdownButtonFormField<String>(
                                   isExpanded: true,
-                                  value: controllers['crop']!.text.isEmpty
+                                  initialValue:
+                                      controllers['crop']!.text.isEmpty
                                       ? null
                                       : controllers['crop']!.text,
                                   decoration: InputDecoration(
@@ -312,7 +316,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                     "Selecione",
                                     style: TextStyle(fontSize: 13),
                                   ),
-                                  items: _cropOptions.map((String crop) {
+                                  items: CropOptions.all.map((String crop) {
                                     return DropdownMenuItem<String>(
                                       value: crop,
                                       child: Text(

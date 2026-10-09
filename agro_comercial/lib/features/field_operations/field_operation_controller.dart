@@ -1,26 +1,23 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/services/field_operation_service/field_operation_service.dart';
-import 'package:agro_comercial/services/machine_service/machine_service.dart';
-import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
-import 'package:agro_comercial/services/product_service/product_service.dart';
-import 'package:agro_comercial/locator.dart';
+import 'package:agro_comercial/services/stock_service/stock_service.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'field_operation_state.dart';
 
-class FieldOperationController extends ChangeNotifier {
+class FieldOperationController extends SafeChangeNotifier {
   final FieldOperationService _operationService;
-  final MachineService _machineService;
-  final WarehouseService _warehouseService;
-  final ProductService _productService;
+  final StockService _stockService;
+  final FarmController _farmController;
 
   FieldOperationController(
     this._operationService,
-    this._machineService,
-    this._warehouseService,
-    this._productService,
+    this._stockService,
+    this._farmController,
   );
 
   FieldOperationState _state = FieldOperationInitialState();
@@ -30,44 +27,42 @@ class FieldOperationController extends ChangeNotifier {
   List<ProductModel> products = [];
   bool isLoadingResources = true;
 
-  Future<void> loadOperationsData() async {
-    _state = FieldOperationLoadingState();
-    notifyListeners();
-    try {
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-      if (activeFarmId != null) {
-        final ops = await _operationService.getFieldOperations(activeFarmId);
-        _state = FieldOperationSuccessState(operations: ops);
-      } else {
-        _state = FieldOperationErrorState("Nenhuma fazenda ativa selecionada.");
-      }
-    } catch (e) {
-      _state = FieldOperationErrorState("Erro ao carregar operações.");
-    }
+  // O produtor (dono da fazenda) altera e exclui qualquer lançamento; o
+  // colaborador, só os que ele mesmo registrou
+  bool canModify(String? createdBy) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    return _farmController.selectedFarm?.ownerId == uid || createdBy == uid;
+  }
+
+  void _changeState(FieldOperationState newState) {
+    _state = newState;
     notifyListeners();
   }
 
-  Future<void> loadFarmResources() async {
+  Future<void> loadOperationsData() async {
+    _changeState(FieldOperationLoadingState());
     try {
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-      if (activeFarmId == null) return;
-
-      isLoadingResources = true;
-      notifyListeners();
-
-      // Carrega os armazéns da fazenda selecionada
-      final warehouses = await _warehouseService.getWarehouses(activeFarmId);
-      machines.clear();
-      products.clear();
-
-      for (var warehouse in warehouses) {
-        machines.addAll(
-          await _machineService.getMachinesByWarehouse(warehouse.id!),
+      final activeFarmId = _farmController.selectedFarm?.id;
+      if (activeFarmId == null) {
+        _changeState(
+          FieldOperationErrorState("Nenhuma fazenda ativa selecionada."),
         );
-        products.addAll(
-          await _productService.getProductsByWarehouse(warehouse.id!),
-        );
+        return;
       }
+      final ops = await _operationService.getFieldOperations(activeFarmId);
+      _changeState(FieldOperationSuccessState(operations: ops));
+    } catch (e) {
+      _changeState(FieldOperationErrorState("Erro ao carregar operações."));
+    }
+  }
+
+  // Máquinas e produtos da fazenda ativa (usados nos formulários e no estoque)
+  Future<void> loadFarmResources() async {
+    isLoadingResources = true;
+    notifyListeners();
+    try {
+      await _refreshFarmResources();
     } catch (e) {
       debugPrint("Erro ao carregar recursos: $e");
     } finally {
@@ -76,77 +71,88 @@ class FieldOperationController extends ChangeNotifier {
     }
   }
 
-  double convertQuantity(
-    double appliedQty,
-    String usedUnit,
-    String productUnit,
-  ) {
-    if (usedUnit == productUnit) return appliedQty;
-    if (productUnit == 'L' && usedUnit == 'ml') return appliedQty / 1000.0;
-    if (productUnit == 'ml' && usedUnit == 'L') return appliedQty * 1000.0;
-    if (productUnit == 'kg' && usedUnit == 'g') return appliedQty / 1000.0;
-    if (productUnit == 'g' && usedUnit == 'kg') return appliedQty * 1000.0;
-    if (productUnit == 'L' && usedUnit == 'mg') return appliedQty / 1000000.0;
-    if (productUnit == 'kg' && usedUnit == 'mg') return appliedQty / 1000000.0;
-    return appliedQty;
+  // Recarrega o estoque sem mostrar o loading na tela (antes de editar/excluir,
+  // para estornar sobre os valores mais recentes do banco)
+  Future<void> _refreshFarmResources() async {
+    final activeFarmId = _farmController.selectedFarm?.id;
+    if (activeFarmId == null) return;
+    final resources = await _stockService.loadFarmResources(activeFarmId);
+    machines = resources.machines;
+    products = resources.products;
   }
 
-  Future<void> _rollbackOperation(FieldOperationModel op) async {
-    if (op.type == 'Aplicação') {
-      if (op.productId != null && op.dosage != null && op.dosageUnit != null) {
-        try {
-          final product = products.firstWhere((p) => p.id == op.productId);
-          double convertedQty = convertQuantity(
-            op.dosage!,
-            op.dosageUnit!,
-            product.unit,
-          );
-          double restoredTotal =
-              (product.quantity * product.measure) + convertedQty;
-
-          final updatedProduct = ProductModel(
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            quantity: restoredTotal / product.measure,
-            measure: product.measure,
-            unit: product.unit,
-            category: product.category,
-            warehouseId: product.warehouseId,
-            farmId: product.farmId,
-            attributes: product.attributes,
-            imageUrl: product.imageUrl,
-          );
-          await _productService.updateProduct(updatedProduct, null);
-          int idx = products.indexWhere((p) => p.id == product.id);
-          if (idx != -1) products[idx] = updatedProduct;
-        } catch (_) {}
-      }
-      if (op.machineId != null && op.machineHours != null) {
-        try {
-          final machine = machines.firstWhere((m) => m.id == op.machineId);
-          if (machine.isMotorized) {
-            int newHours = machine.workingHours - op.machineHours!.round();
-            if (newHours < 0) newHours = 0;
-            final updatedMachine = MachineModel(
-              id: machine.id,
-              name: machine.name,
-              brand: machine.brand,
-              model: machine.model,
-              power: machine.power,
-              workingHours: newHours,
-              warehouseId: machine.warehouseId,
-              farmId: machine.farmId,
-              isMotorized: machine.isMotorized,
-              imageUrl: machine.imageUrl,
-            );
-            await _machineService.updateMachine(updatedMachine, null);
-            int idx = machines.indexWhere((m) => m.id == machine.id);
-            if (idx != -1) machines[idx] = updatedMachine;
-          }
-        } catch (_) {}
-      }
+  // Horas trabalhadas, apenas para máquinas motorizadas (com horímetro)
+  double? _workedHours(
+    String? machineId,
+    double? initialHorimeter,
+    double? finalHorimeter,
+  ) {
+    if (machineId == null ||
+        initialHorimeter == null ||
+        finalHorimeter == null) {
+      return null;
     }
+    final machine = machines.where((m) => m.id == machineId).firstOrNull;
+    if (machine == null || !machine.isMotorized) return null;
+    return finalHorimeter - initialHorimeter;
+  }
+
+  // Só a Aplicação movimenta estoque e horímetro; a Vistoria não.
+  List<ProductUsage> _productUsages(FieldOperationModel op) {
+    if (op.isInspection ||
+        op.productId == null ||
+        op.dosage == null ||
+        op.dosageUnit == null) {
+      return const [];
+    }
+    return [
+      ProductUsage(
+        productId: op.productId!,
+        quantity: op.dosage!,
+        unit: op.dosageUnit!,
+      ),
+    ];
+  }
+
+  List<MachineUsage> _machineUsages(FieldOperationModel op) {
+    if (op.isInspection || op.machineId == null || op.machineHours == null) {
+      return const [];
+    }
+    return [MachineUsage(machineId: op.machineId!, hours: op.machineHours!)];
+  }
+
+  // Monta a vistoria/aplicação que será gravada a partir do formulário
+  FieldOperationModel _buildOperation(
+    FieldOperationModel form, {
+    required String farmId,
+    required int dateTimestamp,
+    required String? createdBy,
+    String? id,
+    double? initialHorimeter,
+    double? finalHorimeter,
+  }) {
+    return FieldOperationModel(
+      id: id,
+      type: form.type,
+      plotName: form.plotName,
+      plotId: _farmController.selectedFarm?.findPlot(name: form.plotName)?.id,
+      dateTimestamp: dateTimestamp,
+      farmId: farmId,
+      createdBy: createdBy,
+      condition: form.condition,
+      observations: form.observations,
+      productId: form.productId,
+      productName: form.productName,
+      dosage: form.dosage,
+      dosageUnit: form.dosageUnit,
+      unitPrice: form.unitPrice,
+      productUnit: form.productUnit,
+      machineId: form.machineId,
+      machineName: form.machineName,
+      machineHours: form.isInspection
+          ? null
+          : _workedHours(form.machineId, initialHorimeter, finalHorimeter),
+    );
   }
 
   Future<void> launchOperation(
@@ -154,103 +160,38 @@ class FieldOperationController extends ChangeNotifier {
     double? initialHorimeter,
     double? finalHorimeter,
   }) async {
-    _state = FieldOperationLoadingState();
-    notifyListeners();
+    _changeState(FieldOperationLoadingState());
     try {
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
+      final activeFarmId = _farmController.selectedFarm?.id;
       if (activeFarmId == null) {
-        _state = FieldOperationErrorState("Nenhuma fazenda ativa selecionada.");
-        notifyListeners();
+        _changeState(
+          FieldOperationErrorState("Nenhuma fazenda ativa selecionada."),
+        );
         return;
       }
 
-      double? calculatedHours;
-
-      if (operation.type == 'Aplicação') {
-        if (operation.productId != null &&
-            operation.dosage != null &&
-            operation.dosageUnit != null) {
-          final product = products.firstWhere(
-            (p) => p.id == operation.productId,
-          );
-          double totalStock = product.quantity * product.measure;
-          double convertedQty = convertQuantity(
-            operation.dosage!,
-            operation.dosageUnit!,
-            product.unit,
-          );
-
-          if (totalStock < convertedQty) {
-            _state = FieldOperationErrorState(
-              "Estoque insuficiente de ${product.name}.",
-            );
-            notifyListeners();
-            return;
-          }
-          final updatedProduct = ProductModel(
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            quantity: (totalStock - convertedQty) / product.measure,
-            measure: product.measure,
-            unit: product.unit,
-            category: product.category,
-            warehouseId: product.warehouseId,
-            farmId: product.farmId,
-            attributes: product.attributes,
-            imageUrl: product.imageUrl,
-          );
-          await _productService.updateProduct(updatedProduct, null);
-        }
-
-        if (operation.machineId != null &&
-            initialHorimeter != null &&
-            finalHorimeter != null) {
-          final machine = machines.firstWhere(
-            (m) => m.id == operation.machineId,
-          );
-          if (machine.isMotorized) {
-            calculatedHours = finalHorimeter - initialHorimeter;
-
-            final updatedMachine = MachineModel(
-              id: machine.id,
-              name: machine.name,
-              brand: machine.brand,
-              model: machine.model,
-              power: machine.power,
-              workingHours: machine.workingHours + calculatedHours.round(),
-              warehouseId: machine.warehouseId,
-              farmId: machine.farmId,
-              isMotorized: machine.isMotorized,
-              imageUrl: machine.imageUrl,
-            );
-            await _machineService.updateMachine(updatedMachine, null);
-          }
-        }
-      }
-
-      final completeOp = FieldOperationModel(
-        type: operation.type,
-        plotName: operation.plotName,
+      final newOperation = _buildOperation(
+        operation,
+        farmId: activeFarmId, // <- Vinculado ao ID da fazenda ativa
         dateTimestamp: operation.dateTimestamp,
-        farmId:
-            activeFarmId, // <- Vinculado corretamente ao ID da fazenda ativa
-        condition: operation.condition,
-        observations: operation.observations,
-        productId: operation.productId,
-        productName: operation.productName,
-        dosage: operation.dosage,
-        dosageUnit: operation.dosageUnit,
-        machineId: operation.machineId,
-        machineName: operation.machineName,
-        machineHours: calculatedHours,
+        createdBy: FirebaseAuth.instance.currentUser?.uid,
+        initialHorimeter: initialHorimeter,
+        finalHorimeter: finalHorimeter,
       );
 
-      await _operationService.saveFieldOperation(completeOp);
+      await _stockService.applyUsage(
+        products: products,
+        machines: machines,
+        consumeProducts: _productUsages(newOperation),
+        consumeMachines: _machineUsages(newOperation),
+        alsoWrite: (batch) =>
+            _operationService.addCreateToBatch(batch, newOperation),
+      );
       await loadOperationsData();
+    } on InsufficientStockException catch (e) {
+      _changeState(FieldOperationErrorState(e.toString()));
     } catch (e) {
-      _state = FieldOperationErrorState("Erro ao salvar operação.");
-      notifyListeners();
+      _changeState(FieldOperationErrorState("Erro ao salvar operação."));
     }
   }
 
@@ -260,137 +201,100 @@ class FieldOperationController extends ChangeNotifier {
     double? initialHorimeter,
     double? finalHorimeter,
   }) async {
-    _state = FieldOperationLoadingState();
-    notifyListeners();
+    _changeState(FieldOperationLoadingState());
     try {
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-      if (activeFarmId == null) return;
-
-      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
-      await loadFarmResources();
-      await _rollbackOperation(oldOp);
-
-      double? calculatedHours;
-
-      if (newOp.type == 'Aplicação') {
-        if (newOp.productId != null &&
-            newOp.dosage != null &&
-            newOp.dosageUnit != null) {
-          final product = products.firstWhere((p) => p.id == newOp.productId);
-          double totalStock = product.quantity * product.measure;
-          double convertedQty = convertQuantity(
-            newOp.dosage!,
-            newOp.dosageUnit!,
-            product.unit,
-          );
-          if (totalStock < convertedQty) {
-            _state = FieldOperationErrorState(
-              "Estoque insuficiente após recálculo.",
-            );
-            notifyListeners();
-            return;
-          }
-          final updatedProduct = ProductModel(
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-            quantity: (totalStock - convertedQty) / product.measure,
-            measure: product.measure,
-            unit: product.unit,
-            category: product.category,
-            warehouseId: product.warehouseId,
-            farmId: product.farmId,
-            attributes: product.attributes,
-            imageUrl: product.imageUrl,
-          );
-          await _productService.updateProduct(updatedProduct, null);
-        }
-
-        if (newOp.machineId != null &&
-            initialHorimeter != null &&
-            finalHorimeter != null) {
-          final machine = machines.firstWhere((m) => m.id == newOp.machineId);
-          if (machine.isMotorized) {
-            calculatedHours = finalHorimeter - initialHorimeter;
-
-            final updatedMachine = MachineModel(
-              id: machine.id,
-              name: machine.name,
-              brand: machine.brand,
-              model: machine.model,
-              power: machine.power,
-              workingHours: machine.workingHours + calculatedHours.round(),
-              warehouseId: machine.warehouseId,
-              farmId: machine.farmId,
-              isMotorized: machine.isMotorized,
-              imageUrl: machine.imageUrl,
-            );
-            await _machineService.updateMachine(updatedMachine, null);
-          }
-        }
+      final activeFarmId = _farmController.selectedFarm?.id;
+      if (activeFarmId == null) {
+        _changeState(
+          FieldOperationErrorState("Nenhuma fazenda ativa selecionada."),
+        );
+        return;
       }
 
-      final completeOp = FieldOperationModel(
+      // Estorna sobre o estoque atual do banco
+      await _refreshFarmResources();
+
+      final updatedOperation = _buildOperation(
+        newOp,
         id: oldOp.id,
-        type: newOp.type,
-        plotName: newOp.plotName,
-        dateTimestamp: oldOp.dateTimestamp,
         farmId: activeFarmId,
-        condition: newOp.condition,
-        observations: newOp.observations,
-        productId: newOp.productId,
-        productName: newOp.productName,
-        dosage: newOp.dosage,
-        dosageUnit: newOp.dosageUnit,
-        machineId: newOp.machineId,
-        machineName: newOp.machineName,
-        machineHours: calculatedHours,
+        dateTimestamp: oldOp.dateTimestamp,
+        createdBy: oldOp.createdBy,
+        initialHorimeter: initialHorimeter,
+        finalHorimeter: finalHorimeter,
       );
 
-      await _operationService.updateFieldOperation(completeOp);
+      // Devolve o que a aplicação antiga usou e retira o que a nova usa,
+      // validando tudo antes de gravar (se faltar estoque, nada é alterado)
+      await _stockService.applyUsage(
+        products: products,
+        machines: machines,
+        restoreProducts: _productUsages(oldOp),
+        restoreMachines: _machineUsages(oldOp),
+        consumeProducts: _productUsages(updatedOperation),
+        consumeMachines: _machineUsages(updatedOperation),
+        alsoWrite: (batch) =>
+            _operationService.addUpdateToBatch(batch, updatedOperation),
+      );
       await loadOperationsData();
+    } on InsufficientStockException catch (e) {
+      _changeState(
+        FieldOperationErrorState("${e.toString()} (após recálculo)"),
+      );
     } catch (e) {
-      _state = FieldOperationErrorState("Erro ao atualizar operação.");
-      notifyListeners();
+      _changeState(FieldOperationErrorState("Erro ao atualizar operação."));
     }
   }
 
   Future<void> deleteSingleOperation(FieldOperationModel op) async {
-    _state = FieldOperationLoadingState();
-    notifyListeners();
+    _changeState(FieldOperationLoadingState());
     try {
-      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
-      await loadFarmResources();
-      await _rollbackOperation(op);
-      await _operationService.deleteFieldOperation(op.id!);
+      await _refreshFarmResources();
+      await _stockService.applyUsage(
+        products: products,
+        machines: machines,
+        restoreProducts: _productUsages(op),
+        restoreMachines: _machineUsages(op),
+        alsoWrite: (batch) =>
+            _operationService.addDeleteToBatch(batch, [op.id!]),
+      );
       await loadOperationsData();
     } catch (e) {
-      _state = FieldOperationErrorState("Erro ao excluir.");
-      notifyListeners();
+      _changeState(FieldOperationErrorState("Erro ao excluir."));
     }
   }
 
   Future<void> deleteSelectedOperations(List<String> ids) async {
-    _state = FieldOperationLoadingState();
-    notifyListeners();
+    _changeState(FieldOperationLoadingState());
     try {
-      // ADICIONADO: Baixa o estoque atual da fazenda antes de devolver o produto
-      await loadFarmResources();
-      final activeFarmId = locator.get<FarmController>().selectedFarm?.id;
-      if (activeFarmId != null) {
-        final ops = await _operationService.getFieldOperations(activeFarmId);
-        for (var id in ids) {
-          try {
-            final op = ops.firstWhere((o) => o.id == id);
-            await _rollbackOperation(op);
-          } catch (_) {}
-        }
+      final activeFarmId = _farmController.selectedFarm?.id;
+      if (activeFarmId == null) {
+        _changeState(
+          FieldOperationErrorState("Nenhuma fazenda ativa selecionada."),
+        );
+        return;
       }
-      await _operationService.deleteMultipleFieldOperations(ids);
+
+      await _refreshFarmResources();
+      final selectedIds = ids.toSet();
+      final toDelete = (await _operationService.getFieldOperations(
+        activeFarmId,
+      )).where((op) => selectedIds.contains(op.id)).toList();
+
+      // Estorna todas de uma vez
+      await _stockService.applyUsage(
+        products: products,
+        machines: machines,
+        restoreProducts: toDelete.expand(_productUsages).toList(),
+        restoreMachines: toDelete.expand(_machineUsages).toList(),
+        alsoWrite: (batch) => _operationService.addDeleteToBatch(
+          batch,
+          toDelete.map((op) => op.id!),
+        ),
+      );
       await loadOperationsData();
     } catch (e) {
-      _state = FieldOperationErrorState("Erro ao excluir em lote.");
-      notifyListeners();
+      _changeState(FieldOperationErrorState("Erro ao excluir em lote."));
     }
   }
 }

@@ -1,0 +1,288 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore do Gestão Rural.
+//
+// Papéis:
+// - Produtor (role 'admin'): dono das fazendas (farms.ownerId) e de tudo que
+//   pertence a elas.
+// - Colaborador (role 'colaborador'): vinculado a uma fazenda pelo produtor
+//   (users.farmId, tela "Minha Equipe"). Lança operações, vistorias,
+//   aplicações e custos; só altera/exclui o que ele mesmo registrou.
+//
+// Publicar: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Funções auxiliares
+    // ---------------------------------------------------------------------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function me() {
+      return request.auth.uid;
+    }
+
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(me())).data;
+    }
+
+    // Produtor dono da fazenda
+    function isOwner(farmId) {
+      return signedIn() && farmId is string
+        && get(/databases/$(database)/documents/farms/$(farmId)).data.ownerId == me();
+    }
+
+    // Colaborador vinculado à fazenda
+    function isCollaborator(farmId) {
+      return signedIn() && farmId is string
+        && myProfile().get('farmId', null) == farmId;
+    }
+
+    function isMember(farmId) {
+      return isOwner(farmId) || isCollaborator(farmId);
+    }
+
+    // Colaborador liberado pelo produtor para registrar Produção/Colheita
+    function canRegisterHarvest(farmId) {
+      return isCollaborator(farmId)
+        && myProfile().get('canRegisterHarvest', false) == true;
+    }
+
+    // Campos alterados em um update
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // O campo não pode mudar no update (ex: farmId, createdBy)
+    function keeps(field) {
+      return request.resource.data.get(field, null) == resource.data.get(field, null);
+    }
+
+    function isAuthor() {
+      return resource.data.get('createdBy', null) == me();
+    }
+
+    // Custos de mão de obra são exclusivos do produtor
+    function isLaborCategory(category) {
+      return category in ['Mão-de-obra temporária', 'Mão-de-obra fixa'];
+    }
+
+    // O CPF do cadastro tem que estar reservado para a própria conta no
+    // índice cpf_index (gravados juntos, no mesmo lote)
+    function cpfBelongsToMe(cpf) {
+      return cpf == ''
+        || getAfter(/databases/$(database)/documents/cpf_index/$(cpf)).data.uid == me();
+    }
+
+    // ---------------------------------------------------------------------
+    // Usuários
+    // ---------------------------------------------------------------------
+
+    match /users/{userId} {
+      function isSelf() {
+        return signedIn() && userId == me();
+      }
+
+      function linkedFarm() {
+        return resource.data.get('farmId', null);
+      }
+
+      // O próprio usuário só altera dados pessoais. Perfil, fazenda e
+      // permissões mudam pelo cadastro e pela tela "Minha Equipe".
+      // O CPF só pode ser informado uma vez.
+      function selfEditable() {
+        return changedKeys().hasOnly(['name', 'email', 'phone', 'imageUrl', 'cpf'])
+          && (!changedKeys().hasAny(['cpf'])
+            || (resource.data.get('cpf', '') == ''
+              && cpfBelongsToMe(request.resource.data.cpf)));
+      }
+
+      // Produtor vinculando, liberando permissões ou desvinculando colaborador
+      function producerManagesCollaborator() {
+        let before = resource.data.get('farmId', null);
+        let after = request.resource.data.get('farmId', null);
+        return resource.data.get('role', '') == 'colaborador'
+          && changedKeys().hasOnly(['farmId', 'canRegisterHarvest'])
+          && (
+            // Vincula quem ainda não tem fazenda (sem permissões extras)
+            (before == null && after != null && isOwner(after)
+              && request.resource.data.get('canRegisterHarvest', false) == false)
+            // Gerencia ou desvincula quem já é da sua equipe
+            || (before != null && isOwner(before) && (after == null || after == before))
+          );
+      }
+
+      allow get: if isSelf()
+        // Produtor vendo a própria equipe (nome de quem registrou, etc.)
+        || (linkedFarm() != null && isOwner(linkedFarm()))
+        // Produtor conferindo um colaborador sem fazenda antes de vinculá-lo
+        || (signedIn() && resource.data.get('role', '') == 'colaborador' && linkedFarm() == null);
+
+      // "Minha Equipe": a consulta sempre filtra pela fazenda do produtor
+      allow list: if linkedFarm() != null && isOwner(linkedFarm());
+
+      allow create: if isSelf()
+        && request.resource.data.get('role', 'admin') in ['admin', 'colaborador']
+        && !request.resource.data.keys().hasAny(['farmId', 'canRegisterHarvest', 'managerId'])
+        && cpfBelongsToMe(request.resource.data.get('cpf', ''));
+
+      allow update: if (isSelf() && selfEditable()) || producerManagesCollaborator();
+
+      allow delete: if false;
+
+      // Livro Caixa: somente o próprio produtor
+      match /bookkeeping/{entryId} {
+        allow read, write: if signedIn() && userId == me();
+      }
+    }
+
+    // Índice CPF -> conta: busca por CPF exato, sem permitir listar
+    match /cpf_index/{cpf} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && cpf.matches('^[0-9]{11}$')
+        && request.resource.data.keys().hasOnly(['uid', 'role'])
+        && request.resource.data.uid == me()
+        && request.resource.data.role in ['admin', 'colaborador']
+        && getAfter(/databases/$(database)/documents/users/$(me())).data.get('cpf', '') == cpf;
+      allow update, delete: if false;
+    }
+
+    // ---------------------------------------------------------------------
+    // Fazendas
+    // ---------------------------------------------------------------------
+
+    match /farms/{farmId} {
+      allow get: if signedIn() && (resource.data.ownerId == me() || isCollaborator(farmId));
+      allow list: if signedIn() && resource.data.ownerId == me();
+      allow create: if signedIn() && request.resource.data.ownerId == me();
+      allow update: if signedIn()
+        && resource.data.ownerId == me()
+        && request.resource.data.ownerId == me();
+      allow delete: if signedIn() && resource.data.ownerId == me();
+    }
+
+    // ---------------------------------------------------------------------
+    // Armazém (armazéns, máquinas e produtos)
+    // ---------------------------------------------------------------------
+
+    match /warehouses/{warehouseId} {
+      allow read: if isMember(resource.data.farmId);
+      allow create: if isOwner(request.resource.data.farmId);
+      allow update: if isOwner(resource.data.farmId) && keeps('farmId');
+      allow delete: if isOwner(resource.data.farmId);
+    }
+
+    // O colaborador só mexe no horímetro (pelas operações que lança)
+    match /machines/{machineId} {
+      allow read: if isMember(resource.data.farmId);
+      allow create: if isOwner(request.resource.data.farmId);
+      allow update: if keeps('farmId') && (
+        isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && changedKeys().hasOnly(['workingHours']))
+      );
+      allow delete: if isOwner(resource.data.farmId);
+    }
+
+    // O colaborador só mexe na quantidade (baixa/estorno de estoque)
+    match /products/{productId} {
+      allow read: if isMember(resource.data.farmId);
+      allow create: if isOwner(request.resource.data.farmId);
+      allow update: if keeps('farmId') && (
+        isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && changedKeys().hasOnly(['quantity']))
+      );
+      allow delete: if isOwner(resource.data.farmId);
+    }
+
+    // ---------------------------------------------------------------------
+    // Lançamentos de campo
+    // ---------------------------------------------------------------------
+
+    match /operations/{operationId} {
+      allow read: if isMember(resource.data.farmId);
+      allow create: if isMember(request.resource.data.farmId)
+        && request.resource.data.createdBy == me();
+      allow update: if keeps('farmId') && keeps('createdBy') && (
+        isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && isAuthor())
+      );
+      allow delete: if isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && isAuthor());
+    }
+
+    match /field_operations/{operationId} {
+      allow read: if isMember(resource.data.farmId);
+      allow create: if isMember(request.resource.data.farmId)
+        && request.resource.data.createdBy == me();
+      allow update: if keeps('farmId') && keeps('createdBy') && (
+        isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && isAuthor())
+      );
+      allow delete: if isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && isAuthor());
+    }
+
+    // ---------------------------------------------------------------------
+    // Custos e produção
+    // ---------------------------------------------------------------------
+
+    // Custos de mão de obra (laborCost == true) são exclusivos do produtor:
+    // o colaborador não os lê, cria, altera nem exclui. Por isso a consulta
+    // do colaborador precisa filtrar por laborCost == false.
+    match /costs/{costId} {
+      // Todo custo grava laborCost, e um de categoria de mão de obra não pode
+      // ser gravado como liberado para o colaborador
+      function validLaborFlag() {
+        let data = request.resource.data;
+        return data.get('laborCost', null) is bool
+          && (data.laborCost == true || !isLaborCategory(data.get('category', '')));
+      }
+
+      function openToCollaborators(data) {
+        return data.get('laborCost', true) == false;
+      }
+
+      allow read: if isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && resource.data.laborCost == false);
+      allow create: if validLaborFlag() && (
+        isOwner(request.resource.data.farmId)
+        || (isCollaborator(request.resource.data.farmId)
+          && openToCollaborators(request.resource.data))
+      );
+      allow update: if keeps('farmId') && validLaborFlag() && (
+        isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId)
+          && openToCollaborators(resource.data)
+          && openToCollaborators(request.resource.data))
+      );
+      allow delete: if isOwner(resource.data.farmId)
+        || (isCollaborator(resource.data.farmId) && openToCollaborators(resource.data));
+    }
+
+    // Colheitas: produtor vê todas; colaborador liberado vê e altera só as suas
+    match /harvests/{harvestId} {
+      allow read: if isOwner(resource.data.farmId)
+        || (canRegisterHarvest(resource.data.farmId) && isAuthor());
+      allow create: if request.resource.data.createdBy == me() && (
+        isOwner(request.resource.data.farmId)
+        || canRegisterHarvest(request.resource.data.farmId)
+      );
+      allow update: if keeps('farmId') && keeps('createdBy') && (
+        isOwner(resource.data.farmId)
+        || (canRegisterHarvest(resource.data.farmId) && isAuthor())
+      );
+      allow delete: if isOwner(resource.data.farmId)
+        || (canRegisterHarvest(resource.data.farmId) && isAuthor());
+    }
+
+    // Qualquer outra coleção é bloqueada
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

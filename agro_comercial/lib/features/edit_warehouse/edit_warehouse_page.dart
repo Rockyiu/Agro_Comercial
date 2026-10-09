@@ -8,6 +8,7 @@ import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_warehouse_controller.dart';
+import 'edit_warehouse_state.dart';
 
 class EditWarehousePage extends StatefulWidget {
   final WarehouseModel warehouse;
@@ -82,7 +83,7 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _controller.deleteWarehouse(widget.warehouse.id!);
+              _controller.deleteWarehouse(widget.warehouse);
             },
             child: const Text(
               "Sim, excluir",

@@ -1,30 +1,40 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/empty_state.dart';
 import 'package:agro_comercial/features/cash_book/cash_book_page.dart';
 import 'package:agro_comercial/features/costs/cost_page.dart';
-import 'package:agro_comercial/features/farm/farm_controller.dart';
-import 'package:agro_comercial/features/farm/edit_farm_page.dart'; // Importação adicionada para a edição
-import 'package:agro_comercial/features/field_operations/field_operation_controller.dart';
-import 'package:agro_comercial/features/operation/operation_controller.dart';
-import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/employee/employee_page.dart';
+import 'package:agro_comercial/features/farm/edit_farm_page.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/features/farm_registration/farm_registration_page.dart';
+import 'package:agro_comercial/features/field_operations/field_operation_details_page.dart';
 import 'package:agro_comercial/features/field_operations/field_operation_page.dart';
-import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
-import 'package:agro_comercial/features/register_product/register_product_page.dart';
-import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
-import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
+import 'package:agro_comercial/features/field_operations/register_field_operation_page.dart';
+import 'package:agro_comercial/features/harvest/harvest_page.dart';
+import 'package:agro_comercial/features/harvest/register_harvest_page.dart';
+import 'package:agro_comercial/features/invoices/invoice_page.dart';
+import 'package:agro_comercial/features/operation/operation_details_page.dart';
 import 'package:agro_comercial/features/operation/operation_page.dart';
 import 'package:agro_comercial/features/operation/register_operation_page.dart';
 import 'package:agro_comercial/features/profile/profile_page.dart';
-import 'package:agro_comercial/services/farm_service/farm_service.dart';
-import 'package:agro_comercial/features/invoices/invoice_page.dart';
-import 'package:flutter/material.dart';
+import 'package:agro_comercial/features/register_machine/register_machine_page.dart';
+import 'package:agro_comercial/features/register_product/register_product_page.dart';
+import 'package:agro_comercial/features/register_warehouse/register_warehouse_page.dart';
+import 'package:agro_comercial/features/reports/production_reports_page.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
+import 'package:agro_comercial/features/warehouse/warehouse_page.dart';
 import 'package:agro_comercial/locator.dart';
+import 'package:flutter/material.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:agro_comercial/features/sign_in/sign_in_page.dart';
+import 'home_controller.dart';
+import 'home_state.dart';
+import 'widgets/activity_feed.dart';
+import 'widgets/add_menu_sheet.dart';
+import 'widgets/app_drawer.dart';
+import 'widgets/farm_selector_dialog.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -34,865 +44,406 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentIndex = 0;
+  // Abas da barra inferior
+  static const _homeTab = 0;
+  static const _cashBookTab = 1;
+  static const _warehouseTab = 2;
+  static const _reportsTab = 3;
 
-  final _farmService = locator.get<FarmService>();
+  int _currentIndex = _homeTab;
 
-  FarmModel? _fazendaAtiva;
+  final _farmController = locator.get<FarmController>();
+  final _warehouseController = locator.get<WarehouseController>();
+  final _homeController = locator.get<HomeController>();
+
+  FarmModel? get _activeFarm => _farmController.selectedFarm;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _inicializarFazendaAtiva();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadFarmData());
   }
 
-  Future<void> _inicializarFazendaAtiva() async {
-    final farmController = locator.get<FarmController>();
-    await farmController.loadFarms();
-
-    if (farmController.selectedFarm != null) {
-      setState(() {
-        _fazendaAtiva = farmController.selectedFarm;
-      });
-      locator.get<WarehouseController>().loadWarehouseData();
-      locator.get<OperationController>().loadOperationsData();
-      locator.get<FieldOperationController>().loadOperationsData();
-    }
+  @override
+  void dispose() {
+    _homeController.dispose();
+    super.dispose();
   }
 
-  Future<void> _mostrarSeletorDeFazendas(BuildContext context) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+  // Carrega a fazenda ativa e, com ela, armazéns e atividades
+  Future<void> _loadFarmData() async {
+    await _farmController.loadFarms();
+    _reloadActiveFarmData();
+  }
 
+  void _reloadActiveFarmData() {
+    if (_activeFarm == null) return;
+    _warehouseController.loadWarehouseData();
+    _homeController.loadActivities();
+  }
+
+  // Abre uma tela e, ao voltar, atualiza os dados da Home
+  Future<void> _openPage(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) _loadFarmData();
+  }
+
+  Future<void> _switchFarm() async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: AppColors.greenlightOne),
-      ),
+      builder: (_) => const Center(child: CustomCircularProgressIndicator()),
     );
 
+    List<FarmModel> farms;
     try {
-      final fazendas = await _farmService.getFarmsByOwner(user.uid);
-
-      if (!context.mounted) return;
-      Navigator.pop(context); // Fecha o loading
-
-      if (fazendas.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Nenhuma fazenda cadastrada. Cadastre uma propriedade primeiro!",
-            ),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text("Selecione a Fazenda"),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: fazendas.length,
-                itemBuilder: (context, index) {
-                  final fazenda = fazendas[index];
-                  return ListTile(
-                    leading: const Icon(
-                      Icons.home_work,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: Text(fazenda.name),
-                    // CORREÇÃO: Usando os nomes atualizados do FarmModel
-                    subtitle: Text(
-                      'Área: ${fazenda.totalArea} | Talhões: ${fazenda.plantedFields.length}',
-                    ),
-                    onTap: () async {
-                      setState(() {
-                        _fazendaAtiva = fazenda;
-                      });
-
-                      await locator.get<FarmController>().changeActiveFarm(
-                        fazenda,
-                      );
-
-                      locator.get<WarehouseController>().loadWarehouseData();
-                      locator.get<OperationController>().loadOperationsData();
-                      locator
-                          .get<FieldOperationController>()
-                          .loadOperationsData();
-
-                      if (!context.mounted) return;
-                      Navigator.pop(context); // Fecha o seletor
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            "Fazenda alterada para: ${fazenda.name}",
-                          ),
-                          backgroundColor: AppColors.greenlightOne,
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      );
+      farms = await _farmController.fetchOwnedFarms();
     } catch (e) {
-      Navigator.pop(context); // Fecha o loading em caso de erro
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Erro ao carregar as fazendas. Tente novamente."),
-          backgroundColor: Colors.red,
-        ),
+      if (!mounted) return;
+      Navigator.pop(context); // Fecha o loading
+      context.showErrorSnackBar(
+        "Erro ao carregar as fazendas. Tente novamente.",
       );
+      return;
     }
+
+    if (!mounted) return;
+    Navigator.pop(context); // Fecha o loading
+
+    if (farms.isEmpty) {
+      context.showWarningSnackBar(
+        "Nenhuma fazenda cadastrada. Cadastre uma propriedade primeiro!",
+      );
+      return;
+    }
+
+    final farm = await showFarmSelectorDialog(context, farms);
+    if (farm == null || !mounted) return;
+
+    await _farmController.changeActiveFarm(farm);
+    _reloadActiveFarmData();
+    if (!mounted) return;
+    context.showSuccessSnackBar("Fazenda alterada para: ${farm.name}");
+  }
+
+  void _editActiveFarm() {
+    final farm = _activeFarm;
+    if (farm == null) {
+      context.showWarningSnackBar('Nenhuma fazenda selecionada no momento.');
+      return;
+    }
+    _openPage(EditFarmPage(farm: farm));
   }
 
   void _handleFabPressed() {
-    if (_currentIndex == 0) {
-      _showHomeAddMenu();
-    } else if (_currentIndex == 2) {
-      _showWarehouseAddMenu();
+    if (_currentIndex == _homeTab) {
+      showAddMenuSheet(
+        context,
+        title: 'O que deseja registrar?',
+        options: [
+          AddMenuOption(
+            icon: Icons.agriculture,
+            title: 'Cadastrar Máquina',
+            subtitle: 'Trator, colhedora, implementos',
+            onTap: () => _openPage(const RegisterMachinePage()),
+          ),
+          AddMenuOption(
+            icon: Icons.build,
+            title: 'Cadastrar Operação',
+            subtitle: 'Plantio, colheita, aplicação',
+            onTap: () => _openPage(const RegisterOperationPage()),
+          ),
+          AddMenuOption(
+            icon: Icons.assignment_turned_in_outlined,
+            title: 'Cadastrar Vistoria / Aplicação',
+            subtitle: 'Condição do talhão, aplicação de produtos',
+            onTap: () => _openPage(const RegisterFieldOperationPage()),
+          ),
+          AddMenuOption(
+            icon: Icons.inventory,
+            title: 'Cadastrar Produto',
+            subtitle: 'Insumos, sementes, defensivos, peças',
+            onTap: () => _openPage(const RegisterProductPage()),
+          ),
+          AddMenuOption(
+            icon: Icons.grass,
+            title: 'Registrar Colheita',
+            subtitle: 'Produção do talhão e preço de venda',
+            onTap: () => _openPage(const RegisterHarvestPage()),
+          ),
+        ],
+      );
+    } else if (_currentIndex == _warehouseTab) {
+      showAddMenuSheet(
+        context,
+        title: 'O que deseja adicionar?',
+        options: [
+          AddMenuOption(
+            icon: Icons.warehouse,
+            title: 'Novo Armazém',
+            subtitle: 'Galpão, silo ou depósito',
+            onTap: () => _openPage(const RegisterWarehousePage()),
+          ),
+          AddMenuOption(
+            icon: Icons.agriculture,
+            title: 'Nova Máquina',
+            subtitle: 'Trator, colhedora, implementos',
+            onTap: () => _openPage(const RegisterMachinePage()),
+          ),
+          AddMenuOption(
+            icon: Icons.inventory,
+            title: 'Novo Produto',
+            subtitle: 'Insumos, sementes, agrotóxicos',
+            onTap: () => _openPage(const RegisterProductPage()),
+          ),
+        ],
+      );
     }
-  }
-
-  void _showHomeAddMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: AppColors.iceWhite,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 24.0,
-              horizontal: 16.0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'O que deseja registrar?',
-                  style: AppTextStyles.midText20.copyWith(
-                    color: AppColors.greenlightOne,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.agriculture,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  title: Text(
-                    'Cadastrar Máquina',
-                    style: AppTextStyles.inputText,
-                  ),
-                  subtitle: Text(
-                    'Trator, colhedora, implementos',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterMachinePage(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(Icons.build, color: AppColors.greenlightOne),
-                  ),
-                  title: Text(
-                    'Cadastrar Operação',
-                    style: AppTextStyles.inputText,
-                  ),
-                  subtitle: Text(
-                    'Plantio, colheita, aplicação',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterOperationPage(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.inventory,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  title: Text(
-                    'Cadastrar Produto',
-                    style: AppTextStyles.inputText,
-                  ),
-                  subtitle: Text(
-                    'Insumos, sementes, defensivos, peças',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterProductPage(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showWarehouseAddMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      backgroundColor: AppColors.iceWhite,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 24.0,
-              horizontal: 16.0,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'O que deseja adicionar?',
-                  style: AppTextStyles.midText20.copyWith(
-                    color: AppColors.greenlightOne,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.warehouse,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  title: Text('Novo Armazém', style: AppTextStyles.inputText),
-                  subtitle: Text(
-                    'Galpão, silo ou depósito',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterWarehousePage(),
-                      ),
-                    );
-                    locator.get<WarehouseController>().loadWarehouseData();
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.agriculture,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  title: Text('Nova Máquina', style: AppTextStyles.inputText),
-                  subtitle: Text(
-                    'Trator, colhedora, implementos',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterMachinePage(),
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.inventory,
-                      color: AppColors.greenlightOne,
-                    ),
-                  ),
-                  title: Text('Novo Produto', style: AppTextStyles.inputText),
-                  subtitle: Text(
-                    'Insumos, sementes, agrotóxicos',
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterProductPage(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        backgroundColor: AppColors.greenlightOne,
-        elevation: 0,
-        title: Text(
-          _fazendaAtiva != null
-              ? 'Fazenda: ${_fazendaAtiva!.name}'
-              : 'Gestão Rural',
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () {
-              Scaffold.of(context).openDrawer();
-            },
+    return ListenableBuilder(
+      listenable: _farmController,
+      builder: (context, _) {
+        final farm = _activeFarm;
+        final showFab =
+            farm != null &&
+            (_currentIndex == _homeTab || _currentIndex == _warehouseTab);
+
+        return Scaffold(
+          backgroundColor: AppColors.iceWhite,
+          appBar: AppBar(
+            backgroundColor: AppColors.greenlightOne,
+            elevation: 0,
+            title: Text(
+              farm != null ? 'Fazenda: ${farm.name}' : 'Gestão Rural',
+              style: AppTextStyles.midText20.copyWith(color: Colors.white),
+            ),
+            centerTitle: true,
+            iconTheme: const IconThemeData(color: Colors.white),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none, color: Colors.white),
+                onPressed: () {},
+              ),
+            ],
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        backgroundColor: AppColors.iceWhite,
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
+          drawer: _buildDrawer(farm),
+          body: _buildBody(farm),
+          floatingActionButton: showFab
+              ? FloatingActionButton(
+                  backgroundColor: AppColors.greenlightOne,
+                  onPressed: _handleFabPressed,
+                  elevation: 4,
+                  child: const Icon(Icons.add, color: Colors.white, size: 36),
+                )
+              : null,
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerDocked,
+          bottomNavigationBar: BottomAppBar(
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 8.0,
+            color: Colors.white,
+            child: SizedBox(
+              height: 60,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  DrawerHeader(
-                    decoration: const BoxDecoration(
-                      color: AppColors.greenlightOne,
-                    ),
-                    child: Align(
-                      alignment: Alignment.bottomLeft,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Menu Gestão Rural',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (_fazendaAtiva != null) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'CAD/PRO: ${_fazendaAtiva!.cadPro}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                  _buildTabItem(Icons.home_outlined, _homeTab, 'Início'),
+                  _buildTabItem(
+                    Icons.request_quote_outlined,
+                    _cashBookTab,
+                    'Livro Caixa',
                   ),
-                  // ADICIONADO: Botão para Editar "Minha Fazenda"
-                  ListTile(
-                    leading: const Icon(
-                      Icons.landscape,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Minha Fazenda'),
-                    onTap: () {
-                      Navigator.pop(context); // Fecha o Drawer
-                      final activeFarm = locator
-                          .get<FarmController>()
-                          .selectedFarm;
-                      if (activeFarm != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                EditFarmPage(farm: activeFarm),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Nenhuma fazenda selecionada no momento.',
-                            ),
-                          ),
-                        );
-                      }
-                    },
+                  const SizedBox(width: 48), // Espaço do botão (+)
+                  _buildTabItem(
+                    Icons.warehouse_outlined,
+                    _warehouseTab,
+                    'Armazém',
                   ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.assignment_turned_in_outlined,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Vistorias'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FieldOperationPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.assignment_outlined,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Operações'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const OperationPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.attach_money,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Custos'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const CostPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.people_outline,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Minha Equipe'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EmployeePage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.receipt_long,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Notas Fiscais'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const InvoicePage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.person_outline,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Meu Perfil'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ProfilePage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.settings,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Configurações'),
-                    onTap: () {
-                      Navigator.pop(context);
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.add_home_work,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Cadastrar Nova Fazenda'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FarmRegistrationPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.swap_horiz,
-                      color: AppColors.greenlightOne,
-                    ),
-                    title: const Text('Trocar de Fazenda'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _mostrarSeletorDeFazendas(context);
-                    },
+                  _buildTabItem(
+                    Icons.bar_chart_outlined,
+                    _reportsTab,
+                    'Relatório',
                   ),
                 ],
               ),
             ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.redAccent),
-              title: const Text(
-                'Sair',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onTap: () async {
-                Navigator.pop(context);
-
-                await FirebaseAuth.instance.signOut();
-
-                if (!context.mounted) {
-                  return;
-                }
-
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SignInPage()),
-                  (route) => false,
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-      body: _buildBody(),
-
-      floatingActionButton: (_currentIndex == 0 || _currentIndex == 2)
-          ? FloatingActionButton(
-              backgroundColor: AppColors.greenlightOne,
-              onPressed: _handleFabPressed,
-              elevation: 4,
-              child: const Icon(Icons.add, color: Colors.white, size: 36),
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        color: Colors.white,
-        child: SizedBox(
-          height: 60,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildTabItem(
-                icon: Icons.home_outlined,
-                index: 0,
-                label: 'Início',
-              ),
-              _buildTabItem(
-                icon: Icons.request_quote_outlined,
-                index: 1,
-                label: 'Livro Caixa',
-              ),
-              const SizedBox(width: 48),
-              _buildTabItem(
-                icon: Icons.warehouse_outlined,
-                index: 2,
-                label: 'Armazém',
-              ),
-              _buildTabItem(
-                icon: Icons.bar_chart_outlined,
-                index: 3,
-                label: 'Relatório',
-              ),
-            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_fazendaAtiva == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.home_work_outlined,
-                size: 80,
-                color: AppColors.lightkGrey.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Nenhuma fazenda ativa',
-                style: AppTextStyles.midText20.copyWith(
-                  color: AppColors.greenlightOne,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Abra o menu lateral (☰) e escolha "Trocar de Fazenda" para carregar seus dados.',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.smallText.copyWith(
-                  color: AppColors.grey,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (_currentIndex == 0) {
-      return ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
-            child: Text(
-              'Visão Geral',
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.greenlightOne,
-              ),
-            ),
-          ),
-          _buildSummaryCard(
-            title: 'Custos Recentes',
-            value: 'R\$ 1.450,00',
-            subtitle: 'Compra de Agrotóxicos e Fertilizantes',
-            icon: Icons.attach_money,
-            color: Colors.redAccent,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryCard(
-            title: 'Última Operação',
-            value: 'Trator Massey 95',
-            subtitle: 'Operou por 5 hours - Talhão 02',
-            icon: Icons.agriculture,
-            color: Colors.orange,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryCard(
-            title: 'Vistorias Recentes',
-            value: 'Talhão 01',
-            subtitle: 'Avaliação de pragas concluída com sucesso',
-            icon: Icons.search,
-            color: Colors.blueAccent,
-          ),
-        ],
-      );
-    } else if (_currentIndex == 2) {
-      return const WarehousePage();
-    } else if (_currentIndex == 1) {
-      // <-- ABA DO LIVRO CAIXA
-      return const CashBookPage();
-    } else if (_currentIndex == 3) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bar_chart_rounded,
-              size: 64,
-              color: AppColors.lightkGrey.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Relatórios em construção',
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.lightkGrey,
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.construction,
-              size: 64,
-              color: AppColors.lightkGrey.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Página em construção',
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.lightkGrey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Widget _buildSummaryCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      elevation: 1,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: color.withValues(alpha: 0.15),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.lightkGrey,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: AppTextStyles.midText20.copyWith(
-                      color: AppColors.greenlightOne,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.smallText.copyWith(
-                      color: AppColors.grey,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabItem({
-    required IconData icon,
-    required int index,
-    required String label,
-  }) {
-    final isSelected = _currentIndex == index;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
+        );
       },
+    );
+  }
+
+  Widget _buildDrawer(FarmModel? farm) {
+    return AppDrawer(
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Menu Gestão Rural',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (farm != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              'CAD/PRO: ${farm.cadPro}',
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ],
+        ],
+      ),
+      items: [
+        DrawerMenuItem(
+          icon: Icons.landscape,
+          title: 'Minha Fazenda',
+          onTap: _editActiveFarm,
+        ),
+        DrawerMenuItem(
+          icon: Icons.assignment_turned_in_outlined,
+          title: 'Vistorias',
+          onTap: () => _openPage(const FieldOperationPage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.assignment_outlined,
+          title: 'Operações',
+          onTap: () => _openPage(const OperationPage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.attach_money,
+          title: 'Custos',
+          onTap: () => _openPage(const CostPage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.grass,
+          title: 'Produção / Colheita',
+          onTap: () => _openPage(const HarvestPage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.people_outline,
+          title: 'Minha Equipe',
+          onTap: () => _openPage(const EmployeePage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.receipt_long,
+          title: 'Notas Fiscais',
+          onTap: () => _openPage(const InvoicePage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.person_outline,
+          title: 'Meu Perfil',
+          onTap: () => _openPage(const ProfilePage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.settings,
+          title: 'Configurações',
+          onTap: () {},
+        ),
+        const Divider(),
+        DrawerMenuItem(
+          icon: Icons.add_home_work,
+          title: 'Cadastrar Nova Fazenda',
+          onTap: () => _openPage(const FarmRegistrationPage()),
+        ),
+        DrawerMenuItem(
+          icon: Icons.swap_horiz,
+          title: 'Trocar de Fazenda',
+          onTap: _switchFarm,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBody(FarmModel? farm) {
+    if (farm == null) {
+      // Ainda buscando a fazenda salva
+      if (_farmController.isLoading) {
+        return const Center(child: CustomCircularProgressIndicator());
+      }
+      return const Center(
+        child: EmptyState(
+          icon: Icons.home_work_outlined,
+          title: 'Nenhuma fazenda ativa',
+          message:
+              'Abra o menu lateral (☰) e escolha "Trocar de Fazenda" para carregar seus dados.',
+        ),
+      );
+    }
+
+    switch (_currentIndex) {
+      case _cashBookTab:
+        return const CashBookPage();
+      case _warehouseTab:
+        return const WarehousePage();
+      case _reportsTab:
+        // A key recria a aba ao trocar de fazenda
+        return ProductionReportsPage(key: ValueKey('reports_${farm.id}'));
+      default:
+        return _buildActivitiesTab();
+    }
+  }
+
+  // --- ABA INÍCIO: ATIVIDADES DA FAZENDA (PRODUTOR + EQUIPE) ---
+
+  Widget _buildActivitiesTab() {
+    return ListenableBuilder(
+      listenable: _homeController,
+      builder: (context, _) {
+        final state = _homeController.state;
+
+        if (state is HomeErrorState) {
+          return Center(
+            child: EmptyState(
+              icon: Icons.cloud_off_outlined,
+              title: 'Algo deu errado',
+              message: state.message,
+              action: TextButton.icon(
+                onPressed: _loadFarmData,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
+              ),
+            ),
+          );
+        }
+
+        if (state is! HomeSuccessState) {
+          return const Center(child: CustomCircularProgressIndicator());
+        }
+
+        return ActivityFeed(
+          title: 'Atividades da Fazenda',
+          operations: state.operations,
+          fieldOperations: state.fieldOperations,
+          authorName: state.authorName,
+          onRefresh: () => _homeController.loadActivities(showLoading: false),
+          onOperationTap: (op) =>
+              _openPage(OperationDetailsPage(operation: op)),
+          onFieldOperationTap: (fOp) =>
+              _openPage(FieldOperationDetailsPage(operation: fOp)),
+          emptyState: const EmptyState(
+            icon: Icons.inbox_outlined,
+            title: 'Nenhuma atividade ainda',
+            message:
+                'Ainda não há operações, vistorias ou aplicações cadastradas nesta fazenda.\nUse o botão verde (+) abaixo para cadastrar a primeira atividade!',
+            padding: EdgeInsets.symmetric(vertical: 48.0, horizontal: 16.0),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTabItem(IconData icon, int index, String label) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? AppColors.greenlightOne : AppColors.lightkGrey;
+
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -900,20 +451,12 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected
-                  ? AppColors.greenlightOne
-                  : AppColors.lightkGrey,
-            ),
+            Icon(icon, size: 24, color: color),
             Text(
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: isSelected
-                    ? AppColors.greenlightOne
-                    : AppColors.lightkGrey,
+                color: color,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

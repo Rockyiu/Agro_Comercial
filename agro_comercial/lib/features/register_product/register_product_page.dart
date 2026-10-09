@@ -1,17 +1,23 @@
 import 'dart:io';
+import 'package:agro_comercial/common/widgets/image_source_picker.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/empty_state.dart';
+import 'package:agro_comercial/common/widgets/loading_overlay.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_state.dart';
-import 'package:agro_comercial/services/product_service/product_service.dart';
-import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+
+import 'product_controller.dart';
+import 'product_state.dart';
 
 class RegisterProductPage extends StatefulWidget {
   final WarehouseModel? initialWarehouse;
@@ -23,10 +29,12 @@ class RegisterProductPage extends StatefulWidget {
 
 class _RegisterProductPageState extends State<RegisterProductPage> {
   final _formKey = GlobalKey<FormState>();
+  final _controller = locator.get<ProductController>();
   final _nameController = TextEditingController();
   final _brandController = TextEditingController();
   final _quantityController = TextEditingController();
-  final _measureController = TextEditingController(); // ADICIONADO
+  final _measureController = TextEditingController();
+  final _priceController = TextEditingController();
 
   final _extra1Controller = TextEditingController();
   final _extra2Controller = TextEditingController();
@@ -36,7 +44,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
   String _selectedUnit = 'un';
   File? _selectedImage;
 
-  final List<String> _categories = [
+  static const List<String> _categories = [
     'Adubo',
     'Bioestimulante',
     'Herbicida',
@@ -53,7 +61,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
     'Itens diversos',
   ];
 
-  final List<String> _units = [
+  static const List<String> _units = [
     'un',
     'kg',
     'L',
@@ -72,52 +80,24 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
 
   @override
   void dispose() {
+    _controller.dispose();
     _nameController.dispose();
     _brandController.dispose();
     _quantityController.dispose();
     _measureController.dispose();
+    _priceController.dispose();
     _extra1Controller.dispose();
     _extra2Controller.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Tirar Foto (Câmera)'),
-              onTap: () async {
-                Navigator.pop(context);
-                final XFile? photo = await picker.pickImage(
-                  source: ImageSource.camera,
-                  imageQuality: 70,
-                );
-                if (photo != null)
-                  setState(() => _selectedImage = File(photo.path));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Escolher da Galeria'),
-              onTap: () async {
-                Navigator.pop(context);
-                final XFile? image = await picker.pickImage(
-                  source: ImageSource.gallery,
-                  imageQuality: 70,
-                );
-                if (image != null)
-                  setState(() => _selectedImage = File(image.path));
-              },
-            ),
-          ],
-        ),
-      ),
+    final image = await showImageSourcePicker(
+      context,
+      cameraLabel: 'Tirar Foto (Câmera)',
+      galleryLabel: 'Escolher da Galeria',
     );
+    if (image != null && mounted) setState(() => _selectedImage = image);
   }
 
   @override
@@ -141,276 +121,261 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: noWarehousesAvailable
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.warehouse_outlined,
-                      size: 80,
-                      color: AppColors.lightkGrey,
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      "Crie um armazém antes de cadastrar um produto!",
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.midText20.copyWith(
-                        color: AppColors.grey,
-                      ),
-                    ),
-                  ],
-                ),
+          ? const Center(
+              child: EmptyState(
+                icon: Icons.warehouse_outlined,
+                title: "Nenhum armazém",
+                message: "Crie um armazém antes de cadastrar um produto!",
               ),
             )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          Container(
-                            height: 110,
-                            width: 110,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.greenlightOne,
-                                width: 2,
-                              ),
-                            ),
-                            child: _selectedImage != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(55),
-                                    child: Image.file(
-                                      _selectedImage!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 50,
-                                    color: AppColors.lightkGrey,
-                                  ),
-                          ),
-                          CircleAvatar(
-                            backgroundColor: AppColors.greenlightOne,
-                            radius: 18,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.camera_alt,
+          : ListenableBuilder(
+              listenable: _controller,
+              builder: (context, child) => LoadingOverlay(
+                isLoading: _controller.state is ProductLoadingState,
+                child: child!,
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            Container(
+                              height: 110,
+                              width: 110,
+                              decoration: BoxDecoration(
                                 color: Colors.white,
-                                size: 16,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.greenlightOne,
+                                  width: 2,
+                                ),
                               ),
-                              onPressed: _pickImage,
+                              child: _selectedImage != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(55),
+                                      child: Image.file(
+                                        _selectedImage!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.inventory_2_outlined,
+                                      size: 50,
+                                      color: AppColors.lightkGrey,
+                                    ),
+                            ),
+                            CircleAvatar(
+                              backgroundColor: AppColors.greenlightOne,
+                              radius: 18,
+                              child: IconButton(
+                                icon: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                onPressed: _pickImage,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      if (widget.initialWarehouse == null)
+                        DropdownButtonFormField<WarehouseModel>(
+                          decoration: const InputDecoration(
+                            labelText: "SELECIONE O ARMAZÉM",
+                            enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppColors.greenlightOne,
+                              ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                          initialValue: _selectedWarehouse,
+                          items: availableWarehouses
+                              .map(
+                                (w) => DropdownMenuItem(
+                                  value: w,
+                                  child: Text(w.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedWarehouse = v),
+                          validator: (v) => v == null ? "Obrigatório" : null,
+                        )
+                      else
+                        Card(
+                          color: AppColors.greenlightOne.withValues(alpha: 0.1),
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.warehouse,
+                              color: AppColors.greenlightOne,
+                            ),
+                            title: Text(
+                              "Armazenar em: ${widget.initialWarehouse!.name}",
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 16),
 
-                    if (widget.initialWarehouse == null)
-                      DropdownButtonFormField<WarehouseModel>(
+                      DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
-                          labelText: "SELECIONE O ARMAZÉM",
+                          labelText: "CATEGORIA DO INSUMO/PRODUTO",
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(
                               color: AppColors.greenlightOne,
                             ),
                           ),
                         ),
-                        initialValue: _selectedWarehouse,
-                        items: availableWarehouses
+                        initialValue: _selectedCategory,
+                        items: _categories
                             .map(
-                              (w) => DropdownMenuItem(
-                                value: w,
-                                child: Text(w.name),
-                              ),
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
                             )
                             .toList(),
-                        onChanged: (v) =>
-                            setState(() => _selectedWarehouse = v),
-                        validator: (v) => v == null ? "Obrigatório" : null,
-                      )
-                    else
-                      Card(
-                        color: AppColors.greenlightOne.withOpacity(0.1),
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.warehouse,
-                            color: AppColors.greenlightOne,
-                          ),
-                          title: Text(
-                            "Armazenar em: ${widget.initialWarehouse!.name}",
-                          ),
-                        ),
+                        onChanged: (v) => setState(() {
+                          _selectedCategory = v;
+                          _extra1Controller.clear();
+                          _extra2Controller.clear();
+                        }),
+                        validator: (v) =>
+                            v == null ? "Selecione uma categoria" : null,
                       ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: "CATEGORIA DO INSUMO/PRODUTO",
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
+                      CustomTextFormField(
+                        controller: _nameController,
+                        labelText: "NOME DO PRODUTO",
+                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
-                      initialValue: _selectedCategory,
-                      items: _categories
-                          .map(
-                            (c) => DropdownMenuItem(value: c, child: Text(c)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() {
-                        _selectedCategory = v;
-                        _extra1Controller.clear();
-                        _extra2Controller.clear();
-                      }),
-                      validator: (v) =>
-                          v == null ? "Selecione uma categoria" : null,
-                    ),
-                    const SizedBox(height: 16),
+                      CustomTextFormField(
+                        controller: _brandController,
+                        labelText: "MARCA / FABRICANTE",
+                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      ),
 
-                    CustomTextFormField(
-                      controller: _nameController,
-                      labelText: "NOME DO PRODUTO",
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                    ),
-                    CustomTextFormField(
-                      controller: _brandController,
-                      labelText: "MARCA / FABRICANTE",
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                    ),
-
-                    // ATUALIZADO: Linha de 3 Colunas com Quantidade, Medida e Unidade
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomTextFormField(
-                            controller: _quantityController,
-                            labelText: "QUANTIDADE",
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: CustomTextFormField(
-                            controller: _measureController,
-                            labelText: "MEDIDA",
-                            hintText: "Ex: 1 ou 1000",
-                            keyboardType: TextInputType.number,
-                            validator: (v) => v!.isEmpty ? "Obrigatório" : null,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            decoration: const InputDecoration(
-                              labelText: "UNIDADE",
-                              border: OutlineInputBorder(),
-                            ),
-                            initialValue: _selectedUnit,
-                            items: _units
-                                .map(
-                                  (u) => DropdownMenuItem(
-                                    value: u,
-                                    child: Text(u),
+                      // ATUALIZADO: Linha de 3 Colunas com Quantidade, Medida e Unidade
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomTextFormField(
+                              controller: _quantityController,
+                              labelText: "QUANTIDADE",
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
                                   ),
-                                )
-                                .toList(),
-                            onChanged: (v) =>
-                                setState(() => _selectedUnit = v!),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    if (_selectedCategory != null)
-                      ..._buildCategorySpecificFields(),
-
-                    const SizedBox(height: 32),
-                    PrimaryButton(
-                      text: "Salvar Produto",
-                      onPressed: () async {
-                        if (_formKey.currentState?.validate() ?? false) {
-                          Map<String, dynamic> extraAttributes = {};
-
-                          if (_extra1Controller.text.isNotEmpty) {
-                            extraAttributes['campo_extra_1'] = _extra1Controller
-                                .text
-                                .trim();
-                          }
-                          if (_extra2Controller.text.isNotEmpty) {
-                            extraAttributes['campo_extra_2'] = _extra2Controller
-                                .text
-                                .trim();
-                          }
-
-                          // --- INÍCIO DA ALTERAÇÃO ---
-                          final activeFarmId = locator
-                              .get<FarmController>()
-                              .selectedFarm
-                              ?.id;
-
-                          if (activeFarmId == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Erro: Nenhuma fazenda selecionada!",
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
-                          final newProduct = ProductModel(
-                            name: _nameController.text.trim(),
-                            brand: _brandController.text.trim(),
-                            quantity:
-                                double.tryParse(_quantityController.text) ??
-                                0.0,
-                            measure:
-                                double.tryParse(_measureController.text) ?? 1.0,
-                            unit: _selectedUnit,
-                            category: _selectedCategory!,
-                            warehouseId: _selectedWarehouse!.id!,
-                            farmId:
-                                activeFarmId, // CORRIGIDO: Usa o ID da Fazenda
-                            attributes: extraAttributes,
-                          );
-                          // --- FIM DA ALTERAÇÃO ---
-
-                          await locator.get<ProductService>().createProduct(
-                            newProduct,
-                            _selectedImage,
-                          );
-
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Produto estocado com sucesso!"),
-                              backgroundColor: AppColors.greenlightOne,
+                              validator: (v) =>
+                                  v!.isEmpty ? "Obrigatório" : null,
                             ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: CustomTextFormField(
+                              controller: _measureController,
+                              labelText: "MEDIDA",
+                              hintText: "Ex: 1 ou 1000",
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              validator: (v) =>
+                                  v!.isEmpty ? "Obrigatório" : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                labelText: "UNIDADE",
+                                border: OutlineInputBorder(),
+                              ),
+                              initialValue: _selectedUnit,
+                              items: _units
+                                  .map(
+                                    (u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(u),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setState(() => _selectedUnit = v!),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      CustomTextFormField(
+                        controller: _priceController,
+                        labelText: "PREÇO POR $_selectedUnit (R\$) - opcional",
+                        hintText: "Usado no custo por talhão",
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: Validator.validateOptionalDecimal,
+                      ),
+
+                      if (_selectedCategory != null)
+                        ..._buildCategorySpecificFields(),
+
+                      const SizedBox(height: 32),
+                      PrimaryButton(text: "Salvar Produto", onPressed: _save),
+                    ],
+                  ),
                 ),
               ),
             ),
+    );
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final extraAttributes = <String, dynamic>{
+      if (_extra1Controller.text.isNotEmpty)
+        'campo_extra_1': _extra1Controller.text.trim(),
+      if (_extra2Controller.text.isNotEmpty)
+        'campo_extra_2': _extra2Controller.text.trim(),
+    };
+
+    // A fazenda ativa é definida pelo controller
+    final newProduct = ProductModel(
+      name: _nameController.text.trim(),
+      brand: _brandController.text.trim(),
+      quantity: Parsers.decimal(_quantityController.text) ?? 0.0,
+      measure: Parsers.decimal(_measureController.text) ?? 1.0,
+      unit: _selectedUnit,
+      category: _selectedCategory!,
+      warehouseId: _selectedWarehouse!.id!,
+      farmId: '',
+      attributes: extraAttributes,
+      unitPrice: Parsers.decimal(_priceController.text),
+    );
+
+    await _controller.createProduct(newProduct, _selectedImage);
+    if (!mounted) return;
+
+    final state = _controller.state;
+    if (state is ProductErrorState) {
+      context.showErrorSnackBar(state.message);
+      return;
+    }
+    // Mostra o aviso na tela anterior, depois de fechar esta
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text("Produto estocado com sucesso!"),
+        backgroundColor: AppColors.greenlightOne,
+      ),
     );
   }
 

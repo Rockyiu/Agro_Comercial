@@ -1,9 +1,11 @@
+import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/services.dart';
 import 'sign_in_state.dart';
 
-class SignInController extends ChangeNotifier {
+class SignInController extends SafeChangeNotifier {
   SignInController({
     required AuthService authService,
     required SecureStorageService secureStorageService,
@@ -22,20 +24,34 @@ class SignInController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> signIn({required String email, required String password}) async {
+  Future<void> signIn({
+    required String email,
+    required String password,
+    bool keepConnected = true,
+  }) async {
     _changeState(SignInStateLoading());
 
     final result = await _authService.signIn(email: email, password: password);
 
-    result.fold((error) => _changeState(SignInStateError(error.message)), (
-      data,
-    ) async {
-      // Agora sim, apenas salva localmente e avança!
-      await _secureStorageService.write(
-        key: "CURRENT_USER",
-        value: data.toJson(),
-      );
-      _changeState(SignInStateSuccess());
-    });
+    await result.fold(
+      (error) async => _changeState(SignInStateError(error.message)),
+      (data) async {
+        await _secureStorageService.write(
+          key: SecureStorageService.currentUserKey,
+          value: data.toJson(),
+        );
+        // Lido pelo Splash para decidir se mantém a sessão ao reabrir o app
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('keepConnected', keepConnected);
+
+        bool isCollaborator = false;
+        try {
+          isCollaborator = await _authService.isCurrentUserCollaborator();
+        } catch (e) {
+          debugPrint("Erro ao verificar o perfil do usuário: $e");
+        }
+        _changeState(SignInStateSuccess(isCollaborator: isCollaborator));
+      },
+    );
   }
 }

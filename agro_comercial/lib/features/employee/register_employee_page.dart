@@ -28,6 +28,7 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
   void dispose() {
     _nameController.dispose();
     _cpfController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -46,8 +47,9 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
-          if (_isProcessing)
+          if (_isProcessing) {
             return const Center(child: CustomCircularProgressIndicator());
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -83,8 +85,9 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
                     validator: (v) {
                       if (v == null || v.isEmpty) return "Obrigatório";
                       String numeros = v.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (numeros.length != 11)
+                      if (numeros.length != 11) {
                         return "O CPF deve conter 11 dígitos";
+                      }
                       return null;
                     },
                   ),

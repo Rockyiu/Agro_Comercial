@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/constants/cost_categories.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -11,6 +14,7 @@ import 'package:agro_comercial/common/models/cost_model.dart';
 import 'package:agro_comercial/locator.dart';
 
 import 'cost_controller.dart';
+import 'cost_state.dart';
 
 class RegisterCostPage extends StatefulWidget {
   final CostModel? costToEdit;
@@ -27,10 +31,30 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
 
   bool _isLoading = true;
   bool _isProcessing = false;
-  String _userRole = 'colaborador';
+  bool _isCollaborator = true; // restritivo até confirmar o perfil
 
   String? _selectedType;
   String? _selectedCategory;
+  String? _selectedPlot; // null = fazenda inteira (rateio por área)
+  late DateTime _costDate = widget.costToEdit != null
+      ? DateTime.fromMillisecondsSinceEpoch(widget.costToEdit!.dateTimestamp)
+      : DateTime.now();
+
+  final _farm = locator.get<FarmController>().selectedFarm;
+
+  // Talhão do custo em edição, com o nome atual (se foi renomeado)
+  late final String? _editingPlot =
+      _farm?.currentPlotName(
+        id: widget.costToEdit?.plotId,
+        name: widget.costToEdit?.plotName,
+      ) ??
+      widget.costToEdit?.plotName;
+
+  // Talhões da fazenda ativa + o do custo em edição (se foi removido)
+  late final List<String> _plots = {
+    ...?_farm?.plotNames,
+    if (_editingPlot?.isNotEmpty ?? false) _editingPlot!,
+  }.toList();
 
   final _valueController = TextEditingController();
   final _obsController = TextEditingController();
@@ -44,45 +68,10 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
   final _uahController = TextEditingController();
   final _rController = TextEditingController();
 
-  final List<String> _types = ['Variável', 'Fixo'];
-
   List<String> get _currentCategories {
-    List<String> categories = [];
-    if (_selectedType == 'Variável') {
-      categories = [
-        'Manutenção de Tratores',
-        'Manutenção de Implementos',
-        'Combustíveis, lubrificantes e filtros',
-        'Aluguel de máquinas',
-        'Manutenção de benfeitorias',
-        'Mão-de-obra temporária',
-        'Serviços contratados',
-        'Insumos',
-        'Despesas gerais',
-        'Assistência técnica',
-        'Transporte externo',
-        'Recepção, secagem, limpeza',
-        'Seguro rural',
-        'Juros sobre capital de giro',
-        'INSS',
-      ];
-    } else if (_selectedType == 'Fixo') {
-      categories = [
-        'Depreciação de Máquinas',
-        'Depreciação de Benfeitorias',
-        'Seguro de Máquinas',
-        'Seguro de Benfeitorias',
-        'Juros sobre Terras',
-        'Juros sobre Máquinas',
-        'Juros sobre Benfeitorias',
-        'Impostos, taxas e contribuições',
-        'Mão-de-obra fixa',
-        'Arrendamento',
-      ];
-    }
-
-    if (_userRole == 'colaborador') {
-      categories.removeWhere((c) => c.toLowerCase().contains('mão-de-obra'));
+    final categories = List<String>.of(CostCategories.byType(_selectedType));
+    if (_isCollaborator) {
+      categories.removeWhere(CostModel.isLaborCategory);
     }
     return categories;
   }
@@ -94,62 +83,40 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
   }
 
   Future<void> _loadUserRoleAndData() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        if (doc.exists) {
-          setState(() {
-            _userRole = doc.data()?['role'] ?? 'colaborador';
-            _selectedType = 'Variável';
-          });
-        }
-      }
+    final isCollaborator = await _costController.isCurrentUserCollaborator();
+    if (!mounted) return;
 
-      if (widget.costToEdit != null) {
-        _selectedType = widget.costToEdit!.type;
-        _selectedCategory = widget.costToEdit!.category;
-        _valueController.text = widget.costToEdit!.value.toString();
-        _obsController.text = widget.costToEdit!.observation ?? '';
+    final cost = widget.costToEdit;
+    setState(() {
+      _isCollaborator = isCollaborator;
+      _selectedType = cost?.type ?? CostCategories.variable;
+      if (_editingPlot?.isNotEmpty ?? false) _selectedPlot = _editingPlot;
 
-        final calcData = widget.costToEdit!.calculationData;
-        if (calcData != null) {
-          // CORREÇÃO: Adicionadas chaves { } em todos os ifs
-          if (calcData.containsKey('vi')) {
-            _viController.text = calcData['vi'].toString();
+      if (cost != null) {
+        _selectedCategory = cost.category;
+        _valueController.text = cost.value.toString();
+        _obsController.text = cost.observation ?? '';
+
+        // Preenche os campos da fórmula com os valores usados no cálculo
+        final calcData = cost.calculationData ?? {};
+        final calcFields = {
+          'vi': _viController,
+          'vs': _vsController,
+          'vuh': _vuhController,
+          'vm': _vmController,
+          'uah': _uahController,
+          'vua': _vuaController,
+          'vt': _vtController,
+          'r': _rController,
+        };
+        calcFields.forEach((key, controller) {
+          if (calcData.containsKey(key)) {
+            controller.text = calcData[key].toString();
           }
-          if (calcData.containsKey('vs')) {
-            _vsController.text = calcData['vs'].toString();
-          }
-          if (calcData.containsKey('vuh')) {
-            _vuhController.text = calcData['vuh'].toString();
-          }
-          if (calcData.containsKey('vm')) {
-            _vmController.text = calcData['vm'].toString();
-          }
-          if (calcData.containsKey('uah')) {
-            _uahController.text = calcData['uah'].toString();
-          }
-          if (calcData.containsKey('vua')) {
-            _vuaController.text = calcData['vua'].toString();
-          }
-          if (calcData.containsKey('vt')) {
-            _vtController.text = calcData['vt'].toString();
-          }
-          if (calcData.containsKey('r')) {
-            _rController.text = calcData['r'].toString();
-          }
-        }
+        });
       }
-    } catch (e) {
-      // CORREÇÃO: Adicionado comentário para evitar o aviso de empty_catches
-      // Ignora erro e mantém o utilizador como colaborador por segurança
-    } finally {
-      setState(() => _isLoading = false);
-    }
+      _isLoading = false;
+    });
   }
 
   @override
@@ -167,10 +134,19 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
     super.dispose();
   }
 
-  double _parse(TextEditingController controller) {
-    if (controller.text.isEmpty) return 0.0;
-    return double.tryParse(controller.text.replaceAll(',', '.')) ?? 0.0;
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _costDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked != null) setState(() => _costDate = picked);
   }
+
+  // Aceita "1.500.000,00", "1500000" ou "7.5" (valores, horas e taxas)
+  double _parse(TextEditingController controller) =>
+      Parsers.money(controller.text) ?? 0.0;
 
   void _showDeleteDialog() {
     showDialog(
@@ -283,8 +259,18 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         calcData = {'vm': _parse(_vmController)};
         finalValue = _costController.calcJurosBenfeitoria(calcData['vm']);
       } else {
-        finalValue = _parse(_valueController);
+        finalValue = Parsers.money(_valueController.text) ?? 0;
         calcData = {};
+      }
+
+      // Campo da fórmula vazio ou zerado (ex: vida útil 0) gera divisão por
+      // zero: não grava valor infinito ou negativo
+      if (!finalValue.isFinite || finalValue <= 0) {
+        setState(() => _isProcessing = false);
+        context.showErrorSnackBar(
+          "Confira os valores informados: o custo calculado é inválido.",
+        );
+        return;
       }
 
       final newCost = CostModel(
@@ -293,11 +279,10 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         type: _selectedType!,
         category: _selectedCategory!,
         value: finalValue,
-        dateTimestamp:
-            widget.costToEdit?.dateTimestamp ??
-            DateTime.now().millisecondsSinceEpoch,
+        dateTimestamp: _costDate.millisecondsSinceEpoch,
         observation: _obsController.text.trim(),
         calculationData: calcData.isNotEmpty ? calcData : null,
+        plotName: _selectedPlot,
       );
 
       if (widget.costToEdit != null) {
@@ -307,6 +292,12 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       }
 
       if (!mounted) return;
+      final state = _costController.state;
+      if (state is CostErrorState) {
+        setState(() => _isProcessing = false);
+        context.showErrorSnackBar(state.message);
+        return;
+      }
       Navigator.pop(context, true);
     }
   }
@@ -431,7 +422,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
 
   @override
   Widget build(BuildContext context) {
-    // CORREÇÃO: Adicionadas chaves { } no if do _isLoading
+    // Adicionadas chaves { } no if do _isLoading
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CustomCircularProgressIndicator()),
@@ -476,7 +467,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                         ),
                       ),
                       initialValue: _selectedType,
-                      items: _types
+                      items: CostCategories.types
                           .map(
                             (t) => DropdownMenuItem(value: t, child: Text(t)),
                           )
@@ -511,6 +502,45 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     const SizedBox(height: 24),
                     ..._buildDynamicFields(),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<String?>(
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: "TALHÃO",
+                        helperText:
+                            "Sem talhão, o custo é rateado entre os talhões pela área",
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppColors.greenlightOne,
+                          ),
+                        ),
+                      ),
+                      initialValue: _selectedPlot,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text("Fazenda inteira"),
+                        ),
+                        ..._plots.map(
+                          (p) => DropdownMenuItem<String?>(
+                            value: p,
+                            child: Text(p),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedPlot = v),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: _pickDate,
+                      icon: const Icon(
+                        Icons.event,
+                        color: AppColors.greenlightOne,
+                      ),
+                      label: Text(
+                        "Data do custo: ${Formatters.date(_costDate.millisecondsSinceEpoch)}",
+                        style: const TextStyle(color: AppColors.greenlightOne),
+                      ),
+                    ),
                     CustomTextFormField(
                       controller: _obsController,
                       labelText: "OBSERVAÇÕES",

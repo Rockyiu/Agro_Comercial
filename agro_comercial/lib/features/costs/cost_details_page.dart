@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/cost_model.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/locator.dart';
+
+import 'cost_controller.dart';
 
 import 'register_cost_page.dart';
 
@@ -19,6 +20,7 @@ class CostDetailsPage extends StatefulWidget {
 }
 
 class _CostDetailsPageState extends State<CostDetailsPage> {
+  final _costController = locator.get<CostController>();
   bool _isCollaborator = false;
 
   @override
@@ -27,36 +29,21 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
     _checkUserRole();
   }
 
+  @override
+  void dispose() {
+    _costController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkUserRole() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (mounted && doc.exists) {
-        setState(() {
-          _isCollaborator = doc.data()?['role'] == 'colaborador';
-        });
-      }
-    }
-  }
-
-  String _formatCurrency(double value) {
-    return NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$').format(value);
-  }
-
-  String _formatDate(int timestamp) {
-    return DateFormat(
-      'dd/MM/yyyy',
-    ).format(DateTime.fromMillisecondsSinceEpoch(timestamp));
+    final isCollaborator = await _costController.isCurrentUserCollaborator();
+    if (mounted) setState(() => _isCollaborator = isCollaborator);
   }
 
   @override
   Widget build(BuildContext context) {
     // Regra de segurança: Esconde o botão de editar se for colaborador E o custo for mão de obra
-    bool isLaborCost = widget.cost.category.toLowerCase().contains('obra');
-    bool showEditButton = !(_isCollaborator && isLaborCost);
+    final showEditButton = !(_isCollaborator && widget.cost.isLabor);
 
     return Scaffold(
       backgroundColor: AppColors.iceWhite,
@@ -80,7 +67,7 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
                   ),
                 );
                 // Se retornar true, significa que editou ou excluiu. Fechamos esta tela para a lista recarregar.
-                if (result == true && mounted) {
+                if (result == true && context.mounted) {
                   Navigator.pop(context, true);
                 }
               },
@@ -122,7 +109,19 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 Text(
-                  _formatDate(widget.cost.dateTimestamp),
+                  Formatters.date(widget.cost.dateTimestamp),
+                  style: AppTextStyles.inputText,
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  "TALHÃO",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                Text(
+                  (widget.cost.plotName?.isNotEmpty ?? false)
+                      ? widget.cost.plotName!
+                      : "Fazenda inteira (rateio por área)",
                   style: AppTextStyles.inputText,
                 ),
                 const SizedBox(height: 16),
@@ -158,7 +157,7 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        _formatCurrency(widget.cost.value),
+                        Formatters.currency(widget.cost.value),
                         style: AppTextStyles.midText20.copyWith(
                           color: AppColors.greenlightOne,
                           fontSize: 28,

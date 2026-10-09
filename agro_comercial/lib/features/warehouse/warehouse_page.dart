@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -44,40 +45,16 @@ class _WarehousePageState extends State<WarehousePage> {
     });
   }
 
-  void _showDeleteMultipleDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Selecionados",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: Text(
-          "Tem certeza que deseja excluir ${selectedIds.length} armazém(ns)? Todas as máquinas neles também serão apagadas!",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteSelectedWarehouses(selectedIds.toList());
-              setState(
-                () => selectedIds.clear(),
-              ); // Limpa a seleção após excluir
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
+  Future<void> _showDeleteMultipleDialog() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Selecionados",
+      message:
+          "Tem certeza que deseja excluir ${selectedIds.length} armazém(ns)? Todas as máquinas e produtos neles também serão apagados!",
     );
+    if (!confirmed || !mounted) return;
+    _controller.deleteSelectedWarehouses(selectedIds.toList());
+    setState(() => selectedIds.clear()); // Limpa a seleção após excluir
   }
 
   @override
@@ -112,7 +89,7 @@ class _WarehousePageState extends State<WarehousePage> {
                 // BARRA DE SELEÇÃO: Só aparece se houver itens selecionados!
                 if (selectedIds.isNotEmpty)
                   Container(
-                    color: AppColors.greenlightOne.withOpacity(0.1),
+                    color: AppColors.greenlightOne.withValues(alpha: 0.1),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -240,7 +217,7 @@ class _WarehousePageState extends State<WarehousePage> {
               decoration: BoxDecoration(
                 // MUDANÇA DE COR VISUAL: Fica verdinho se estiver selecionado
                 color: isSelected
-                    ? AppColors.greenlightOne.withOpacity(0.05)
+                    ? AppColors.greenlightOne.withValues(alpha: 0.05)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
@@ -251,7 +228,7 @@ class _WarehousePageState extends State<WarehousePage> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
+                    color: Colors.black.withValues(alpha: 0.03),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -265,7 +242,7 @@ class _WarehousePageState extends State<WarehousePage> {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.greenlightOne
-                          : AppColors.greenlightOne.withOpacity(0.1),
+                          : AppColors.greenlightOne.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
