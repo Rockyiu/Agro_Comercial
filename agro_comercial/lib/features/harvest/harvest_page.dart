@@ -79,7 +79,7 @@ class _HarvestPageState extends State<HarvestPage> {
           if (state.harvests.isEmpty) {
             return const Center(
               child: EmptyState(
-                icon: Icons.grass,
+                icon: Icons.grass_rounded,
                 title: 'Nenhuma colheita registrada',
                 message:
                     'Registre a produção de cada talhão para calcular receita, margem e custo por saca nos relatórios.',
@@ -100,9 +100,8 @@ class _HarvestPageState extends State<HarvestPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
         onPressed: _openForm,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }
@@ -120,7 +119,10 @@ class _HarvestPageState extends State<HarvestPage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
           backgroundColor: AppColors.greenlightOne.withValues(alpha: 0.1),
-          child: const Icon(Icons.grass, color: AppColors.greenlightOne),
+          child: const Icon(
+            Icons.grass_rounded,
+            color: AppColors.greenlightOne,
+          ),
         ),
         title: Text(
           title,
@@ -130,7 +132,7 @@ class _HarvestPageState extends State<HarvestPage> {
           "${Formatters.date(harvest.dateTimestamp)}\n"
           "${Formatters.decimal(harvest.quantity)} ${harvest.unit} x "
           "${Formatters.currency(harvest.unitPrice)}",
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
+          style: const TextStyle(fontSize: 12, color: AppColors.inkMuted),
         ),
         isThreeLine: true,
         trailing: Text(

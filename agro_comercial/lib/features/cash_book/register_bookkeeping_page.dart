@@ -7,6 +7,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/surface_card.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:flutter/material.dart';
@@ -130,26 +133,19 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
     final List<int> diasDoMes = List.generate(_diasNoMes, (index) => index + 1);
 
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
-        title: Text(
-          isEdicao ? "Editar Escrituração" : "Nova Escrituração",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(isEdicao ? "Editar Escrituração" : "Nova Escrituração"),
         actions: [
           if (isEdicao)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.white),
+              tooltip: 'Excluir lançamento',
+              icon: const Icon(Icons.delete_outline_rounded),
               onPressed: _excluir,
             ),
         ],
       ),
       body: _isSaving
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.greenlightOne),
-            )
+          ? const CustomCircularProgressIndicator()
           : SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Form(
@@ -175,10 +171,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             key: ValueKey(
                               'dia_${_anoSelecionado}_$_diaSelecionado',
                             ),
-                            decoration: const InputDecoration(
-                              labelText: "Dia",
-                              border: OutlineInputBorder(),
-                            ),
+                            decoration: const InputDecoration(labelText: "Dia"),
                             initialValue: _diaSelecionado,
                             items: diasDoMes
                                 .map(
@@ -200,7 +193,6 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             readOnly: true,
                             decoration: const InputDecoration(
                               labelText: "Mês",
-                              border: OutlineInputBorder(),
                               filled: true,
                               fillColor: Colors.black12,
                             ),
@@ -210,10 +202,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                         Expanded(
                           flex: 3,
                           child: DropdownButtonFormField<int>(
-                            decoration: const InputDecoration(
-                              labelText: "Ano",
-                              border: OutlineInputBorder(),
-                            ),
+                            decoration: const InputDecoration(labelText: "Ano"),
                             initialValue: _anoSelecionado,
                             items: anosPermitidos
                                 .map(
@@ -237,7 +226,6 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: "Conta (Plano de Contas)",
-                        border: OutlineInputBorder(),
                       ),
                       initialValue: _contaSelecionada,
                       hint: const Text("Selecione a categoria"),
@@ -292,50 +280,53 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    InkWell(
+                    SurfaceCard(
                       onTap: _escolherPdf,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.05),
-                          border: Border.all(
-                            color: Colors.red,
-                            width: 1.5,
-                            style: BorderStyle.solid,
+                      selected: _nomeArquivoPdfExibicao != null,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 22,
+                        horizontal: 16,
+                      ),
+                      child: Column(
+                        children: [
+                          IconBadge(
+                            icon: _nomeArquivoPdfExibicao == null
+                                ? Icons.upload_file_rounded
+                                : Icons.check_rounded,
+                            size: 52,
+                            color: _nomeArquivoPdfExibicao == null
+                                ? AppColors.primary
+                                : Colors.white,
+                            background: _nomeArquivoPdfExibicao == null
+                                ? AppColors.primarySoft
+                                : AppColors.primary,
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(
-                              _nomeArquivoPdfExibicao == null
-                                  ? Icons.picture_as_pdf
-                                  : Icons.check_circle,
-                              size: 40,
-                              color: _nomeArquivoPdfExibicao == null
-                                  ? Colors.red
-                                  : AppColors.greenlightOne,
+                          const SizedBox(height: 10),
+                          Text(
+                            _nomeArquivoPdfExibicao ??
+                                "Anexar Nota Fiscal (PDF)",
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.inputText.copyWith(
+                              color: AppColors.ink,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _nomeArquivoPdfExibicao ??
-                                  "Anexar Nota Fiscal (PDF)",
-                              style: AppTextStyles.inputText.copyWith(
-                                color: _nomeArquivoPdfExibicao == null
-                                    ? Colors.red
-                                    : AppColors.greenlightOne,
-                                fontWeight: FontWeight.bold,
-                              ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _nomeArquivoPdfExibicao == null
+                                ? "Toque para escolher o arquivo"
+                                : "Toque para trocar o arquivo",
+                            style: AppTextStyles.smallText.copyWith(
+                              color: AppColors.inkMuted,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 40),
 
                     PrimaryButton(
+                      icon: Icons.check_rounded,
                       text: isEdicao
                           ? "Salvar Alterações"
                           : "Confirmar Lançamento",

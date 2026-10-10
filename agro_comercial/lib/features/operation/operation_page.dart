@@ -91,7 +91,7 @@ class _OperationPageState extends State<OperationPage> {
             return Center(
               child: Text(
                 state.message,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppColors.danger),
               ),
             );
           }
@@ -166,7 +166,7 @@ class _OperationPageState extends State<OperationPage> {
                                   .withValues(alpha: 0.1),
                               child: Icon(
                                 op.usedProducts
-                                    ? Icons.opacity
+                                    ? Icons.opacity_rounded
                                     : Icons.assignment_outlined,
                                 color: AppColors.greenlightOne,
                               ),
@@ -183,7 +183,7 @@ class _OperationPageState extends State<OperationPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             trailing: const Icon(
-                              Icons.chevron_right,
+                              Icons.chevron_right_rounded,
                               color: AppColors.lightkGrey,
                             ),
                           ),
@@ -199,7 +199,6 @@ class _OperationPageState extends State<OperationPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
         onPressed: () async {
           await Navigator.push(
             context,
@@ -210,7 +209,7 @@ class _OperationPageState extends State<OperationPage> {
           _controller.loadOperationsData();
         },
         elevation: 4,
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

@@ -58,7 +58,10 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
     } else if (state is RegisterMachineErrorState) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(state.message),
+          backgroundColor: AppColors.danger,
+        ),
       );
     }
   }
@@ -124,7 +127,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                             ),
                           ),
                           child: const Icon(
-                            Icons.agriculture,
+                            Icons.agriculture_rounded,
                             size: 60,
                             color: AppColors.lightkGrey,
                           ),
@@ -134,7 +137,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                           radius: 20,
                           child: IconButton(
                             icon: const Icon(
-                              Icons.camera_alt,
+                              Icons.camera_alt_rounded,
                               color: Colors.white,
                               size: 20,
                             ),
@@ -158,19 +161,9 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                     padding: const EdgeInsets.symmetric(horizontal: 24.0),
                     child: DropdownButtonFormField<WarehouseModel>(
                       decoration: InputDecoration(
-                        labelText: "SELECIONE O ARMAZÉM",
+                        labelText: "Selecione o armazém",
                         labelStyle: AppTextStyles.inputLabelText.copyWith(
                           color: AppColors.lightkGrey,
-                        ),
-                        focusedBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
-                        enabledBorder: const OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
                         ),
                       ),
                       initialValue: _selectedWarehouse,
@@ -187,25 +180,25 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
 
                   CustomTextFormField(
                     controller: _nameController,
-                    labelText: "NOME DA MÁQUINA",
+                    labelText: "Nome da máquina",
                     hintText: "Ex: Trator Principal",
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                   ),
                   CustomTextFormField(
                     controller: _brandController,
-                    labelText: "MARCA",
+                    labelText: "Marca",
                     hintText: "Ex: John Deere, Massey Ferguson",
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                   ),
                   CustomTextFormField(
                     controller: _modelController,
-                    labelText: "MODELO",
+                    labelText: "Modelo",
                     hintText: "Ex: 5075E",
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                   ),
                   CustomTextFormField(
                     controller: _powerController,
-                    labelText: "POTÊNCIA",
+                    labelText: "Potência",
                     hintText: "Ex: 75 CV",
                     keyboardType: TextInputType.number,
                     validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
@@ -234,7 +227,7 @@ class _RegisterMachinePageState extends State<RegisterMachinePage> {
                   if (_isMotorized)
                     CustomTextFormField(
                       controller: _hoursController,
-                      labelText: "HORAS TRABALHADAS (Opcional)",
+                      labelText: "Horas trabalhadas (Opcional)",
                       hintText: "Ex: 50 (Fica 0 se vazio)",
                       keyboardType: TextInputType.number,
                     ),

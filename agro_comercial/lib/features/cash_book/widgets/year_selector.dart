@@ -1,8 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
-// Seletor do ano-calendário do Livro Caixa (mesmo visual do filtro de mês)
+// Seletor do ano-calendário do Livro Caixa
 class YearSelector extends StatelessWidget {
   final int year;
   final List<int> years;
@@ -18,40 +17,54 @@ class YearSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.only(left: 14, right: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.greenlightOne.withValues(alpha: 0.3),
-        ),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: year,
-          isExpanded: true,
-          icon: const Icon(
-            Icons.calendar_month,
-            color: AppColors.greenlightOne,
+      child: Row(
+        children: [
+          const Icon(
+            Icons.calendar_month_rounded,
+            size: 20,
+            color: AppColors.primary,
           ),
-          items: years
-              .map(
-                (y) => DropdownMenuItem(
-                  value: y,
-                  child: Text(
-                    "Ano: $y",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.grey,
-                    ),
-                  ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: year,
+                isExpanded: true,
+                borderRadius: BorderRadius.circular(14),
+                icon: const Icon(
+                  Icons.expand_more_rounded,
+                  color: AppColors.inkMuted,
                 ),
-              )
-              .toList(),
-          onChanged: (value) {
-            if (value != null) onChanged(value);
-          },
-        ),
+                items: years
+                    .map(
+                      (y) => DropdownMenuItem(
+                        value: y,
+                        child: Text(
+                          "Ano-calendário $y",
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) onChanged(value);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

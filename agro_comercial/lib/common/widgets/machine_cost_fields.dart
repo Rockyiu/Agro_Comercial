@@ -165,7 +165,10 @@ class _MachineCostFieldsState extends State<MachineCostFields> {
       child: ExpansionTile(
         initiallyExpanded: !_c.isEmpty,
         shape: const Border(),
-        leading: const Icon(Icons.calculate, color: AppColors.greenlightOne),
+        leading: const Icon(
+          Icons.calculate_rounded,
+          color: AppColors.greenlightOne,
+        ),
         title: Text(
           "Custo da hora-máquina",
           style: AppTextStyles.inputText.copyWith(fontWeight: FontWeight.bold),
@@ -188,7 +191,10 @@ class _MachineCostFieldsState extends State<MachineCostFields> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: OutlinedButton.icon(
               onPressed: _pickAcquisitionDate,
-              icon: const Icon(Icons.event, color: AppColors.greenlightOne),
+              icon: const Icon(
+                Icons.event_rounded,
+                color: AppColors.greenlightOne,
+              ),
               label: Text(
                 _c.acquisitionDate == null
                     ? "Data da aquisição (opcional)"

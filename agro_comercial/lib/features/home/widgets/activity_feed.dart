@@ -1,8 +1,8 @@
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
 import 'package:agro_comercial/common/widgets/activity_card.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
 import 'package:flutter/material.dart';
 
 // Lista de atividades (operações + vistorias/aplicações), da mais recente
@@ -17,6 +17,8 @@ class ActivityFeed extends StatelessWidget {
   final ValueChanged<FieldOperationModel> onFieldOperationTap;
   // Nome de quem registrou cada atividade; se for nulo, a linha não aparece
   final String Function(String? createdBy)? authorName;
+  // Blocos acima da lista (cartão da fazenda, indicadores, atalhos)
+  final List<Widget> header;
 
   const ActivityFeed({
     super.key,
@@ -28,6 +30,7 @@ class ActivityFeed extends StatelessWidget {
     required this.onOperationTap,
     required this.onFieldOperationTap,
     this.authorName,
+    this.header = const [],
   });
 
   List<Widget> _buildCards() {
@@ -52,32 +55,35 @@ class ActivityFeed extends StatelessWidget {
         ),
     ]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    return combined.map((e) => e.card).toList();
+    return [
+      for (var i = 0; i < combined.length; i++)
+        FadeSlideIn(index: i, child: combined[i].card),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEmpty = operations.isEmpty && fieldOperations.isEmpty;
+    final count = operations.length + fieldOperations.length;
 
     return RefreshIndicator(
-      color: AppColors.greenlightOne,
       onRefresh: onRefresh,
       child: ListView(
         // Permite o "puxar para atualizar" mesmo com a lista vazia
         physics: const AlwaysScrollableScrollPhysics(),
         // Espaço no final para o botão (+) não cobrir o último card
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 104),
         children: [
+          for (final block in header) ...[block, const SizedBox(height: 20)],
           Padding(
-            padding: const EdgeInsets.only(bottom: 16.0, top: 8.0),
-            child: Text(
-              title,
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.greenlightOne,
-              ),
+            padding: const EdgeInsets.only(bottom: 12.0, left: 4, right: 4),
+            child: SectionHeader(
+              title: title,
+              subtitle: count == 0
+                  ? null
+                  : '$count ${count == 1 ? 'registro' : 'registros'}',
             ),
           ),
-          if (isEmpty) emptyState else ..._buildCards(),
+          if (count == 0) emptyState else ..._buildCards(),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'common/constants/routes.dart';
+import 'common/themes/default_theme.dart';
 
 // Importação das nossas telas
 import 'features/splash/splash_page.dart';
@@ -55,6 +56,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Gestão Rural',
+      theme: defaultTheme,
       debugShowCheckedModeBanner:
           false, // Remove aquela faixa vermelha chata de "Debug"
       initialRoute: '/', // A rota raiz, que sempre começa no Splash

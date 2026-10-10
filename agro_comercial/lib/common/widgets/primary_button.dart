@@ -1,47 +1,82 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
 import 'package:flutter/material.dart';
 
+// Botão principal das telas (verde da marca). Desativado quando
+// [onPressed] é null.
 class PrimaryButton extends StatelessWidget {
   final String text;
   final VoidCallback? onPressed;
+  final IconData? icon;
 
-  const PrimaryButton({super.key, required this.text, this.onPressed});
+  const PrimaryButton({
+    super.key,
+    required this.text,
+    this.onPressed,
+    this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      borderRadius: BorderRadius.circular(38.0),
-      // Se o botão estiver desativado (onPressed == null), ele fica cinza
-      color: onPressed == null ? AppColors.lightkGrey : null,
-      child: Ink(
+    final enabled = onPressed != null;
+    final radius = BorderRadius.circular(16);
+
+    return PressableScale(
+      enabled: enabled,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: 56,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(38.0),
-          // Garante que o degradê tenha exatamente as duas cores necessárias
-          gradient: onPressed != null
+          borderRadius: radius,
+          color: enabled ? null : AppColors.surfaceMuted,
+          gradient: enabled
               ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.greenlightOne, // Cor principal
-                    Color(
-                      0xFF388E51,
-                    ), // Verde escuro para o efeito de sombra/terra
-                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primaryLight, AppColors.primary],
                 )
               : null,
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.28),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(38.0),
-          onTap: onPressed,
-          child: Container(
-            alignment: Alignment.center,
-            height: 56.0, // Altura confortável para o toque no celular
-            child: Text(
-              text,
-              style: AppTextStyles.midText20.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onPressed,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 20,
+                      color: enabled ? Colors.white : AppColors.inkMuted,
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Flexible(
+                    child: Text(
+                      text,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                        color: enabled ? Colors.white : AppColors.inkMuted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

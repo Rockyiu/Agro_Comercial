@@ -50,7 +50,10 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
     } else if (state is EditWarehouseErrorState) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(state.message),
+          backgroundColor: AppColors.danger,
+        ),
       );
     }
   }
@@ -78,7 +81,10 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "Cancelar",
+              style: TextStyle(color: AppColors.inkMuted),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -87,7 +93,10 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
             },
             child: const Text(
               "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -108,7 +117,7 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
             onPressed: _showDeleteDialog,
           ),
         ],
@@ -121,7 +130,7 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
             children: [
               CustomTextFormField(
                 controller: _nameController,
-                labelText: "NOME DO ARMAZÉM",
+                labelText: "Nome do armazém",
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
               ),
               const SizedBox(height: 32),

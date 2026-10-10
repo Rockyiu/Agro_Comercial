@@ -22,7 +22,7 @@ class HorimeterFields extends StatelessWidget {
         Expanded(
           child: CustomTextFormField(
             controller: initialController,
-            labelText: "HORÍMETRO INICIAL",
+            labelText: "Horímetro inicial",
             keyboardType: keyboard,
           ),
         ),
@@ -30,7 +30,7 @@ class HorimeterFields extends StatelessWidget {
         Expanded(
           child: CustomTextFormField(
             controller: finalController,
-            labelText: "HORÍMETRO FINAL",
+            labelText: "Horímetro final",
             keyboardType: keyboard,
           ),
         ),

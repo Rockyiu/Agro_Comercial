@@ -1,5 +1,4 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +13,7 @@ class AreaUnitSelector extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
-    this.label = "UNIDADE DE ÁREA",
+    this.label = "Unidade de área",
     this.padding = EdgeInsets.zero,
   });
 
@@ -27,9 +26,11 @@ class AreaUnitSelector extends StatelessWidget {
         children: [
           Text(
             label,
-            style: AppTextStyles.smallText.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppColors.greenlightOne,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
             ),
           ),
           const SizedBox(height: 8),
@@ -41,7 +42,7 @@ class AreaUnitSelector extends StatelessWidget {
             showSelectedIcon: false,
             onSelectionChanged: (selection) => onChanged(selection.first),
             style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: AppColors.greenlightOne,
+              selectedBackgroundColor: AppColors.primary,
               selectedForegroundColor: Colors.white,
             ),
           ),

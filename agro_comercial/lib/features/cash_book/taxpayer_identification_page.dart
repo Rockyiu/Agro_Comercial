@@ -1,5 +1,7 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/empty_state.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
@@ -67,150 +69,140 @@ class _TaxpayerIdentificationPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Identificação do Contribuinte",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text("Identificação do Contribuinte")),
       body: ListenableBuilder(
         listenable: _farmController,
         builder: (context, child) {
           final farms = _farmController.farms;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // --- 1. DADOS DO CONTRIBUINTE (NOME E CPF) ---
-                _buildSectionTitle("Dados do Produtor Rural", Icons.person),
-                const SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoRow("Nome Completo", _userName),
-                        const Divider(height: 24),
-                        // O CPF AGORA É PUXADO DA NOSSA VARIÁVEL DINÂMICA
-                        _buildInfoRow("CPF", _userCpf),
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            children: [
+              // --- 1. DADOS DO CONTRIBUINTE (NOME E CPF) ---
+              const SectionHeader(
+                title: "Dados do Produtor Rural",
+                subtitle: "Titular do Livro Caixa",
+              ),
+              const SizedBox(height: 12),
+              FadeSlideIn(
+                child: _InfoCard(
+                  icon: Icons.badge_rounded,
+                  color: AppColors.sky,
+                  background: AppColors.skySoft,
+                  rows: [("Nome Completo", _userName), ("CPF", _userCpf)],
+                ),
+              ),
+              const SizedBox(height: 28),
+
+              // --- 2. DADOS DOS IMÓVEIS RURAIS ---
+              SectionHeader(
+                title: "Imóveis Rurais Explorados",
+                subtitle: farms.length == 1
+                    ? "1 propriedade"
+                    : "${farms.length} propriedades",
+              ),
+              const SizedBox(height: 12),
+
+              if (farms.isEmpty)
+                const EmptyState(
+                  icon: Icons.landscape_rounded,
+                  title: "Nenhuma propriedade",
+                  message: "Nenhuma propriedade rural cadastrada.",
+                )
+              else
+                for (var i = 0; i < farms.length; i++)
+                  FadeSlideIn(
+                    index: i + 1,
+                    child: _InfoCard(
+                      icon: Icons.landscape_rounded,
+                      color: AppColors.primary,
+                      background: AppColors.primarySoft,
+                      label: "Fazenda ${i + 1}",
+                      rows: [
+                        ("Nome da Propriedade", farms[i].name),
+                        ("Inscrição Estadual (CAD/PRO)", farms[i].cadPro),
+                        ("Endereço", farms[i].address),
+                        ("Área Total", farms[i].totalAreaLabel),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 32),
-
-                // --- 2. DADOS DOS IMÓVEIS RURAIS ---
-                _buildSectionTitle(
-                  "Imóveis Rurais Explorados",
-                  Icons.landscape,
-                ),
-                const SizedBox(height: 12),
-
-                if (farms.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24.0),
-                    child: Text(
-                      "Nenhuma propriedade rural cadastrada.",
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.inputText.copyWith(
-                        color: AppColors.lightkGrey,
-                      ),
-                    ),
-                  )
-                else
-                  ...List.generate(farms.length, (index) {
-                    final farm = farms[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16.0),
-                      child: Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: const BorderSide(
-                            color: AppColors.greenlightOne,
-                            width: 1,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Fazenda ${index + 1}",
-                                style: AppTextStyles.smallText.copyWith(
-                                  color: AppColors.greenlightOne,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildInfoRow("Nome da Propriedade", farm.name),
-                              const Divider(height: 16),
-                              _buildInfoRow(
-                                "Inscrição Estadual (CAD/PRO)",
-                                farm.cadPro,
-                              ),
-                              const Divider(height: 16),
-                              _buildInfoRow("Endereço", farm.address),
-                              const Divider(height: 16),
-                              _buildInfoRow("Área Total", farm.totalAreaLabel),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-              ],
-            ),
+            ],
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.greenlightOne),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-      ],
-    );
-  }
+// Cartão com ícone e uma lista de "rótulo: valor"
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final String? label;
+  final List<(String, String)> rows;
 
-  Widget _buildInfoRow(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.smallText.copyWith(
-            color: AppColors.lightkGrey,
-            fontSize: 12,
+  const _InfoCard({
+    required this.icon,
+    required this.color,
+    required this.background,
+    required this.rows,
+    this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconBadge(icon: icon, color: color, background: background),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (label != null) ...[
+                  StatusChip(
+                    label: label!,
+                    color: color,
+                    background: background,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                for (var i = 0; i < rows.length; i++) ...[
+                  if (i > 0) const Divider(height: 20),
+                  Text(
+                    rows[i].$1,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: AppColors.inkMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    rows[i].$2.isNotEmpty ? rows[i].$2 : "Não preenchido",
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value.isNotEmpty ? value : "Não preenchido",
-          style: AppTextStyles.inputText.copyWith(fontWeight: FontWeight.w500),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

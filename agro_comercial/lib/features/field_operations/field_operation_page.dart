@@ -90,7 +90,7 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
             return Center(
               child: Text(
                 state.message,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppColors.danger),
               ),
             );
           }
@@ -163,8 +163,8 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                                   .withValues(alpha: 0.1),
                               child: Icon(
                                 op.type == 'Vistoria'
-                                    ? Icons.search
-                                    : Icons.opacity,
+                                    ? Icons.search_rounded
+                                    : Icons.opacity_rounded,
                                 color: AppColors.greenlightOne,
                               ),
                             ),
@@ -183,7 +183,7 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             trailing: const Icon(
-                              Icons.chevron_right,
+                              Icons.chevron_right_rounded,
                               color: AppColors.lightkGrey,
                             ),
                           ),
@@ -199,7 +199,6 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
         onPressed: () async {
           await Navigator.push(
             context,
@@ -209,7 +208,7 @@ class _FieldOperationPageState extends State<FieldOperationPage> {
           );
           _controller.loadOperationsData();
         },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

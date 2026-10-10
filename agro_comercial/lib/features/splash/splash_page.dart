@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/routes.dart';
-import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
 import 'package:agro_comercial/locator.dart';
 
 import 'splash_controller.dart';
@@ -49,30 +49,77 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        alignment: Alignment.center,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: AppColors.greenGradient,
+      body: FieldBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              const Spacer(flex: 3),
+              // Logo surgindo com um leve "crescimento", como um broto
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) => Opacity(
+                  opacity: value.clamp(0, 1).toDouble(),
+                  child: Transform.scale(
+                    scale: 0.6 + 0.4 * value,
+                    child: child,
+                  ),
+                ),
+                child: const AppLogo(size: 96),
+              ),
+              const SizedBox(height: 28),
+              const FadeSlideIn(
+                delay: Duration(milliseconds: 300),
+                child: Text(
+                  'Gestão Rural',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              FadeSlideIn(
+                delay: const Duration(milliseconds: 450),
+                child: Text(
+                  'GESTÃO DO AGRONEGÓCIO',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
+                    color: Colors.white.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+              const Spacer(flex: 3),
+              SizedBox(
+                width: 140,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    minHeight: 4,
+                    color: AppColors.harvest,
+                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Tecnologia para o agro brasileiro',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Gestão Rural',
-              style: AppTextStyles.midText36.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Carregando...',
-              style: AppTextStyles.smallText.copyWith(color: Colors.white),
-            ),
-            const SizedBox(height: 24.0),
-            const CustomCircularProgressIndicator(),
-          ],
         ),
       ),
     );

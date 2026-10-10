@@ -74,7 +74,7 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
                   const SizedBox(height: 24),
                   CustomTextFormField(
                     controller: _nameController,
-                    labelText: "NOME DO FUNCIONÁRIO",
+                    labelText: "Nome do funcionário",
                     validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                   ),
                   const SizedBox(height: 16),
@@ -110,7 +110,7 @@ class _RegisterEmployeePageState extends State<RegisterEmployeePage> {
                                 (_controller.state as EmployeeErrorState)
                                     .message,
                               ),
-                              backgroundColor: Colors.red,
+                              backgroundColor: AppColors.danger,
                             ),
                           );
                           return;

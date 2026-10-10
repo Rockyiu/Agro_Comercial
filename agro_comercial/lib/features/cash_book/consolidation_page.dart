@@ -1,6 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/empty_state.dart';
+import 'package:agro_comercial/common/widgets/page_hero.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
@@ -17,18 +23,18 @@ class ConsolidationPage extends StatefulWidget {
 class _ConsolidationPageState extends State<ConsolidationPage> {
   final _controller = locator.get<ConsolidationController>();
   final List<String> _meses = [
-    'JANEIRO',
-    'FEVEREIRO',
-    'MARÇO',
-    'ABRIL',
-    'MAIO',
-    'JUNHO',
-    'JULHO',
-    'AGOSTO',
-    'SETEMBRO',
-    'OUTUBRO',
-    'NOVEMBRO',
-    'DEZEMBRO',
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
   ];
   final List<String> _mesesSigla = [
     'JAN',
@@ -53,59 +59,106 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
     });
   }
 
+  // Verde para positivo, vermelho para negativo
+  static Color _resultColor(double value) => value < 0
+      ? AppColors.danger
+      : (value > 0 ? AppColors.primary : AppColors.ink);
+
   @override
   Widget build(BuildContext context) {
-    // Verifica se a tela é larga (PC/Tablet) ou estreita (Celular)
+    // Tela larga (PC/Tablet) mostra a tabela; celular mostra os meses em cartões
     final bool isDesktop = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Consolidação",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: AppBar(title: const Text("Consolidação")),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
           if (_controller.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.greenlightOne),
-            );
+            return const CustomCircularProgressIndicator();
           }
 
           if (_controller.errorMessage != null) {
             return Center(
-              child: Text(
-                _controller.errorMessage!,
-                style: const TextStyle(color: Colors.red),
+              child: EmptyState(
+                icon: Icons.cloud_off_rounded,
+                title: 'Algo deu errado',
+                message: _controller.errorMessage!,
+                action: TextButton.icon(
+                  onPressed: _controller.carregarCalculos,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Tentar novamente'),
+                ),
               ),
             );
           }
 
-          return Column(
+          final total = _controller.totalGeral;
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
               // Filtro do ano-calendário consolidado
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                color: AppColors.greenlightOne.withValues(alpha: 0.05),
-                child: YearSelector(
-                  year: _controller.anoSelecionado,
-                  years: _controller.anosDisponiveis,
-                  onChanged: _controller.selecionarAno,
+              YearSelector(
+                year: _controller.anoSelecionado,
+                years: _controller.anosDisponiveis,
+                onChanged: _controller.selecionarAno,
+              ),
+              const SizedBox(height: 16),
+              FadeSlideIn(
+                child: PageHero(
+                  icon: Icons.account_balance_rounded,
+                  eyebrow: 'Resultado de ${_controller.anoSelecionado}',
+                  title: Formatters.currency(total.resultadoMes),
+                  subtitle:
+                      'Receitas e adiantamentos menos as despesas do ano-calendário.',
+                  metrics: [
+                    HeroMetric(
+                      icon: Icons.south_west_rounded,
+                      label: 'Receitas',
+                      value: Formatters.currency(total.receitas),
+                      scaleDown: true,
+                    ),
+                    HeroMetric(
+                      icon: Icons.north_east_rounded,
+                      label: 'Despesas',
+                      value: Formatters.currency(total.despesas),
+                      scaleDown: true,
+                    ),
+                    HeroMetric(
+                      icon: Icons.block_rounded,
+                      label: 'Indedutíveis',
+                      value: Formatters.currency(total.despesasNaoDedutiveis),
+                      scaleDown: true,
+                    ),
+                  ],
                 ),
               ),
-              // Decide qual layout renderizar com base no tamanho da tela!
-              Expanded(
-                child: isDesktop ? _buildDesktopTable() : _buildMobileList(),
+              const SizedBox(height: 24),
+              const FadeSlideIn(
+                index: 1,
+                child: SectionHeader(
+                  title: 'Resultado mês a mês',
+                  subtitle: 'Verde: sobra no mês  •  Vermelho: falta',
+                ),
               ),
+              const SizedBox(height: 12),
+              FadeSlideIn(
+                index: 2,
+                child: _MonthlyBars(
+                  values: [
+                    for (final m in _controller.resumoAno) m.resultadoMes,
+                  ],
+                  labels: _mesesSigla,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Fechamento mensal'),
+              const SizedBox(height: 12),
+              if (isDesktop)
+                _buildDesktopTable()
+              else
+                for (var i = 0; i < 12; i++)
+                  FadeSlideIn(index: i + 3, child: _buildMonthCardMobile(i)),
             ],
           );
         },
@@ -117,217 +170,115 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
   // LAYOUT 1: PARA COMPUTADOR E TABLET (A tabela clássica)
   // ===========================================================================
   Widget _buildDesktopTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
+    const header = TextStyle(
+      fontFamily: 'Inter',
+      fontWeight: FontWeight.w700,
+      color: AppColors.ink,
+    );
+    const bold = TextStyle(fontWeight: FontWeight.w700);
+
+    DataColumn column(String label, {Color? color}) => DataColumn(
+      numeric: label != "Mês",
+      label: Text(
+        label,
+        textAlign: TextAlign.center,
+        style: color == null ? header : header.copyWith(color: color),
+      ),
+    );
+
+    final total = _controller.totalGeral;
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: DataTable(
-              headingRowColor: WidgetStateProperty.all(
-                AppColors.greenlightOne.withValues(alpha: 0.1),
-              ),
-              columnSpacing: 24,
-              horizontalMargin: 16,
-              border: TableBorder(
-                horizontalInside: BorderSide(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                ),
-                verticalInside: BorderSide(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                ),
-              ),
-              columns: [
-                DataColumn(
-                  label: Text(
-                    "Mês",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Receitas",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Despesas",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Desp. Não Dedutíveis",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Adiantamentos\n(Anos Anteriores)",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Adiantamentos\n(Ano Atual)",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                DataColumn(
-                  numeric: true,
-                  label: Text(
-                    "Total do Mês\n(Resultado)",
-                    style: AppTextStyles.inputText.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.greenlightOne,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-              rows: [
-                ...List.generate(12, (index) {
-                  final resumo = _controller.resumoAno[index];
-                  final bool isPar = index % 2 == 0;
-                  final double resultado = resumo.resultadoMes;
-
-                  return DataRow(
-                    color: WidgetStateProperty.all(
-                      isPar
-                          ? Colors.transparent
-                          : Colors.blue.withValues(alpha: 0.05),
-                    ),
-                    cells: [
-                      DataCell(
-                        Text(
-                          _mesesSigla[index],
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      DataCell(Text(Formatters.decimal(resumo.receitas))),
-                      DataCell(Text(Formatters.decimal(resumo.despesas))),
-                      DataCell(
-                        Text(Formatters.decimal(resumo.despesasNaoDedutiveis)),
-                      ),
-                      DataCell(
-                        Text(
-                          Formatters.decimal(resumo.adiantamentosAnteriores),
-                        ),
-                      ),
-                      DataCell(
-                        Text(Formatters.decimal(resumo.adiantamentosAtuais)),
-                      ),
-                      DataCell(
-                        Text(
-                          Formatters.decimal(resultado),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: resultado < 0
-                                ? Colors.red
-                                : (resultado > 0
-                                      ? Colors.blue
-                                      : Colors.black87),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-                DataRow(
-                  color: WidgetStateProperty.all(
-                    Colors.grey.withValues(alpha: 0.2),
-                  ),
-                  cells: [
-                    const DataCell(
-                      Text(
-                        "Total",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(_controller.totalGeral.receitas),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(_controller.totalGeral.despesas),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(
-                          _controller.totalGeral.despesasNaoDedutiveis,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(
-                          _controller.totalGeral.adiantamentosAnteriores,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(
-                          _controller.totalGeral.adiantamentosAtuais,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        Formatters.decimal(_controller.totalGeral.resultadoMes),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: _controller.totalGeral.resultadoMes < 0
-                              ? Colors.red
-                              : (_controller.totalGeral.resultadoMes > 0
-                                    ? Colors.blue
-                                    : Colors.black87),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(AppColors.primarySoft),
+          columnSpacing: 24,
+          horizontalMargin: 16,
+          border: const TableBorder(
+            horizontalInside: BorderSide(color: AppColors.border),
           ),
+          columns: [
+            column("Mês"),
+            column("Receitas"),
+            column("Despesas"),
+            column("Desp. Não Dedutíveis"),
+            column("Adiantamentos\n(Anos Anteriores)"),
+            column("Adiantamentos\n(Ano Atual)"),
+            column("Total do Mês\n(Resultado)", color: AppColors.primary),
+          ],
+          rows: [
+            ...List.generate(12, (index) {
+              final resumo = _controller.resumoAno[index];
+              final double resultado = resumo.resultadoMes;
+
+              return DataRow(
+                color: WidgetStateProperty.all(
+                  index.isEven ? Colors.transparent : AppColors.background,
+                ),
+                cells: [
+                  DataCell(Text(_mesesSigla[index], style: bold)),
+                  DataCell(Text(Formatters.decimal(resumo.receitas))),
+                  DataCell(Text(Formatters.decimal(resumo.despesas))),
+                  DataCell(
+                    Text(Formatters.decimal(resumo.despesasNaoDedutiveis)),
+                  ),
+                  DataCell(
+                    Text(Formatters.decimal(resumo.adiantamentosAnteriores)),
+                  ),
+                  DataCell(
+                    Text(Formatters.decimal(resumo.adiantamentosAtuais)),
+                  ),
+                  DataCell(
+                    Text(
+                      Formatters.decimal(resultado),
+                      style: bold.copyWith(color: _resultColor(resultado)),
+                    ),
+                  ),
+                ],
+              );
+            }),
+            DataRow(
+              color: WidgetStateProperty.all(AppColors.harvestSoft),
+              cells: [
+                const DataCell(Text("Total", style: bold)),
+                DataCell(Text(Formatters.decimal(total.receitas), style: bold)),
+                DataCell(Text(Formatters.decimal(total.despesas), style: bold)),
+                DataCell(
+                  Text(
+                    Formatters.decimal(total.despesasNaoDedutiveis),
+                    style: bold,
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    Formatters.decimal(total.adiantamentosAnteriores),
+                    style: bold,
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    Formatters.decimal(total.adiantamentosAtuais),
+                    style: bold,
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    Formatters.decimal(total.resultadoMes),
+                    style: bold.copyWith(
+                      fontSize: 16,
+                      color: _resultColor(total.resultadoMes),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -336,144 +287,90 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
   // ===========================================================================
   // LAYOUT 2: PARA CELULAR (Lista de Cards Expansíveis)
   // ===========================================================================
-  Widget _buildMobileList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: 13, // 1 Card de Total no topo + 12 Cards de Meses
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildTotalCardMobile();
-        }
-
-        final mesIndex = index - 1;
-        return _buildMonthCardMobile(mesIndex);
-      },
-    );
-  }
-
-  Widget _buildTotalCardMobile() {
-    final double resultadoFinal = _controller.totalGeral.resultadoMes;
-    final bool isPositivo = resultadoFinal >= 0;
-
-    return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 24),
-      color: isPositivo ? AppColors.greenlightOne : Colors.red[700],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              "RESULTADO ANUAL",
-              style: TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "R\$ ${Formatters.decimal(resultadoFinal)}",
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Divider(color: Colors.white30),
-            const SizedBox(height: 8),
-            _buildMobileDetailRow(
-              "Total Receitas",
-              _controller.totalGeral.receitas,
-              isWhiteText: true,
-            ),
-            _buildMobileDetailRow(
-              "Total Despesas",
-              _controller.totalGeral.despesas,
-              isWhiteText: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMonthCardMobile(int mesIndex) {
     final resumo = _controller.resumoAno[mesIndex];
     final double resultado = resumo.resultadoMes;
     final bool hasData =
         resultado != 0 || resumo.receitas != 0 || resumo.despesas != 0;
 
-    return Card(
-      elevation: 1,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.lightkGrey.withValues(alpha: 0.2)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        type: MaterialType.transparency,
         child: ExpansionTile(
-          iconColor: AppColors.greenlightOne,
-          collapsedIconColor: AppColors.grey,
+          enabled: hasData,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
+          leading: Container(
+            width: 46,
+            height: 46,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: hasData ? AppColors.primarySoft : AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              _mesesSigla[mesIndex],
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: hasData ? AppColors.primary : AppColors.inkMuted,
+              ),
+            ),
+          ),
           title: Text(
             _meses[mesIndex],
-            style: AppTextStyles.inputText.copyWith(
-              fontWeight: FontWeight.bold,
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.ink,
             ),
           ),
           subtitle: Text(
             hasData
-                ? "Saldo: R\$ ${Formatters.decimal(resultado)}"
+                ? "Saldo: ${Formatters.currency(resultado)}"
                 : "Sem movimentação",
             style: TextStyle(
-              color: hasData
-                  ? (resultado < 0 ? Colors.red : Colors.blue[700])
-                  : Colors.grey,
-              fontWeight: FontWeight.bold,
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: hasData ? FontWeight.w700 : FontWeight.w500,
+              color: hasData ? _resultColor(resultado) : AppColors.inkMuted,
             ),
           ),
-          children: hasData
-              ? [
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 16,
-                      right: 16,
-                      bottom: 16,
-                    ),
-                    child: Column(
-                      children: [
-                        const Divider(),
-                        _buildMobileDetailRow(
-                          "Receitas (Cód. 100)",
-                          resumo.receitas,
-                        ),
-                        _buildMobileDetailRow(
-                          "Desp. Dedutíveis (Cód. 200)",
-                          resumo.despesas,
-                          isSaida: true,
-                        ),
-                        _buildMobileDetailRow(
-                          "Desp. Não Dedutíveis (Cód. 300)",
-                          resumo.despesasNaoDedutiveis,
-                          isSaida: true,
-                        ),
-                        _buildMobileDetailRow(
-                          "Adiantamentos Anteriores",
-                          resumo.adiantamentosAnteriores,
-                        ),
-                        _buildMobileDetailRow(
-                          "Adiantamentos Atuais",
-                          resumo.adiantamentosAtuais,
-                          isSaida: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ]
-              : [],
+          trailing: hasData ? null : const SizedBox.shrink(),
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          children: [
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            _buildMobileDetailRow("Receitas (Cód. 100)", resumo.receitas),
+            _buildMobileDetailRow(
+              "Desp. Dedutíveis (Cód. 200)",
+              resumo.despesas,
+              isSaida: true,
+            ),
+            _buildMobileDetailRow(
+              "Desp. Não Dedutíveis (Cód. 300)",
+              resumo.despesasNaoDedutiveis,
+              isSaida: true,
+            ),
+            _buildMobileDetailRow(
+              "Adiantamentos Anteriores",
+              resumo.adiantamentosAnteriores,
+            ),
+            _buildMobileDetailRow(
+              "Adiantamentos Atuais",
+              resumo.adiantamentosAtuais,
+            ),
+          ],
         ),
       ),
     );
@@ -483,35 +380,150 @@ class _ConsolidationPageState extends State<ConsolidationPage> {
   Widget _buildMobileDetailRow(
     String titulo,
     double valor, {
-    bool isWhiteText = false,
     bool isSaida = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
             child: Text(
               titulo,
-              style: TextStyle(
-                color: isWhiteText ? Colors.white70 : Colors.grey[700],
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                color: AppColors.inkMuted,
                 fontSize: 13,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
           Text(
-            "${isSaida && valor > 0 ? '-' : ''} R\$ ${Formatters.decimal(valor)}",
+            "${isSaida && valor > 0 ? '- ' : ''}${Formatters.currency(valor)}",
             style: TextStyle(
-              color: isWhiteText
-                  ? Colors.white
-                  : (isSaida && valor > 0 ? Colors.red : Colors.black87),
-              fontWeight: FontWeight.bold,
+              fontFamily: 'Inter',
+              color: isSaida && valor > 0 ? AppColors.danger : AppColors.ink,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// Gráfico de barras do resultado de cada mês (barras crescem ao abrir)
+class _MonthlyBars extends StatelessWidget {
+  final List<double> values;
+  final List<String> labels;
+
+  const _MonthlyBars({required this.values, required this.labels});
+
+  @override
+  Widget build(BuildContext context) {
+    final maxAbs = values.fold(0.0, (m, v) => math.max(m, v.abs()));
+    final hasNegative = values.any((v) => v < 0);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: maxAbs == 0
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Text(
+                  'Sem movimentação neste ano.',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ),
+            )
+          : TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, t, _) => SizedBox(
+                height: 170,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < values.length; i++)
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: _bar(values[i] * t, maxAbs, hasNegative),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              labels[i],
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  // Barra para cima (positivo) ou para baixo (negativo) a partir da linha do zero
+  Widget _bar(double value, double maxAbs, bool hasNegative) {
+    Widget bar(bool positive) => FractionallySizedBox(
+      heightFactor: (value.abs() / maxAbs).clamp(0.0, 1.0),
+      widthFactor: 0.56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(positive ? 6 : 0),
+            bottom: Radius.circular(positive ? 0 : 6),
+          ),
+          gradient: LinearGradient(
+            begin: positive ? Alignment.bottomCenter : Alignment.topCenter,
+            end: positive ? Alignment.topCenter : Alignment.bottomCenter,
+            colors: positive
+                ? const [AppColors.primary, AppColors.primaryLight]
+                : [AppColors.danger, AppColors.danger.withValues(alpha: 0.7)],
+          ),
+        ),
+      ),
+    );
+
+    final up = Align(
+      alignment: Alignment.bottomCenter,
+      child: value > 0 ? bar(true) : const SizedBox.shrink(),
+    );
+    if (!hasNegative) {
+      return Column(
+        children: [
+          Expanded(child: up),
+          const Divider(height: 1, color: AppColors.border),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        Expanded(child: up),
+        const Divider(height: 1, color: AppColors.border),
+        Expanded(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: value < 0 ? bar(false) : const SizedBox.shrink(),
+          ),
+        ),
+      ],
     );
   }
 }

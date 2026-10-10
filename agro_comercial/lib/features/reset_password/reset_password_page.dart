@@ -7,6 +7,8 @@ import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/auth_scaffold.dart';
+import 'package:agro_comercial/common/widgets/empty_state.dart';
 import 'package:flutter/material.dart';
 
 import '../../locator.dart';
@@ -105,61 +107,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-      ),
-      body: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, _) {
-          final state = _controller.state;
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final state = _controller.state;
 
-          if (state is ResetPasswordInitialState ||
-              state is ResetPasswordVerifyingState) {
-            return const Center(child: CustomCircularProgressIndicator());
-          }
+        if (state is ResetPasswordInitialState ||
+            state is ResetPasswordVerifyingState) {
+          return const Scaffold(body: CustomCircularProgressIndicator());
+        }
 
-          if (state is ResetPasswordInvalidLinkState) {
-            return _buildInvalidLink(state.message);
-          }
+        if (state is ResetPasswordInvalidLinkState) {
+          return Scaffold(body: _buildInvalidLink(state.message));
+        }
 
-          return _buildForm();
-        },
-      ),
+        return _buildForm();
+      },
     );
   }
 
   Widget _buildForm() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+    final email = _controller.email;
+    return AuthScaffold(
+      title: 'Criar nova senha',
+      subtitle: email != null
+          ? 'Conta: $email'
+          : 'Escolha uma nova senha para acessar sua conta.',
       children: [
-        const Icon(
-          Icons.lock_outline,
-          size: 72,
-          color: AppColors.greenlightOne,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Criar nova senha',
-          textAlign: TextAlign.center,
-          style: AppTextStyles.midText36.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        if (_controller.email != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            'Conta: ${_controller.email}',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.smallText.copyWith(
-              color: AppColors.grey,
-              fontSize: 14,
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
         Form(
           key: _formKey,
           child: Column(
@@ -168,7 +142,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 key: Keys.resetPasswordNewPasswordField,
                 controller: _passwordController,
                 labelText: 'Nova senha',
-                hintText: '*********',
+                hintText: 'Crie uma senha',
                 validator: Validator.validatePassword,
                 helperText:
                     'No mínimo 8 caracteres, com número, letra minúscula e maiúscula',
@@ -179,7 +153,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 key: Keys.resetPasswordConfirmPasswordField,
                 controller: _confirmPasswordController,
                 labelText: 'Confirme a nova senha',
-                hintText: '*********',
+                hintText: 'Repita a senha',
                 validator: (value) => Validator.validateConfirmPassword(
                   _passwordController.text,
                   value,
@@ -191,15 +165,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(
-            left: 32.0,
-            right: 32.0,
-            top: 16.0,
-            bottom: 4.0,
-          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
           child: PrimaryButton(
             key: Keys.resetPasswordSaveButton,
             text: 'Salvar nova senha',
+            icon: Icons.lock_reset_rounded,
             onPressed: _onSaveButtonPressed,
           ),
         ),
@@ -214,26 +184,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.link_off,
-              size: 80,
-              color: AppColors.lightkGrey.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Link inválido',
-              style: AppTextStyles.midText20.copyWith(
-                color: AppColors.greenlightOne,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.smallText.copyWith(
-                color: AppColors.grey,
-                fontSize: 14,
-              ),
+            EmptyState(
+              icon: Icons.link_off_rounded,
+              title: 'Link inválido',
+              message: message,
+              padding: EdgeInsets.zero,
             ),
             const SizedBox(height: 24),
             Padding(

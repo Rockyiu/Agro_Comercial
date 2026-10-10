@@ -164,12 +164,7 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
   }
 
   InputDecoration _decoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      enabledBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: AppColors.greenlightOne),
-      ),
-    );
+    return InputDecoration(labelText: label);
   }
 
   @override
@@ -192,12 +187,12 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
               ButtonSegment(
                 value: OperationOptions.inspection,
                 label: Text(OperationOptions.inspection),
-                icon: Icon(Icons.search),
+                icon: Icon(Icons.search_rounded),
               ),
               ButtonSegment(
                 value: OperationOptions.application,
                 label: Text(OperationOptions.application),
-                icon: Icon(Icons.opacity),
+                icon: Icon(Icons.opacity_rounded),
               ),
             ],
             selected: {_selectedType},
@@ -215,12 +210,6 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
             decoration: _decoration("IDENTIFICAÇÃO DO TALHÃO").copyWith(
               labelStyle: AppTextStyles.inputLabelText.copyWith(
                 color: AppColors.lightkGrey,
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderSide: BorderSide(
-                  color: AppColors.greenlightOne,
-                  width: 2,
-                ),
               ),
             ),
             hint: const Text(
@@ -265,7 +254,7 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
       const SizedBox(height: 16),
       CustomTextFormField(
         controller: _obsController,
-        labelText: "OBSERVAÇÕES E DIAGNÓSTICO",
+        labelText: "Observações e diagnóstico",
         hintText:
             "Ex: Presença de lagarta do cartucho identificada em nível leve.",
       ),
@@ -308,7 +297,7 @@ class _FieldOperationFormState extends State<FieldOperationForm> {
             flex: 2,
             child: CustomTextFormField(
               controller: _dosageController,
-              labelText: "DOSAGEM TOTAL",
+              labelText: "Dosagem total",
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),

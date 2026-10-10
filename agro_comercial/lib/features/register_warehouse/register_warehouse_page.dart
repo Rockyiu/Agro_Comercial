@@ -41,7 +41,10 @@ class _RegisterWarehousePageState extends State<RegisterWarehousePage> {
     } else if (state is RegisterWarehouseErrorState) {
       Navigator.pop(context); // Fecha o loading
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(state.message),
+          backgroundColor: AppColors.danger,
+        ),
       );
     }
   }
@@ -83,7 +86,7 @@ class _RegisterWarehousePageState extends State<RegisterWarehousePage> {
               const SizedBox(height: 32),
               CustomTextFormField(
                 controller: _nameController,
-                labelText: "NOME DO ARMAZÉM",
+                labelText: "Nome do armazém",
                 hintText: "Ex: Galpão Principal, Silo de Sementes",
                 validator: (value) => value == null || value.isEmpty
                     ? "O nome não pode ser vazio"

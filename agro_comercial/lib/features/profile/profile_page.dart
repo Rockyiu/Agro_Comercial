@@ -131,7 +131,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(24.0),
                 child: Text(
                   state.message,
-                  style: const TextStyle(color: Colors.red),
+                  style: const TextStyle(color: AppColors.danger),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -164,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 : null,
                             child: _imageUrl == null
                                 ? const Icon(
-                                    Icons.person,
+                                    Icons.person_rounded,
                                     size: 64,
                                     color: AppColors.greenlightOne,
                                   )
@@ -178,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               radius: 18,
                               child: IconButton(
                                 icon: const Icon(
-                                  Icons.camera_alt,
+                                  Icons.camera_alt_rounded,
                                   size: 16,
                                   color: Colors.white,
                                 ),
@@ -201,7 +201,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     CustomTextFormField(
                       controller: _nameController,
-                      labelText: "NOME COMPLETO",
+                      labelText: "Nome completo",
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
                           return "O nome é obrigatório";
@@ -216,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     CustomTextFormField(
                       controller: _emailController,
-                      labelText: "E-MAIL DE ACESSO",
+                      labelText: "E-mail de acesso",
                       keyboardType: TextInputType.emailAddress,
                       validator: (v) {
                         if (v == null || v.isEmpty) {
@@ -255,7 +255,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     CustomTextFormField(
                       controller: _phoneController,
-                      labelText: "TELEFONE / WHATSAPP",
+                      labelText: "Telefone / WhatsApp",
                       keyboardType: TextInputType.phone,
                       validator: (v) {
                         if (v != null && v.isNotEmpty) {
@@ -271,7 +271,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     CustomTextFormField(
                       controller: _passwordController,
-                      labelText: "NOVA SENHA (DEIXE EM BRANCO PARA MANTER)",
+                      labelText: "Nova senha (deixe em branco para manter)",
                       obscureText: true,
                       validator: (v) {
                         // Só valida se o usuário decidiu digitar uma nova senha

@@ -16,12 +16,12 @@ Future<File?> showImageSourcePicker(
       child: Wrap(
         children: [
           ListTile(
-            leading: const Icon(Icons.camera_alt),
+            leading: const Icon(Icons.camera_alt_rounded),
             title: Text(cameraLabel),
             onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
           ),
           ListTile(
-            leading: const Icon(Icons.photo_library),
+            leading: const Icon(Icons.photo_library_rounded),
             title: Text(galleryLabel),
             onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
           ),

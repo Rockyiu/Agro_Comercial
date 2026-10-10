@@ -90,7 +90,7 @@ class _CostPageState extends State<CostPage> {
             return Center(
               child: Text(
                 state.message,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppColors.danger),
               ),
             );
           }
@@ -129,8 +129,8 @@ class _CostPageState extends State<CostPage> {
                     itemBuilder: (context, index) {
                       final cost = _costController.allCosts[index];
                       Color typeColor = cost.type == 'Fixo'
-                          ? Colors.blueAccent
-                          : Colors.orangeAccent;
+                          ? AppColors.sky
+                          : AppColors.warning;
                       final isSelected = selectedIds.contains(cost.id);
 
                       return InkWell(
@@ -190,7 +190,7 @@ class _CostPageState extends State<CostPage> {
                                         backgroundColor:
                                             AppColors.greenlightOne,
                                         child: Icon(
-                                          Icons.check,
+                                          Icons.check_rounded,
                                           color: Colors.white,
                                         ),
                                       )
@@ -210,14 +210,14 @@ class _CostPageState extends State<CostPage> {
                                           : "Tipo: ${cost.type}",
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey,
+                                        color: AppColors.inkMuted,
                                       ),
                                     ),
                                     Text(
                                       Formatters.date(cost.dateTimestamp),
                                       style: const TextStyle(
                                         fontSize: 11,
-                                        color: Colors.grey,
+                                        color: AppColors.inkMuted,
                                       ),
                                     ),
                                   ],
@@ -243,8 +243,7 @@ class _CostPageState extends State<CostPage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const Icon(Icons.add_rounded),
         onPressed: () async {
           await Navigator.push(
             context,

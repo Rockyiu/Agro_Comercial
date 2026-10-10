@@ -1,5 +1,3 @@
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/keys.dart';
 import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
@@ -7,6 +5,7 @@ import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/auth_scaffold.dart';
 import 'package:flutter/material.dart';
 
 import '../../locator.dart';
@@ -90,79 +89,39 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.greenlightOne),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-        children: [
-          const SizedBox(height: 16),
-          const Icon(
-            Icons.lock_reset,
-            size: 72,
-            color: AppColors.greenlightOne,
+    return AuthScaffold(
+      title: 'Esqueceu a senha?',
+      subtitle:
+          'Digite o e-mail da sua conta e enviaremos um link para você criar uma nova senha.',
+      children: [
+        Form(
+          key: _formKey,
+          child: CustomTextFormField(
+            key: Keys.forgotPasswordEmailField,
+            controller: _emailController,
+            labelText: 'E-mail',
+            hintText: 'email@email.com',
+            prefixIcon: Icons.mail_outline_rounded,
+            keyboardType: TextInputType.emailAddress,
+            validator: Validator.validateEmail,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: _onSendButtonPressed,
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Esqueceu a senha?',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.midText36.copyWith(
-              color: AppColors.greenlightOne,
-            ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          child: PrimaryButton(
+            key: Keys.forgotPasswordSendLinkButton,
+            text: 'Enviar link',
+            icon: Icons.send_rounded,
+            onPressed: _onSendButtonPressed,
           ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              'Digite o e-mail da sua conta e enviaremos um link para você criar uma nova senha.',
-              textAlign: TextAlign.center,
-              style: AppTextStyles.smallText.copyWith(
-                color: AppColors.grey,
-                fontSize: 14,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Form(
-            key: _formKey,
-            child: CustomTextFormField(
-              key: Keys.forgotPasswordEmailField,
-              controller: _emailController,
-              labelText: 'Seu e-mail',
-              hintText: 'email@email.com',
-              keyboardType: TextInputType.emailAddress,
-              validator: Validator.validateEmail,
-              textInputAction: TextInputAction.done,
-              onEditingComplete: _onSendButtonPressed,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 32.0,
-              right: 32.0,
-              top: 16.0,
-              bottom: 4.0,
-            ),
-            child: PrimaryButton(
-              key: Keys.forgotPasswordSendLinkButton,
-              text: 'Enviar link',
-              onPressed: _onSendButtonPressed,
-            ),
-          ),
-          TextButton(
-            onPressed: _backToSignIn,
-            child: Text(
-              'Lembrei a senha, voltar para o login',
-              style: AppTextStyles.smallText.copyWith(
-                color: AppColors.greenlightOne,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        TextButton(
+          onPressed: _backToSignIn,
+          child: const Text('Lembrei a senha, voltar para o login'),
+        ),
+      ],
     );
   }
 }

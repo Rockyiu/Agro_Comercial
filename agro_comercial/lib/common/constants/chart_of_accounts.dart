@@ -35,7 +35,7 @@ class ChartOfAccounts {
     AccountGroup(
       code: "100",
       title: "Receitas da Atividade Rural",
-      color: Color(0xFF1976D2),
+      color: AppColors.primary,
       accounts: [
         Account("101", "Venda de Produtos Agrícolas (Grãos, Hortaliças)"),
         Account("102", "Venda de Produtos Pecuários (Gado, Leite)"),
@@ -47,7 +47,7 @@ class ChartOfAccounts {
     AccountGroup(
       code: "200",
       title: "Despesas de Custeio e Investimento",
-      color: AppColors.greenlightOne,
+      color: AppColors.earth,
       accounts: [
         Account("201", "Insumos (Sementes, Fertilizantes, Defensivos)"),
         Account("202", "Combustíveis e Lubrificantes"),
@@ -61,7 +61,7 @@ class ChartOfAccounts {
     AccountGroup(
       code: "300",
       title: "Despesas Não Dedutíveis",
-      color: Color(0xFFE53935),
+      color: AppColors.danger,
       accounts: [
         Account("301", "Multas e Juros de Mora"),
         Account("302", "Despesas Pessoais do Produtor"),
@@ -72,7 +72,7 @@ class ChartOfAccounts {
     AccountGroup(
       code: "400",
       title: "Adiantamentos de Anos Anteriores",
-      color: Color(0xFFF57C00),
+      color: AppColors.harvestDark,
       accounts: [
         Account("401", "Recebidos até ano anterior p/ entrega neste ano"),
       ],
@@ -80,7 +80,7 @@ class ChartOfAccounts {
     AccountGroup(
       code: "500",
       title: "Adiantamentos do Ano Atual",
-      color: Color(0xFF8E24AA),
+      color: AppColors.sky,
       accounts: [Account("501", "Recebidos neste ano para entrega futura")],
     ),
   ];

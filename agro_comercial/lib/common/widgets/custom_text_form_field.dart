@@ -3,6 +3,8 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// Campo de texto padrão. Bordas, cores e preenchimento vêm do tema
+// (inputDecorationTheme em default_theme.dart).
 class CustomTextFormField extends StatefulWidget {
   final EdgeInsetsGeometry? padding;
   final String? hintText;
@@ -13,12 +15,13 @@ class CustomTextFormField extends StatefulWidget {
   final int? maxLength;
   final TextInputAction? textInputAction;
   final Widget? suffixIcon;
+  final IconData? prefixIcon;
   final bool? obscureText;
   final List<TextInputFormatter>? inputFormatters;
   final FormFieldValidator<String>? validator;
   final String? helperText;
   final VoidCallback? onEditingComplete;
-  final FocusNode? focusNode; // 1. Declaração da variável adicionada aqui
+  final FocusNode? focusNode;
   final bool enabled;
 
   const CustomTextFormField({
@@ -32,12 +35,13 @@ class CustomTextFormField extends StatefulWidget {
     this.maxLength,
     this.textInputAction,
     this.suffixIcon,
+    this.prefixIcon,
     this.obscureText,
     this.inputFormatters,
     this.validator,
     this.helperText,
     this.onEditingComplete,
-    this.focusNode, // 2. Adicionado ao construtor
+    this.focusNode,
     this.enabled = true,
   });
 
@@ -46,10 +50,6 @@ class CustomTextFormField extends StatefulWidget {
 }
 
 class _CustomTextFormFieldState extends State<CustomTextFormField> {
-  final defaultBorder = OutlineInputBorder(
-    borderSide: BorderSide(color: AppColors.greenlightOne),
-  );
-
   String? _helperText;
 
   @override
@@ -63,28 +63,27 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
     return Padding(
       padding:
           widget.padding ??
-          EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+          const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
       child: TextFormField(
         focusNode: widget.focusNode,
         enabled: widget.enabled,
+        // A dica some ao começar a digitar e volta se o campo for apagado
         onChanged: (value) {
           if (value.length == 1) {
-            setState(() {
-              _helperText = null;
-            });
+            setState(() => _helperText = null);
           } else if (value.isEmpty) {
-            setState(() {
-              _helperText = widget.helperText;
-            });
+            setState(() => _helperText = widget.helperText);
           }
         },
         validator: widget.validator,
-        style: AppTextStyles.inputText.copyWith(color: AppColors.greenlightOne),
+        style: AppTextStyles.inputText.copyWith(
+          color: AppColors.ink,
+          fontSize: 15,
+        ),
         inputFormatters: widget.inputFormatters,
         obscureText: widget.obscureText ?? false,
         textInputAction: widget.textInputAction,
-        onEditingComplete: widget
-            .onEditingComplete, // 3. Repassando a ação para o TextFormField
+        onEditingComplete: widget.onEditingComplete,
         maxLength: widget.maxLength,
         keyboardType: widget.keyboardType,
         controller: widget.controller,
@@ -94,23 +93,13 @@ class _CustomTextFormFieldState extends State<CustomTextFormField> {
           errorMaxLines: 3,
           helperText: _helperText,
           helperMaxLines: 3,
-          errorStyle: const TextStyle(color: Colors.red),
           suffixIcon: widget.suffixIcon,
+          prefixIcon: widget.prefixIcon == null
+              ? null
+              : Icon(widget.prefixIcon, size: 20),
           hintText: widget.hintText,
           floatingLabelBehavior: FloatingLabelBehavior.always,
-          labelText: widget.labelText?.toUpperCase(),
-          labelStyle: AppTextStyles.inputLabelText.copyWith(
-            color: AppColors.lightkGrey,
-          ),
-          focusedBorder: defaultBorder,
-          errorBorder: defaultBorder.copyWith(
-            borderSide: BorderSide(color: Colors.red),
-          ),
-          focusedErrorBorder: defaultBorder.copyWith(
-            borderSide: BorderSide(color: Colors.red),
-          ),
-          enabledBorder: defaultBorder,
-          disabledBorder: defaultBorder,
+          labelText: widget.labelText,
         ),
       ),
     );

@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:flutter/material.dart';
 
@@ -39,6 +37,7 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
       helperText: widget.helperText,
       validator: widget.validator,
       obscureText: isHidden,
+      prefixIcon: Icons.lock_outline_rounded,
       controller: widget.controller,
       padding: widget.padding,
       hintText: widget.hintText,
@@ -48,9 +47,11 @@ class _PasswordFormFieldState extends State<PasswordFormField> {
       textInputAction: widget.textInputAction ?? TextInputAction.done,
       suffixIcon: InkWell(
         borderRadius: BorderRadius.circular(23.0),
-        child: Icon(isHidden ? Icons.visibility : Icons.visibility_off),
+        child: Icon(
+          isHidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+          size: 20,
+        ),
         onTap: () {
-          log("Visibilidade da senha alterada");
           setState(() {
             isHidden = !isHidden;
           });

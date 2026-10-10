@@ -217,12 +217,7 @@ class _OperationFormState extends State<OperationForm> {
         children: [
           DropdownButtonFormField<String>(
             isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: "NOME DA OPERAÇÃO",
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColors.greenlightOne),
-              ),
-            ),
+            decoration: const InputDecoration(labelText: "Nome da operação"),
             initialValue: _selectedTitle,
             items: OperationOptions.operationTypes
                 .map(
@@ -243,12 +238,9 @@ class _OperationFormState extends State<OperationForm> {
           DropdownButtonFormField<String?>(
             isExpanded: true,
             decoration: const InputDecoration(
-              labelText: "TALHÃO",
+              labelText: "Talhão",
               helperText:
                   "Sem talhão, o custo é rateado entre os talhões pela área",
-              enabledBorder: OutlineInputBorder(
-                borderSide: BorderSide(color: AppColors.greenlightOne),
-              ),
             ),
             initialValue: _selectedPlot,
             items: [
@@ -266,7 +258,7 @@ class _OperationFormState extends State<OperationForm> {
           const SizedBox(height: 16),
           CustomTextFormField(
             controller: _descController,
-            labelText: "DESCRIÇÃO / OBSERVAÇÕES",
+            labelText: "Descrição / observações",
             hintText: "Ex: Realizado na gleba de café da encosta.",
           ),
           const SizedBox(height: 16),
@@ -306,10 +298,7 @@ class _OperationFormState extends State<OperationForm> {
     final machine = _selectedMachine;
     return [
       DropdownButtonFormField<String>(
-        decoration: const InputDecoration(
-          labelText: "SELECIONE O MAQUINÁRIO",
-          border: OutlineInputBorder(),
-        ),
+        decoration: const InputDecoration(labelText: "Selecione o maquinário"),
         initialValue: _selectedMachineId,
         items: widget.machines
             .map(
@@ -333,8 +322,7 @@ class _OperationFormState extends State<OperationForm> {
           DropdownButtonFormField<String?>(
             isExpanded: true,
             decoration: const InputDecoration(
-              labelText: "IMPLEMENTO ACOPLADO (Opcional)",
-              border: OutlineInputBorder(),
+              labelText: "Implemento acoplado (Opcional)",
             ),
             initialValue: _selectedImplementId,
             items: [
@@ -363,10 +351,7 @@ class _OperationFormState extends State<OperationForm> {
   List<Widget> _buildProductsSection() {
     return [
       DropdownButtonFormField<int>(
-        decoration: const InputDecoration(
-          labelText: "QUANTIDADE DE PRODUTOS",
-          border: OutlineInputBorder(),
-        ),
+        decoration: const InputDecoration(labelText: "Quantidade de produtos"),
         initialValue: _productsCount,
         items: List.generate(_maxProducts, (i) => i + 1)
             .map(
@@ -396,10 +381,7 @@ class _OperationFormState extends State<OperationForm> {
           children: [
             DropdownButtonFormField<String>(
               isExpanded: true,
-              decoration: InputDecoration(
-                labelText: "PRODUTO #${i + 1}",
-                border: const OutlineInputBorder(),
-              ),
+              decoration: InputDecoration(labelText: "Produto #${i + 1}"),
               initialValue: _selectedProductIds[i],
               items: widget.products
                   .map(
@@ -433,7 +415,7 @@ class _OperationFormState extends State<OperationForm> {
                   flex: 2,
                   child: CustomTextFormField(
                     controller: _dosageControllers[i],
-                    labelText: "QTD GASTA",
+                    labelText: "Qtd. gasta",
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -448,10 +430,7 @@ class _OperationFormState extends State<OperationForm> {
                     // A key força o campo a refletir a unidade sugerida
                     // quando o produto é trocado
                     key: ValueKey('unit_${i}_${_selectedDosageUnits[i]}'),
-                    decoration: const InputDecoration(
-                      labelText: "UNIDADE",
-                      border: OutlineInputBorder(),
-                    ),
+                    decoration: const InputDecoration(labelText: "Unidade"),
                     initialValue: _selectedDosageUnits[i],
                     items: OperationOptions.dosageUnits
                         .map((u) => DropdownMenuItem(value: u, child: Text(u)))
