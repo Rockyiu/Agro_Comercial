@@ -229,7 +229,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                         ),
                         IconButton(
                           icon: const Icon(
-                            Icons.add_circle,
+                            Icons.add_circle_rounded,
                             color: AppColors.greenlightOne,
                             size: 32,
                           ),
@@ -269,8 +269,8 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                   if (_plotFields.length > 1)
                                     IconButton(
                                       icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
+                                        Icons.delete_rounded,
+                                        color: AppColors.danger,
                                       ),
                                       onPressed: () => _removeField(index),
                                     ),
@@ -301,11 +301,6 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                           : fields.crop.text,
                                       decoration: const InputDecoration(
                                         labelText: "Cultura",
-                                        enabledBorder: OutlineInputBorder(
-                                          borderSide: BorderSide(
-                                            color: AppColors.greenlightOne,
-                                          ),
-                                        ),
                                       ),
                                       items:
                                           CropOptions.withCurrent(

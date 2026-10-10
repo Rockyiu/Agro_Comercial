@@ -106,14 +106,14 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
           if (_controller.canModify(widget.operation.createdBy))
             IconButton(
               icon: Icon(
-                _isEditing ? Icons.close : Icons.edit,
+                _isEditing ? Icons.close_rounded : Icons.edit_rounded,
                 color: Colors.white,
               ),
               onPressed: () => setState(() => _isEditing = !_isEditing),
             ),
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
               onPressed: _delete,
             ),
         ],
@@ -143,7 +143,7 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.amber.withValues(alpha: 0.2),
+          color: AppColors.harvest.withValues(alpha: 0.2),
           child: Text(
             "ATENÇÃO: Ao salvar, o sistema fará o recálculo e estorno automático dos insumos anteriores.",
             style: AppTextStyles.smallText.copyWith(
@@ -193,13 +193,19 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
         const SizedBox(height: 16),
         if (operation.isInspection)
           ListTile(
-            leading: const Icon(Icons.favorite, color: AppColors.greenlightOne),
+            leading: const Icon(
+              Icons.favorite_rounded,
+              color: AppColors.greenlightOne,
+            ),
             title: const Text("Condição:"),
             subtitle: Text(operation.condition ?? ''),
           )
         else ...[
           ListTile(
-            leading: const Icon(Icons.science, color: Colors.orange),
+            leading: const Icon(
+              Icons.science_rounded,
+              color: AppColors.warning,
+            ),
             title: Text("Insumo: ${operation.productName}"),
             subtitle: Text(
               "Dosagem: ${operation.dosage} ${operation.dosageUnit}",
@@ -208,7 +214,7 @@ class _FieldOperationDetailsPageState extends State<FieldOperationDetailsPage> {
           if (operation.machineId != null)
             ListTile(
               leading: const Icon(
-                Icons.agriculture,
+                Icons.agriculture_rounded,
                 color: AppColors.greenlightOne,
               ),
               title: Text("Maquinário: ${operation.machineName}"),

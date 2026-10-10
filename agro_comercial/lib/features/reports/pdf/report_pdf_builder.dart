@@ -40,8 +40,8 @@ class ReportPdfBuilder {
   });
 
   // Mesmo verde dos demonstrativos do Livro Caixa
-  static final _green = PdfColor.fromHex('#4CAF50');
-  static final _lightGreen = PdfColor.fromHex('#E8F5E9');
+  static final _green = PdfColor.fromHex('#0E5E3A');
+  static final _lightGreen = PdfColor.fromHex('#E2F1E7');
   static final _quantity = NumberFormat('#,##0.###', 'pt_BR');
 
   String get _areaLabel => area.label;

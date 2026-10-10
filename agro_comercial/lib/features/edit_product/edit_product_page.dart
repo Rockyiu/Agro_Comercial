@@ -131,7 +131,7 @@ class _EditProductPageState extends State<EditProductPage> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
             onPressed: _delete,
           ),
         ],
@@ -151,7 +151,7 @@ class _EditProductPageState extends State<EditProductPage> {
               children: [
                 const Center(
                   child: Icon(
-                    Icons.inventory_2,
+                    Icons.inventory_2_rounded,
                     size: 70,
                     color: AppColors.greenlightOne,
                   ),
@@ -189,17 +189,17 @@ class _EditProductPageState extends State<EditProductPage> {
                 const SizedBox(height: 24),
                 CustomTextFormField(
                   controller: _nameController,
-                  labelText: "NOME DO PRODUTO",
+                  labelText: "Nome do produto",
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                 ),
                 CustomTextFormField(
                   controller: _brandController,
-                  labelText: "MARCA / FABRICANTE",
+                  labelText: "Marca / fabricante",
                   validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                 ),
                 CustomTextFormField(
                   controller: _quantityController,
-                  labelText: "QUANTIDADE EM ESTOQUE (Embalagens)",
+                  labelText: "Quantidade em estoque (Embalagens)",
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
@@ -207,7 +207,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 ),
                 CustomTextFormField(
                   controller: _priceController,
-                  labelText: "PREÇO POR ${widget.product.unit} (R\$)",
+                  labelText: "Preço por ${widget.product.unit} (R\$)",
                   hintText: "Usado no custo por talhão",
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -218,7 +218,7 @@ class _EditProductPageState extends State<EditProductPage> {
                 if (widget.product.attributes.isNotEmpty)
                   CustomTextFormField(
                     controller: _extraController,
-                    labelText: "ESPECIFICAÇÕES TÉCNICAS",
+                    labelText: "Especificações técnicas",
                   ),
 
                 const SizedBox(height: 32),

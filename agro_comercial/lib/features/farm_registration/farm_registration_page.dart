@@ -212,7 +212,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                     ),
                     IconButton(
                       icon: const Icon(
-                        Icons.add_circle,
+                        Icons.add_circle_rounded,
                         color: AppColors.greenlightOne,
                         size: 32,
                       ),
@@ -253,8 +253,8 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                               if (_fieldControllers.length > 1)
                                 IconButton(
                                   icon: const Icon(
-                                    Icons.delete,
-                                    color: Colors.red,
+                                    Icons.delete_rounded,
+                                    color: AppColors.danger,
                                   ),
                                   onPressed: () => _removeField(index),
                                 ),
@@ -294,22 +294,6 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
                                       vertical: 16,
-                                    ),
-                                    border: const OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.greenlightOne,
-                                      ),
-                                    ),
-                                    enabledBorder: const OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.greenlightOne,
-                                      ),
-                                    ),
-                                    focusedBorder: const OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                        color: AppColors.greenlightOne,
-                                        width: 2,
-                                      ),
                                     ),
                                   ),
                                   hint: const Text(

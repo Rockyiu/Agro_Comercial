@@ -1,6 +1,10 @@
 import 'dart:typed_data';
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/surface_card.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:agro_comercial/features/profile/profile_controller.dart';
@@ -101,7 +105,9 @@ class _ReportsPageState extends State<ReportsPage> {
     final pdf = pw.Document();
 
     // Cor principal do Agro Comercial para o PDF
-    final corPrincipal = PdfColor.fromHex('#4CAF50'); // Verde
+    final corPrincipal = PdfColor.fromHex(
+      '#0E5E3A',
+    ); // Verde lavoura (cor da marca)
 
     // Widget padrão de Cabeçalho Elegante
     pw.Widget buildCabecalho(String titulo) {
@@ -355,11 +361,7 @@ class _ReportsPageState extends State<ReportsPage> {
           context,
           MaterialPageRoute(
             builder: (context) => Scaffold(
-              appBar: AppBar(
-                title: const Text("Visualização"),
-                backgroundColor: AppColors.greenlightOne,
-                iconTheme: const IconThemeData(color: Colors.white),
-              ),
+              appBar: AppBar(title: const Text("Visualização")),
               body: PdfPreview(
                 build: (format) => bytes,
                 allowPrinting: true,
@@ -383,227 +385,185 @@ class _ReportsPageState extends State<ReportsPage> {
     }
   }
 
-  // ===========================================================================
-  // COMPONENTE NOVO: CARD INTERATIVO DE SELEÇÃO (Substitui os botões Radio)
-  // ===========================================================================
-  Widget _buildOpcaoCard(
-    int valor,
-    String titulo,
-    IconData icone,
-    bool isMobile,
-  ) {
-    final selecionado = _opcaoSaida == valor;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _opcaoSaida = valor),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: selecionado ? AppColors.greenlightOne : Colors.transparent,
-            border: Border.all(
-              color: selecionado
-                  ? AppColors.greenlightOne
-                  : Colors.grey.withValues(alpha: 0.5),
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icone,
-                color: selecionado ? Colors.white : Colors.grey[600],
-                size: 28,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                titulo,
-                style: TextStyle(
-                  color: selecionado ? Colors.white : Colors.grey[700],
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : 14,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isMobile = MediaQuery.of(context).size.width < 600;
 
+    // Impressão direta só no computador
     if (isMobile && _opcaoSaida == 2) {
       _opcaoSaida = 0;
     }
 
+    final outputs = [
+      (0, "Visualizar", Icons.visibility_rounded),
+      (1, "Gerar PDF", Icons.picture_as_pdf_rounded),
+      if (!isMobile) (2, "Imprimir", Icons.print_rounded),
+    ];
+
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Imprimir Relatórios",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: AppBar(title: const Text("Demonstrativos")),
       body: _carregandoDados
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.greenlightOne),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // DADOS DO USUÁRIO REAIS
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person,
-                            color: AppColors.greenlightOne,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              "Produtor: $_nomeUsuario\nCPF: $_cpfUsuario",
-                              style: AppTextStyles.inputText.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.greenlightOne,
-                              ),
-                            ),
-                          ),
-                        ],
+          ? const CustomCircularProgressIndicator()
+          : Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  children: [
+                    FadeSlideIn(child: _buildProducerCard()),
+                    const SizedBox(height: 12),
+                    // Ano-calendário dos relatórios (o mesmo da Escrituração
+                    // e da Consolidação)
+                    ListenableBuilder(
+                      listenable: _consolidationController,
+                      builder: (context, _) => YearSelector(
+                        year: _consolidationController.anoSelecionado,
+                        years: _consolidationController.anosDisponiveis,
+                        onChanged: _consolidationController.selecionarAno,
                       ),
-                      const SizedBox(height: 16),
-                      // Ano-calendário dos relatórios (o mesmo da Escrituração
-                      // e da Consolidação)
-                      ListenableBuilder(
-                        listenable: _consolidationController,
-                        builder: (context, _) => YearSelector(
-                          year: _consolidationController.anoSelecionado,
-                          years: _consolidationController.anosDisponiveis,
-                          onChanged: _consolidationController.selecionarAno,
-                        ),
-                      ),
-                      const Divider(height: 32),
-
-                      // SESSÃO 1: CONSOLIDAÇÃO
-                      Text(
-                        "Consolidação",
-                        style: AppTextStyles.smallText.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      CheckboxListTile(
-                        title: const Text(
-                          "Demonstrativo de Apuração (Resumo Mensal)",
-                        ),
-                        activeColor: AppColors.greenlightOne,
+                    ),
+                    const SizedBox(height: 24),
+                    const SectionHeader(
+                      title: "Demonstrativos",
+                      subtitle: "Escolha o que vai no documento",
+                    ),
+                    const SizedBox(height: 12),
+                    FadeSlideIn(
+                      index: 1,
+                      child: CheckCard(
+                        title: "Demonstrativo de Apuração",
+                        subtitle:
+                            "Consolidação: resumo mensal de receitas, "
+                            "despesas e resultado",
+                        icon: Icons.table_chart_rounded,
                         value: _chkApuracao,
-                        onChanged: (val) => setState(() => _chkApuracao = val!),
-                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (val) => setState(() => _chkApuracao = val),
                       ),
-                      const Divider(height: 32),
-
-                      // SESSÃO 2: LIVRO CAIXA
-                      Text(
-                        "Livro Caixa",
-                        style: AppTextStyles.smallText.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      CheckboxListTile(
-                        title: const Text(
-                          "Extrato de todos os lançamentos do ano",
-                        ),
-                        activeColor: AppColors.greenlightOne,
+                    ),
+                    FadeSlideIn(
+                      index: 2,
+                      child: CheckCard(
+                        title: "Extrato do Livro Caixa",
+                        subtitle:
+                            "Todos os lançamentos do ano, com data, "
+                            "conta e histórico",
+                        icon: Icons.receipt_long_rounded,
                         value: _chkLivroCaixa,
                         onChanged: (val) =>
-                            setState(() => _chkLivroCaixa = val!),
-                        controlAffinity: ListTileControlAffinity.leading,
+                            setState(() => _chkLivroCaixa = val),
                       ),
-                      const Divider(height: 32),
-
-                      // SESSÃO 3: OPÇÃO DESEJADA (CARDS MODERNOS)
-                      Text(
-                        "Ação desejada:",
-                        style: AppTextStyles.inputText.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildOpcaoCard(
-                            0,
-                            "Visualizar",
-                            Icons.visibility,
-                            isMobile,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildOpcaoCard(
-                            1,
-                            "Gerar PDF",
-                            Icons.picture_as_pdf,
-                            isMobile,
-                          ),
-                          if (!isMobile) ...[
-                            const SizedBox(width: 12),
-                            _buildOpcaoCard(
-                              2,
-                              "Imprimir",
-                              Icons.print,
-                              isMobile,
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 40),
-
-                      // BOTÕES DE AÇÃO
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.greenlightOne,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 40,
-                                vertical: 16,
-                              ),
-                            ),
-                            onPressed: _processarAcao,
-                            child: Text(
-                              _opcaoSaida == 1
-                                  ? "Confirmar PDF"
-                                  : (_opcaoSaida == 2
-                                        ? "Confirmar Impressão"
-                                        : "Abrir Relatório"),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                              ),
+                    ),
+                    const SizedBox(height: 20),
+                    const SectionHeader(title: "Ação desejada"),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        for (final (valor, titulo, icone) in outputs) ...[
+                          if (valor != 0) const SizedBox(width: 10),
+                          Expanded(
+                            child: OptionCard(
+                              icon: icone,
+                              label: titulo,
+                              selected: _opcaoSaida == valor,
+                              onTap: () => setState(() => _opcaoSaida = valor),
                             ),
                           ),
                         ],
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
+                    PrimaryButton(
+                      icon: switch (_opcaoSaida) {
+                        1 => Icons.ios_share_rounded,
+                        2 => Icons.print_rounded,
+                        _ => Icons.description_rounded,
+                      },
+                      text: switch (_opcaoSaida) {
+                        1 => "Confirmar PDF",
+                        2 => "Confirmar Impressão",
+                        _ => "Abrir Relatório",
+                      },
+                      onPressed: _processarAcao,
+                    ),
+                  ],
                 ),
               ),
             ),
+    );
+  }
+
+  // Produtor que aparece no cabeçalho dos PDFs
+  Widget _buildProducerCard() {
+    final inicial = _nomeUsuario.trim().isEmpty
+        ? '?'
+        : _nomeUsuario.trim()[0].toUpperCase();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: AppColors.brandGradient),
+            ),
+            child: Text(
+              inicial,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "PRODUTOR RURAL",
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppColors.harvestDark,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _nomeUsuario,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ink,
+                  ),
+                ),
+                Text(
+                  "CPF: $_cpfUsuario",
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 13,
+                    color: AppColors.inkMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

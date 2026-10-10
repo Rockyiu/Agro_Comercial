@@ -155,12 +155,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
   }
 
   InputDecoration _decoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      enabledBorder: const OutlineInputBorder(
-        borderSide: BorderSide(color: AppColors.greenlightOne),
-      ),
-    );
+    return InputDecoration(labelText: label);
   }
 
   @override
@@ -181,7 +176,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
         actions: [
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
               onPressed: _delete,
             ),
         ],
@@ -225,7 +220,10 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
                 const SizedBox(height: 16),
                 OutlinedButton.icon(
                   onPressed: _pickDate,
-                  icon: const Icon(Icons.event, color: AppColors.greenlightOne),
+                  icon: const Icon(
+                    Icons.event_rounded,
+                    color: AppColors.greenlightOne,
+                  ),
                   label: Text(
                     "Data da colheita: ${Formatters.date(_date.millisecondsSinceEpoch)}",
                     style: const TextStyle(color: AppColors.greenlightOne),
@@ -238,7 +236,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
                       flex: 3,
                       child: CustomTextFormField(
                         controller: _quantityController,
-                        labelText: "QUANTIDADE PRODUZIDA",
+                        labelText: "Quantidade produzida",
                         padding: const EdgeInsets.only(top: 12, bottom: 12),
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -274,7 +272,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
                 ),
                 CustomTextFormField(
                   controller: _priceController,
-                  labelText: "PREÇO DE VENDA POR $_selectedUnit (R\$)",
+                  labelText: "Preço de venda por $_selectedUnit (R\$)",
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
@@ -283,7 +281,7 @@ class _RegisterHarvestPageState extends State<RegisterHarvestPage> {
                 ),
                 CustomTextFormField(
                   controller: _obsController,
-                  labelText: "OBSERVAÇÕES",
+                  labelText: "Observações",
                   hintText: "Ex: umidade, comprador, contrato (opcional)",
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),

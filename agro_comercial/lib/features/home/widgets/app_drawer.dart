@@ -1,38 +1,99 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
 import 'package:agro_comercial/common/widgets/logout_list_tile.dart';
 import 'package:flutter/material.dart';
 
-// Estrutura do menu lateral: cabeçalho verde + itens + botão "Sair" no rodapé
+// Menu lateral: cabeçalho com a marca e a fazenda, itens e "Sair" no rodapé
 class AppDrawer extends StatelessWidget {
-  final Widget header;
+  final String title;
+  final String? subtitle;
   final List<Widget> items;
 
-  const AppDrawer({super.key, required this.header, required this.items});
+  const AppDrawer({
+    super.key,
+    required this.title,
+    this.subtitle,
+    required this.items,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: AppColors.iceWhite,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: const BoxDecoration(
-                    color: AppColors.greenlightOne,
-                  ),
-                  child: Align(alignment: Alignment.bottomLeft, child: header),
+          FieldBackground(
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(28),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppBrandName(logoSize: 40),
+                    const SizedBox(height: 24),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                ...items,
-              ],
+              ),
             ),
           ),
-          const Divider(),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children: items,
+            ),
+          ),
+          const Divider(indent: 24, endIndent: 24),
           const LogoutListTile(),
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+}
+
+// Título de um grupo de itens do menu
+class DrawerSection extends StatelessWidget {
+  final String label;
+
+  const DrawerSection(this.label, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 16, 24, 6),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 1.2,
+          color: AppColors.inkMuted,
+        ),
       ),
     );
   }
@@ -53,13 +114,29 @@ class DrawerMenuItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.greenlightOne),
-      title: Text(title),
-      onTap: () {
-        Navigator.pop(context); // Fecha o menu lateral
-        onTap();
-      },
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: ListTile(
+        visualDensity: const VisualDensity(vertical: -1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primarySoft,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
+        ),
+        title: Text(title),
+        trailing: const Icon(
+          Icons.chevron_right_rounded,
+          color: AppColors.border,
+        ),
+        onTap: () {
+          Navigator.pop(context); // Fecha o menu lateral
+          onTap();
+        },
+      ),
     );
   }
 }

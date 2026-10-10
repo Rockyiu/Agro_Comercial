@@ -106,14 +106,14 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
           if (_controller.canModify(widget.operation.createdBy))
             IconButton(
               icon: Icon(
-                _isEditing ? Icons.close : Icons.edit,
+                _isEditing ? Icons.close_rounded : Icons.edit_rounded,
                 color: Colors.white,
               ),
               onPressed: () => setState(() => _isEditing = !_isEditing),
             ),
           if (_isEditing)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
               onPressed: _delete,
             ),
         ],
@@ -143,7 +143,7 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          color: Colors.amber.withValues(alpha: 0.2),
+          color: AppColors.harvest.withValues(alpha: 0.2),
           child: Text(
             "ATENÇÃO: Ao salvar a edição, o sistema fará o recálculo inteligente e estornará os materiais da operação antiga automaticamente.",
             style: AppTextStyles.smallText.copyWith(
@@ -191,7 +191,10 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         ),
         const SizedBox(height: 16),
         ListTile(
-          leading: const Icon(Icons.grid_view, color: AppColors.greenlightOne),
+          leading: const Icon(
+            Icons.grid_view_rounded,
+            color: AppColors.greenlightOne,
+          ),
           title: Text(
             "Talhão: ${(_plotName?.isNotEmpty ?? false) ? _plotName : 'Fazenda inteira'}",
           ),
@@ -199,7 +202,7 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
         if (operation.usedMachine)
           ListTile(
             leading: const Icon(
-              Icons.agriculture,
+              Icons.agriculture_rounded,
               color: AppColors.greenlightOne,
             ),
             title: Text("Maquinário: ${operation.machineName}"),
@@ -230,7 +233,10 @@ class _OperationDetailsPageState extends State<OperationDetailsPage> {
           ),
           ...operation.appliedProducts.map(
             (p) => ListTile(
-              leading: const Icon(Icons.science, color: Colors.orange),
+              leading: const Icon(
+                Icons.science_rounded,
+                color: AppColors.warning,
+              ),
               title: Text(p['productName'] ?? 'Produto'),
               trailing: Text(
                 "${p['dosage']} ${p['dosageUnit']}",

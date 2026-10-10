@@ -21,7 +21,7 @@ Future<FarmModel?> showFarmSelectorDialog(
               final farm = farms[index];
               return ListTile(
                 leading: const Icon(
-                  Icons.home_work,
+                  Icons.home_work_rounded,
                   color: AppColors.greenlightOne,
                 ),
                 title: Text(farm.name),

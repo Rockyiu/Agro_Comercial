@@ -164,7 +164,10 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "Cancelar",
+              style: TextStyle(color: AppColors.inkMuted),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -176,7 +179,10 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
             },
             child: const Text(
               "Excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -330,7 +336,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       return [
         CustomTextFormField(
           controller: _valueController,
-          labelText: "VALOR DO CUSTO (R\$)",
+          labelText: "Valor do custo (R\$)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => v == null || v.isEmpty ? "Informe o valor" : null,
         ),
@@ -343,7 +349,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _viController,
-          labelText: "VALOR INICIAL NOVO (Vi)",
+          labelText: "Valor inicial novo (Vi)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => v!.isEmpty ? "Obrigatório" : null,
         ),
@@ -354,7 +360,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _vsController,
-          labelText: "VALOR DE SUCATA (Vs)",
+          labelText: "Valor de sucata (Vs)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -364,7 +370,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _vmController,
-          labelText: "VALOR MÉDIO (Vm)",
+          labelText: "Valor médio (Vm)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -374,7 +380,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _vtController,
-          labelText: "VALOR DA TERRA (Vt)",
+          labelText: "Valor da terra (Vt)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -384,7 +390,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _rController,
-          labelText: "TAXA DE MANUTENÇÃO (R%)",
+          labelText: "Taxa de manutenção (R%)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -394,7 +400,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _vuhController,
-          labelText: "VIDA ÚTIL EM HORAS (Vuh)",
+          labelText: "Vida útil em horas (Vuh)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -403,7 +409,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _vuaController,
-          labelText: "VIDA ÚTIL EM ANOS (Vua)",
+          labelText: "Vida útil em anos (Vua)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -412,7 +418,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
       fields.add(
         CustomTextFormField(
           controller: _uahController,
-          labelText: "UTILIZAÇÃO ANUAL EM HORAS (Uah)",
+          labelText: "Utilização anual em horas (Uah)",
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
         ),
       );
@@ -441,7 +447,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
         actions: [
           if (widget.costToEdit != null)
             IconButton(
-              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
               onPressed: _showDeleteDialog,
             ),
         ],
@@ -459,12 +465,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                       key: ValueKey('type_$_selectedType'),
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: "TIPO DE CUSTO",
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
+                        labelText: "Tipo de custo",
                       ),
                       initialValue: _selectedType,
                       items: CostCategories.types
@@ -481,14 +482,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     DropdownButtonFormField<String>(
                       key: ValueKey('category_$_selectedCategory'),
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: "CATEGORIA",
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
-                      ),
+                      decoration: const InputDecoration(labelText: "Categoria"),
                       initialValue: _selectedCategory,
                       items: _currentCategories
                           .map(
@@ -505,14 +499,9 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     DropdownButtonFormField<String?>(
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: "TALHÃO",
+                        labelText: "Talhão",
                         helperText:
                             "Sem talhão, o custo é rateado entre os talhões pela área",
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.greenlightOne,
-                          ),
-                        ),
                       ),
                       initialValue: _selectedPlot,
                       items: [
@@ -533,7 +522,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     OutlinedButton.icon(
                       onPressed: _pickDate,
                       icon: const Icon(
-                        Icons.event,
+                        Icons.event_rounded,
                         color: AppColors.greenlightOne,
                       ),
                       label: Text(
@@ -543,7 +532,7 @@ class _RegisterCostPageState extends State<RegisterCostPage> {
                     ),
                     CustomTextFormField(
                       controller: _obsController,
-                      labelText: "OBSERVAÇÕES",
+                      labelText: "Observações",
                       hintText: "Especifique o lançamento (opcional)",
                     ),
                     const SizedBox(height: 32),

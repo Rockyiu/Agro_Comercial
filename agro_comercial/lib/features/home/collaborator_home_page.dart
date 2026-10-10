@@ -1,6 +1,6 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
 import 'package:agro_comercial/common/widgets/empty_state.dart';
 import 'package:agro_comercial/features/costs/cost_page.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
@@ -21,6 +21,7 @@ import 'collaborator_home_state.dart';
 import 'widgets/activity_feed.dart';
 import 'widgets/add_menu_sheet.dart';
 import 'widgets/app_drawer.dart';
+import 'widgets/farm_overview.dart';
 
 class CollaboratorHomePage extends StatefulWidget {
   const CollaboratorHomePage({super.key});
@@ -68,13 +69,13 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
       title: 'O que deseja registrar?',
       options: [
         AddMenuOption(
-          icon: Icons.assignment_turned_in_outlined,
+          icon: Icons.travel_explore_rounded,
           title: 'Vistoria / Aplicação',
           subtitle: 'Condição do talhão, aplicação de produtos',
           onTap: () => _openPage(const RegisterFieldOperationPage()),
         ),
         AddMenuOption(
-          icon: Icons.build,
+          icon: Icons.agriculture_rounded,
           title: 'Operação',
           subtitle: 'Plantio, colheita, aplicação',
           onTap: () => _openPage(const RegisterOperationPage()),
@@ -82,7 +83,7 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
         // Só para colaboradores liberados pelo produtor em "Minha Equipe"
         if (_controller.canRegisterHarvest)
           AddMenuOption(
-            icon: Icons.grass,
+            icon: Icons.grass_rounded,
             title: 'Colheita',
             subtitle: 'Produção do talhão e preço de venda',
             onTap: () => _openPage(const RegisterHarvestPage()),
@@ -100,56 +101,45 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
         final farm = _farmController.selectedFarm;
 
         return Scaffold(
-          backgroundColor: AppColors.iceWhite,
           appBar: AppBar(
-            backgroundColor: AppColors.greenlightOne,
-            elevation: 0,
-            title: Text(
-              farm != null ? 'Fazenda: ${farm.name}' : 'Área do Colaborador',
-              style: AppTextStyles.midText20.copyWith(color: Colors.white),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'PORTAL DO COLABORADOR',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                Text(
+                  farm?.name ?? 'Área do Colaborador',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-            centerTitle: true,
-            iconTheme: const IconThemeData(color: Colors.white),
           ),
           // Menu lateral limitado para o colaborador
           drawer: AppDrawer(
-            header: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Portal do Colaborador',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (farm != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.greenlightOne.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Vinculado à:\n${farm.name}',
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
-                    ),
-                  ),
-              ],
-            ),
+            title: 'Portal do Colaborador',
+            subtitle: farm != null
+                ? 'Vinculado à ${farm.name}'
+                : 'Sem fazenda vinculada',
             items: [
               // Reconstrói quando a permissão de colheita é carregada
               ListenableBuilder(
                 listenable: _controller,
                 builder: (context, _) => _controller.canRegisterHarvest
                     ? DrawerMenuItem(
-                        icon: Icons.grass,
+                        icon: Icons.grass_rounded,
                         title: 'Minhas Colheitas',
                         onTap: () =>
                             _openPage(const HarvestPage(onlyMine: true)),
@@ -157,54 +147,68 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
                     : const SizedBox.shrink(),
               ),
               DrawerMenuItem(
-                icon: Icons.person_outline,
+                icon: Icons.person_rounded,
                 title: 'Meu Perfil',
                 onTap: () => _openPage(const ProfilePage()),
               ),
               DrawerMenuItem(
-                icon: Icons.settings,
+                icon: Icons.settings_rounded,
                 title: 'Configurações',
                 onTap: () {},
               ),
             ],
           ),
-          body: _buildBody(),
+          body: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: KeyedSubtree(
+              key: ValueKey(_currentIndex),
+              child: _buildBody(),
+            ),
+          ),
           // Botão de registro rápido apenas na aba Início
           floatingActionButton: _currentIndex == _homeTab && farm != null
-              ? FloatingActionButton(
-                  backgroundColor: AppColors.greenlightOne,
+              ? FloatingActionButton.extended(
                   onPressed: _showAddMenu,
-                  child: const Icon(Icons.add, color: Colors.white, size: 32),
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Registrar'),
                 )
               : null,
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: AppColors.greenlightOne,
-            unselectedItemColor: AppColors.lightkGrey,
-            onTap: (index) {
-              setState(() => _currentIndex = index);
-              // Ao voltar para o Início, atualiza o que foi registrado nas outras abas
-              if (index == _homeTab) _controller.loadActivities();
-            },
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                label: 'Início',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_turned_in_outlined),
-                label: 'Vistorias',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.assignment_outlined),
-                label: 'Operações',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.attach_money),
-                label: 'Custos',
-              ),
-            ],
+          bottomNavigationBar: DecoratedBox(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppColors.border)),
+            ),
+            child: NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (index) {
+                setState(() => _currentIndex = index);
+                // Ao voltar para o Início, atualiza o que foi registrado nas outras abas
+                if (index == _homeTab) _controller.loadActivities();
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.space_dashboard_outlined),
+                  selectedIcon: Icon(Icons.space_dashboard_rounded),
+                  label: 'Início',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.travel_explore_outlined),
+                  selectedIcon: Icon(Icons.travel_explore_rounded),
+                  label: 'Vistorias',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.agriculture_outlined),
+                  selectedIcon: Icon(Icons.agriculture_rounded),
+                  label: 'Operações',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.payments_outlined),
+                  selectedIcon: Icon(Icons.payments_rounded),
+                  label: 'Custos',
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -236,7 +240,7 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
         if (state is CollaboratorHomeNoFarmState) {
           return const Center(
             child: EmptyState(
-              icon: Icons.home_work_outlined,
+              icon: Icons.home_work_rounded,
               title: 'Nenhuma fazenda vinculada',
               message:
                   'Você ainda não foi vinculado a uma fazenda.\nPeça ao produtor para adicionar você em "Minha Equipe".',
@@ -247,12 +251,12 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
         if (state is CollaboratorHomeErrorState) {
           return Center(
             child: EmptyState(
-              icon: Icons.cloud_off_outlined,
+              icon: Icons.cloud_off_rounded,
               title: 'Algo deu errado',
               message: state.message,
-              action: TextButton.icon(
+              action: FilledButton.icon(
                 onPressed: () => _controller.loadActivities(reloadFarm: true),
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh_rounded),
                 label: const Text('Tentar novamente'),
               ),
             ),
@@ -260,11 +264,15 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
         }
 
         if (state is! CollaboratorHomeSuccessState) {
-          return const Center(child: CustomCircularProgressIndicator());
+          return const CustomCircularProgressIndicator();
         }
 
+        final farm = _farmController.selectedFarm;
         return ActivityFeed(
-          title: 'Minhas Atividades',
+          title: 'Minhas atividades',
+          header: [
+            if (farm != null) FadeSlideIn(child: FarmHeroCard(farm: farm)),
+          ],
           operations: state.operations,
           fieldOperations: state.fieldOperations,
           onRefresh: () =>
@@ -275,11 +283,11 @@ class _CollaboratorHomePageState extends State<CollaboratorHomePage> {
               _openPage(FieldOperationDetailsPage(operation: fOp)),
           // Mostrado no primeiro acesso, enquanto o colaborador não registrou nada
           emptyState: const EmptyState(
-            icon: Icons.inbox_outlined,
+            icon: Icons.inbox_rounded,
             title: 'Nenhuma atividade ainda',
             message:
-                'Você ainda não registrou nenhuma operação, vistoria ou aplicação.\nUse o botão verde (+) para registrar sua primeira atividade!',
-            padding: EdgeInsets.symmetric(vertical: 48.0, horizontal: 16.0),
+                'Você ainda não registrou nenhuma operação, vistoria ou aplicação.\nToque em "Registrar" para lançar a primeira.',
+            padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: 16.0),
           ),
         );
       },

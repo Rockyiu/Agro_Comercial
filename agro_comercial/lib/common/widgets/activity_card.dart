@@ -1,8 +1,9 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/field_operation_model.dart';
 import 'package:agro_comercial/common/models/operation_model.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/widgets/animations.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
 import 'package:flutter/material.dart';
 
 // Cards usados no histórico de atividades (Home do produtor e do colaborador)
@@ -41,11 +42,13 @@ class OperationActivityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ActivityCard(
       onTap: onTap,
-      iconColor: Colors.orange,
-      icon: Icons.agriculture,
+      color: AppColors.earth,
+      background: AppColors.earthSoft,
+      icon: Icons.agriculture_rounded,
       label: 'Operação',
       title: operation.title,
       subtitle: _operationDetails(operation),
+      date: operation.dateTimestamp,
       registeredBy: registeredBy,
     );
   }
@@ -65,17 +68,21 @@ class FieldOperationActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isVistoria = fieldOperation.type == 'Vistoria';
+    final isInspection = fieldOperation.isInspection;
 
     return _ActivityCard(
       onTap: onTap,
-      iconColor: isVistoria ? Colors.blueAccent : Colors.teal,
-      icon: isVistoria ? Icons.search : Icons.water_drop,
+      color: isInspection ? AppColors.sky : AppColors.water,
+      background: isInspection ? AppColors.skySoft : AppColors.waterSoft,
+      icon: isInspection
+          ? Icons.travel_explore_rounded
+          : Icons.water_drop_rounded,
       label: fieldOperation.type,
-      title: 'Talhão: ${fieldOperation.plotName}',
-      subtitle: isVistoria
+      title: fieldOperation.plotName,
+      subtitle: isInspection
           ? (fieldOperation.condition ?? 'Vistoria concluída')
           : _applicationDetails(fieldOperation),
+      date: fieldOperation.dateTimestamp,
       registeredBy: registeredBy,
     );
   }
@@ -83,96 +90,149 @@ class FieldOperationActivityCard extends StatelessWidget {
 
 class _ActivityCard extends StatelessWidget {
   final VoidCallback? onTap;
-  final Color iconColor;
+  final Color color;
+  final Color background;
   final IconData icon;
   final String label;
   final String title;
   final String subtitle;
+  final int date;
   final String? registeredBy;
 
   const _ActivityCard({
     required this.onTap,
-    required this.iconColor,
+    required this.color,
+    required this.background,
     required this.icon,
     required this.label,
     required this.title,
     required this.subtitle,
+    required this.date,
     this.registeredBy,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 1,
-      color: Colors.white,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: iconColor.withValues(alpha: 0.15),
-                child: Icon(icon, color: iconColor, size: 28),
+    final radius = BorderRadius.circular(20);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: PressableScale(
+        enabled: onTap != null,
+        child: Material(
+          color: AppColors.surface,
+          borderRadius: radius,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: onTap,
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(color: AppColors.border),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTextStyles.smallText.copyWith(
-                        color: AppColors.lightkGrey,
-                      ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: AppTextStyles.midText20.copyWith(
-                        color: AppColors.greenlightOne,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.smallText.copyWith(
-                        color: AppColors.grey,
-                        fontSize: 13,
-                      ),
-                    ),
-                    if (registeredBy != null) ...[
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person_outline,
-                            size: 14,
-                            color: AppColors.lightkGrey,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              'Registrado por: $registeredBy',
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.smallText.copyWith(
-                                color: AppColors.lightkGrey,
+                    child: Icon(icon, color: color, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            StatusChip(
+                              label: label,
+                              color: color,
+                              background: background,
+                            ),
+                            const Spacer(),
+                            Text(
+                              Formatters.date(date),
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
                                 fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.inkMuted,
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 13,
+                            height: 1.35,
+                            color: AppColors.inkMuted,
+                          ),
+                        ),
+                        if (registeredBy != null) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: AppColors.primarySoft,
+                                child: Text(
+                                  registeredBy!.isEmpty
+                                      ? '?'
+                                      : registeredBy![0].toUpperCase(),
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  registeredBy!,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.inkMuted,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ),
-                    ],
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

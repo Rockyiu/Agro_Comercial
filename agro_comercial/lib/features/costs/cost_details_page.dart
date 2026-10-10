@@ -57,7 +57,7 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
         actions: [
           if (showEditButton)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: const Icon(Icons.edit_rounded),
               onPressed: () async {
                 final result = await Navigator.push(
                   context,
@@ -99,14 +99,14 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
 
                 Text(
                   "TIPO DE CUSTO",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
                 ),
                 Text(widget.cost.type, style: AppTextStyles.inputText),
                 const SizedBox(height: 16),
 
                 Text(
                   "DATA DO LANÇAMENTO",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
                 ),
                 Text(
                   Formatters.date(widget.cost.dateTimestamp),
@@ -116,7 +116,7 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
 
                 Text(
                   "TALHÃO",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
                 ),
                 Text(
                   (widget.cost.plotName?.isNotEmpty ?? false)
@@ -130,7 +130,7 @@ class _CostDetailsPageState extends State<CostDetailsPage> {
                     widget.cost.observation!.isNotEmpty) ...[
                   Text(
                     "OBSERVAÇÕES",
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
                   ),
                   Text(
                     widget.cost.observation!,

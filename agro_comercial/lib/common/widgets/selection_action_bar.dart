@@ -1,5 +1,4 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
 // Barra exibida no modo de seleção múltipla das listas:
@@ -27,31 +26,44 @@ class SelectionActionBar extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: AppColors.greenlightOne.withValues(alpha: 0.1),
+        color: AppColors.primarySoft,
         borderRadius: borderRadius,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
       padding: padding,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: AppTextStyles.inputText.copyWith(
-              color: AppColors.greenlightOne,
-              fontWeight: FontWeight.bold,
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 20,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
             ),
           ),
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.close, color: AppColors.grey),
-                onPressed: onClear,
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: onDelete,
-              ),
-            ],
+          IconButton(
+            tooltip: 'Limpar seleção',
+            icon: const Icon(Icons.close_rounded, color: AppColors.inkMuted),
+            onPressed: onClear,
+          ),
+          IconButton.filledTonal(
+            tooltip: 'Excluir',
+            style: IconButton.styleFrom(
+              backgroundColor: AppColors.dangerSoft,
+              foregroundColor: AppColors.danger,
+            ),
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: onDelete,
           ),
         ],
       ),

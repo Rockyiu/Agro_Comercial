@@ -1,3 +1,4 @@
+import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/routes.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/locator.dart';
@@ -11,10 +12,11 @@ class LogoutListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: const Icon(Icons.logout, color: Colors.redAccent),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      leading: const Icon(Icons.logout_rounded, color: AppColors.danger),
       title: const Text(
-        'Sair',
-        style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+        'Sair da conta',
+        style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700),
       ),
       onTap: () async {
         Navigator.pop(context); // Fecha o menu lateral

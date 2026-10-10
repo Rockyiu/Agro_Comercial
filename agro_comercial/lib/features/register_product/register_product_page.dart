@@ -175,7 +175,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                               radius: 18,
                               child: IconButton(
                                 icon: const Icon(
-                                  Icons.camera_alt,
+                                  Icons.camera_alt_rounded,
                                   color: Colors.white,
                                   size: 16,
                                 ),
@@ -190,12 +190,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                       if (widget.initialWarehouse == null)
                         DropdownButtonFormField<WarehouseModel>(
                           decoration: const InputDecoration(
-                            labelText: "SELECIONE O ARMAZÉM",
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: AppColors.greenlightOne,
-                              ),
-                            ),
+                            labelText: "Selecione o armazém",
                           ),
                           initialValue: _selectedWarehouse,
                           items: availableWarehouses
@@ -215,7 +210,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                           color: AppColors.greenlightOne.withValues(alpha: 0.1),
                           child: ListTile(
                             leading: const Icon(
-                              Icons.warehouse,
+                              Icons.warehouse_rounded,
                               color: AppColors.greenlightOne,
                             ),
                             title: Text(
@@ -227,12 +222,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
 
                       DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
-                          labelText: "CATEGORIA DO INSUMO/PRODUTO",
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AppColors.greenlightOne,
-                            ),
-                          ),
+                          labelText: "Categoria do insumo/produto",
                         ),
                         initialValue: _selectedCategory,
                         items: _categories
@@ -252,12 +242,12 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
 
                       CustomTextFormField(
                         controller: _nameController,
-                        labelText: "NOME DO PRODUTO",
+                        labelText: "Nome do produto",
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
                       CustomTextFormField(
                         controller: _brandController,
-                        labelText: "MARCA / FABRICANTE",
+                        labelText: "Marca / fabricante",
                         validator: (v) => v!.isEmpty ? "Obrigatório" : null,
                       ),
 
@@ -267,7 +257,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                           Expanded(
                             child: CustomTextFormField(
                               controller: _quantityController,
-                              labelText: "QUANTIDADE",
+                              labelText: "Quantidade",
                               keyboardType:
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
@@ -280,7 +270,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                           Expanded(
                             child: CustomTextFormField(
                               controller: _measureController,
-                              labelText: "MEDIDA",
+                              labelText: "Medida",
                               hintText: "Ex: 1 ou 1000",
                               keyboardType:
                                   const TextInputType.numberWithOptions(
@@ -294,8 +284,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               decoration: const InputDecoration(
-                                labelText: "UNIDADE",
-                                border: OutlineInputBorder(),
+                                labelText: "Unidade",
                               ),
                               initialValue: _selectedUnit,
                               items: _units
@@ -315,7 +304,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
 
                       CustomTextFormField(
                         controller: _priceController,
-                        labelText: "PREÇO POR $_selectedUnit (R\$) - opcional",
+                        labelText: "Preço por $_selectedUnit (R\$) - opcional",
                         hintText: "Usado no custo por talhão",
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -390,12 +379,12 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       return [
         CustomTextFormField(
           controller: _extra1Controller,
-          labelText: "PRINCÍPIO ATIVO / COMPOSIÇÃO",
+          labelText: "Princípio ativo / composição",
           hintText: "Ex: Glifosato, NPK 04-14-08",
         ),
         CustomTextFormField(
           controller: _extra2Controller,
-          labelText: "DOSAGEM RECOMENDADA (Opcional)",
+          labelText: "Dosagem recomendada (Opcional)",
           hintText: "Ex: 2L por Hectare",
         ),
       ];
@@ -404,13 +393,13 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       return [
         CustomTextFormField(
           controller: _extra1Controller,
-          labelText: "DATA DE VALIDADE",
+          labelText: "Data de validade",
           hintText: "Ex: 12/2027",
           keyboardType: TextInputType.datetime,
         ),
         CustomTextFormField(
           controller: _extra2Controller,
-          labelText: "LOTE DE FABRICAÇÃO",
+          labelText: "Lote de fabricação",
           hintText: "Ex: LOTE99X",
         ),
       ];
@@ -419,7 +408,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       return [
         CustomTextFormField(
           controller: _extra1Controller,
-          labelText: "CÓDIGO DA PEÇA / N° SÉRIE",
+          labelText: "Código da peça / N° série",
           hintText: "Ex: REF-88391-JD",
         ),
       ];
@@ -428,7 +417,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       return [
         CustomTextFormField(
           controller: _extra1Controller,
-          labelText: "ESPECIFICAÇÃO / TIPO",
+          labelText: "Especificação / tipo",
           hintText: "Ex: Diesel S10, Óleo 15W40 SAE",
         ),
       ];
@@ -436,7 +425,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
     return [
       CustomTextFormField(
         controller: _extra1Controller,
-        labelText: "OBSERVAÇÕES ADICIONAIS",
+        labelText: "Observações adicionais",
         hintText: "Qualquer detalhe extra sobre o lote",
       ),
     ];

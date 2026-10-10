@@ -100,7 +100,7 @@ class _EmployeePageState extends State<EmployeePage> {
             return Center(
               child: Text(
                 state.message,
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppColors.danger),
               ),
             );
           }
@@ -165,7 +165,7 @@ class _EmployeePageState extends State<EmployeePage> {
                                   backgroundColor: AppColors.greenlightOne
                                       .withValues(alpha: 0.1),
                                   child: const Icon(
-                                    Icons.person,
+                                    Icons.person_rounded,
                                     color: AppColors.greenlightOne,
                                   ),
                                 ),
@@ -181,8 +181,8 @@ class _EmployeePageState extends State<EmployeePage> {
                                 trailing: selectedEmployees.isEmpty
                                     ? IconButton(
                                         icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.redAccent,
+                                          Icons.delete_outline_rounded,
+                                          color: AppColors.danger,
                                         ),
                                         onPressed: () =>
                                             _showDeleteDialog(singleEmp: emp),
@@ -193,7 +193,7 @@ class _EmployeePageState extends State<EmployeePage> {
                               SwitchListTile(
                                 dense: true,
                                 secondary: const Icon(
-                                  Icons.grass,
+                                  Icons.grass_rounded,
                                   color: AppColors.greenlightOne,
                                 ),
                                 title: const Text(
@@ -219,7 +219,6 @@ class _EmployeePageState extends State<EmployeePage> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.greenlightOne,
         onPressed: () async {
           await Navigator.push(
             context,
@@ -229,7 +228,7 @@ class _EmployeePageState extends State<EmployeePage> {
           );
           _controller.loadEmployees();
         },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
+        child: const Icon(Icons.add_rounded),
       ),
     );
   }

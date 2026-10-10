@@ -1,5 +1,5 @@
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
+import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/surface_card.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/features/profile/profile_controller.dart';
@@ -76,11 +76,7 @@ class _ReportExportCardState extends State<ReportExportCard> {
             context,
             MaterialPageRoute(
               builder: (_) => Scaffold(
-                appBar: AppBar(
-                  title: const Text("Visualização"),
-                  backgroundColor: AppColors.greenlightOne,
-                  foregroundColor: Colors.white,
-                ),
+                appBar: AppBar(title: const Text("Visualização")),
                 body: PdfPreview(
                   build: (_) => bytes,
                   allowPrinting: true,
@@ -108,51 +104,11 @@ class _ReportExportCardState extends State<ReportExportCard> {
     }
   }
 
-  Widget _buildOutputCard(
-    _OutputOption option,
-    String title,
-    IconData icon,
-    bool isMobile,
-  ) {
-    final selected = _output == option;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _output = option),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.greenlightOne : Colors.transparent,
-            border: Border.all(
-              color: selected
-                  ? AppColors.greenlightOne
-                  : Colors.grey.withValues(alpha: 0.5),
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: selected ? Colors.white : Colors.grey[600],
-                size: 26,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected ? Colors.white : Colors.grey[700],
-                  fontWeight: FontWeight.bold,
-                  fontSize: isMobile ? 12 : 14,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  static IconData _documentIcon(ReportDocument document) => switch (document) {
+    ReportDocument.summaries => Icons.space_dashboard_rounded,
+    ReportDocument.plotCost => Icons.grid_view_rounded,
+    ReportDocument.machineHourCost => Icons.agriculture_rounded,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -162,90 +118,60 @@ class _ReportExportCardState extends State<ReportExportCard> {
       _output = _OutputOption.preview;
     }
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final outputs = [
+      (_OutputOption.preview, "Visualizar", Icons.visibility_rounded),
+      (_OutputOption.share, "Gerar PDF", Icons.picture_as_pdf_rounded),
+      if (!isMobile) (_OutputOption.print, "Imprimir", Icons.print_rounded),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final document in ReportDocument.values)
+          CheckCard(
+            title: document.title,
+            subtitle: document.description,
+            icon: _documentIcon(document),
+            value: _selected.contains(document),
+            onChanged: (checked) => setState(() {
+              checked ? _selected.add(document) : _selected.remove(document);
+            }),
+          ),
+        const SizedBox(height: 10),
+        Row(
           children: [
-            for (final document in ReportDocument.values)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                activeColor: AppColors.greenlightOne,
-                title: Text(
-                  document.title,
-                  style: AppTextStyles.smallText.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+            for (final (option, title, icon) in outputs) ...[
+              if (option != _OutputOption.preview) const SizedBox(width: 10),
+              Expanded(
+                child: OptionCard(
+                  icon: icon,
+                  label: title,
+                  selected: _output == option,
+                  onTap: () => setState(() => _output = option),
                 ),
-                subtitle: Text(
-                  document.description,
-                  style: AppTextStyles.smallText.copyWith(fontSize: 12),
-                ),
-                value: _selected.contains(document),
-                onChanged: (checked) => setState(() {
-                  checked == true
-                      ? _selected.add(document)
-                      : _selected.remove(document);
-                }),
               ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildOutputCard(
-                  _OutputOption.preview,
-                  "Visualizar",
-                  Icons.visibility,
-                  isMobile,
-                ),
-                const SizedBox(width: 12),
-                _buildOutputCard(
-                  _OutputOption.share,
-                  "Gerar PDF",
-                  Icons.picture_as_pdf,
-                  isMobile,
-                ),
-                if (!isMobile) ...[
-                  const SizedBox(width: 12),
-                  _buildOutputCard(
-                    _OutputOption.print,
-                    "Imprimir",
-                    Icons.print,
-                    isMobile,
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.greenlightOne,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              onPressed: _isGenerating ? null : _generate,
-              icon: _isGenerating
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.description),
-              label: Text(switch (_output) {
-                _OutputOption.preview => "Abrir Relatório",
-                _OutputOption.share => "Confirmar PDF",
-                _OutputOption.print => "Confirmar Impressão",
-              }, style: const TextStyle(fontSize: 16)),
-            ),
+            ],
           ],
         ),
-      ),
+        const SizedBox(height: 20),
+        PrimaryButton(
+          icon: _isGenerating
+              ? Icons.hourglass_top_rounded
+              : switch (_output) {
+                  _OutputOption.preview => Icons.description_rounded,
+                  _OutputOption.share => Icons.ios_share_rounded,
+                  _OutputOption.print => Icons.print_rounded,
+                },
+          text: _isGenerating
+              ? "Gerando relatório..."
+              : switch (_output) {
+                  _OutputOption.preview => "Abrir Relatório",
+                  _OutputOption.share => "Confirmar PDF",
+                  _OutputOption.print => "Confirmar Impressão",
+                },
+          onPressed: _isGenerating ? null : _generate,
+        ),
+      ],
     );
   }
 }

@@ -89,7 +89,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 child: Text(
                   state.message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                  style: const TextStyle(color: AppColors.danger, fontSize: 16),
                 ),
               ),
             );
@@ -102,7 +102,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.receipt_long,
+                    Icons.receipt_long_rounded,
                     size: 80,
                     color: AppColors.grey.withValues(alpha: 0.3),
                   ),
@@ -144,7 +144,7 @@ class _InvoicePageState extends State<InvoicePage> {
                         alpha: 0.1,
                       ),
                       child: const Icon(
-                        Icons.picture_as_pdf,
+                        Icons.picture_as_pdf_rounded,
                         color: AppColors.greenlightOne,
                       ),
                     ),
@@ -160,13 +160,13 @@ class _InvoicePageState extends State<InvoicePage> {
                         "Emitida em: ${_formatDate(invoice.issueDate)}",
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: AppColors.inkMuted,
                         ),
                       ),
                     ),
                     trailing: const Icon(
-                      Icons.open_in_new,
-                      color: Colors.grey,
+                      Icons.open_in_new_rounded,
+                      color: AppColors.inkMuted,
                       size: 20,
                     ),
                     onTap: () => _openPdf(invoice.pdfFilePath),

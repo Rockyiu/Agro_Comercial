@@ -97,7 +97,10 @@ class _EditMachinePageState extends State<EditMachinePage> {
     } else if (state is EditMachineErrorState) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(state.message),
+          backgroundColor: AppColors.danger,
+        ),
       );
     }
   }
@@ -141,7 +144,10 @@ class _EditMachinePageState extends State<EditMachinePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              "Cancelar",
+              style: TextStyle(color: AppColors.inkMuted),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -150,7 +156,10 @@ class _EditMachinePageState extends State<EditMachinePage> {
             },
             child: const Text(
               "Sim, excluir",
-              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.danger,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -172,7 +181,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
             onPressed: () => _showDeleteDialog(),
           ),
         ],
@@ -221,7 +230,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
                               ),
                             )
                           : const Icon(
-                              Icons.agriculture,
+                              Icons.agriculture_rounded,
                               size: 60,
                               color: AppColors.lightkGrey,
                             ),
@@ -231,7 +240,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
                       radius: 20,
                       child: IconButton(
                         icon: const Icon(
-                          Icons.camera_alt,
+                          Icons.camera_alt_rounded,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -245,24 +254,24 @@ class _EditMachinePageState extends State<EditMachinePage> {
 
               CustomTextFormField(
                 controller: _nameController,
-                labelText: "NOME DA MÁQUINA",
+                labelText: "Nome da máquina",
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
               ),
               CustomTextFormField(
                 controller: _brandController,
-                labelText: "MARCA",
+                labelText: "Marca",
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
               ),
               CustomTextFormField(
                 controller: _modelController,
-                labelText: "MODELO",
+                labelText: "Modelo",
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
               ),
 
               CustomTextFormField(
                 controller: _powerController,
                 focusNode: _powerFocus,
-                labelText: "POTÊNCIA",
+                labelText: "Potência",
                 keyboardType: TextInputType.number,
                 validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
                 suffixIcon:
@@ -282,7 +291,7 @@ class _EditMachinePageState extends State<EditMachinePage> {
               CustomTextFormField(
                 controller: _hoursController,
                 focusNode: _hoursFocus,
-                labelText: "HORAS TRABALHADAS",
+                labelText: "Horas trabalhadas",
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),

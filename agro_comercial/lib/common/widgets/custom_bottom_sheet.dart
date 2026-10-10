@@ -1,8 +1,8 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:flutter/material.dart';
 
+// Aviso na parte de baixo da tela (ex: erro no login) com um botão de ação
 Future<void> customModalBottomSheet(
   BuildContext context, {
   required String content,
@@ -11,46 +11,41 @@ Future<void> customModalBottomSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.only(
-        topLeft: Radius.circular(38.0),
-        topRight: Radius.circular(38.0),
-      ),
-    ),
     builder: (BuildContext context) {
-      return Container(
-        decoration: const BoxDecoration(
-          color: AppColors.iceWhite,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(38.0),
-            topRight: Radius.circular(38.0),
-          ),
-        ),
-        height: 200,
-        child: Center(
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  content, // Agora exibe o erro dinâmico do Firebase
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.midText20.copyWith(
-                    color: AppColors.greenlightOne,
-                  ),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: const BoxDecoration(
+                  color: AppColors.harvestSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.harvestDark,
+                  size: 30,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16.0,
-                  horizontal: 32.0,
+              const SizedBox(height: 16),
+              Text(
+                content,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.4,
+                  color: AppColors.ink,
                 ),
-                child: PrimaryButton(
-                  text: buttonText, // Agora exibe o texto dinâmico do botão
-                  onPressed: onPressed ?? () => Navigator.pop(context),
-                ),
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                text: buttonText,
+                onPressed: onPressed ?? () => Navigator.pop(context),
               ),
             ],
           ),

@@ -8,9 +8,9 @@ import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
-import 'package:agro_comercial/common/widgets/multi_text_button.dart';
 import 'package:agro_comercial/common/widgets/password_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
+import 'package:agro_comercial/common/widgets/auth_scaffold.dart';
 import 'package:flutter/material.dart';
 
 import '../../locator.dart';
@@ -88,118 +88,87 @@ class _SignInPageState extends State<SignInPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ListView(
-        key: Keys.signInListView,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 32.0),
-        children: [
-          const SizedBox(height: 48),
-          Text(
-            'Bem-vindo de volta!',
-            textAlign: TextAlign.center,
-            style: AppTextStyles.midText36.copyWith(
-              color: AppColors.greenlightOne,
-            ),
-          ),
-          const SizedBox(height: 32),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                CustomTextFormField(
-                  key: Keys.signInEmailField,
-                  controller: _emailController,
-                  labelText: "Seu e-mail",
-                  hintText: "email@email.com",
-                  keyboardType: TextInputType.emailAddress,
-                  validator: Validator.validateEmail,
-                  // Permite que o Tab ou o botão Próximo mude o foco
-                  textInputAction: TextInputAction.next,
-                  onEditingComplete: () => FocusScope.of(context).nextFocus(),
-                ),
-                PasswordFormField(
-                  key: Keys.signInPasswordField,
-                  controller: _passwordController,
-                  labelText: "Sua senha",
-                  hintText: "*********",
-                  validator: Validator.validatePassword,
-                  // Como é o último campo, ele confirma a ação
-                  textInputAction: TextInputAction.done,
-                  onEditingComplete: _onSignInButtonPressed,
-                ),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _keepConnected,
-                      onChanged: (value) {
-                        setState(() {
-                          _keepConnected = value ?? true;
-                        });
-                      },
-                      activeColor: AppColors.greenlightOne,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _keepConnected = !_keepConnected;
-                        });
-                      },
-                      child: Text(
-                        "Manter-me conectado",
-                        style: AppTextStyles.smallText.copyWith(
-                          color: AppColors.grey,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              key: Keys.forgotPasswordButton,
-              // pushNamed (e não popAndPushNamed) para o "voltar" retornar ao login
-              onPressed: () =>
-                  Navigator.pushNamed(context, NamedRoute.forgotPassword),
-              child: const Text('Esqueceu a senha?'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 32.0,
-              right: 32.0,
-              top: 16.0,
-              bottom: 4.0,
-            ),
-            child: PrimaryButton(
-              key: Keys.signInButton,
-              text: 'Entrar',
-              onPressed: _onSignInButtonPressed,
-            ),
-          ),
-          MultiTextButton(
-            key: Keys.signInDontHaveAccountButton,
-            onPressed: () => Navigator.popAndPushNamed(context, '/sign_up'),
+    return AuthScaffold(
+      scrollKey: Keys.signInListView,
+      title: 'Bem-vindo de volta',
+      subtitle:
+          'Acesse sua conta e acompanhe a safra, a lavoura e o caixa da fazenda.',
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(
             children: [
-              Text(
-                'Não tem uma conta? ',
-                style: AppTextStyles.smallText.copyWith(color: AppColors.grey),
+              CustomTextFormField(
+                key: Keys.signInEmailField,
+                controller: _emailController,
+                labelText: "E-mail",
+                hintText: "email@email.com",
+                prefixIcon: Icons.mail_outline_rounded,
+                keyboardType: TextInputType.emailAddress,
+                validator: Validator.validateEmail,
+                // Permite que o Tab ou o botão Próximo mude o foco
+                textInputAction: TextInputAction.next,
+                onEditingComplete: () => FocusScope.of(context).nextFocus(),
               ),
-              Text(
-                'Cadastre-se',
-                style: AppTextStyles.smallText.copyWith(
-                  color: AppColors.greenlightOne,
-                ),
+              PasswordFormField(
+                key: Keys.signInPasswordField,
+                controller: _passwordController,
+                labelText: "Senha",
+                hintText: "Sua senha",
+                validator: Validator.validatePassword,
+                // Como é o último campo, ele confirma a ação
+                textInputAction: TextInputAction.done,
+                onEditingComplete: _onSignInButtonPressed,
               ),
             ],
           ),
-        ],
-      ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: Row(
+            children: [
+              Checkbox(
+                value: _keepConnected,
+                onChanged: (value) =>
+                    setState(() => _keepConnected = value ?? true),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _keepConnected = !_keepConnected),
+                  child: Text(
+                    "Manter conectado",
+                    style: AppTextStyles.smallText.copyWith(
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+              TextButton(
+                key: Keys.forgotPasswordButton,
+                // pushNamed (e não popAndPushNamed) para o "voltar" retornar ao login
+                onPressed: () =>
+                    Navigator.pushNamed(context, NamedRoute.forgotPassword),
+                child: const Text('Esqueceu a senha?'),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+          child: PrimaryButton(
+            key: Keys.signInButton,
+            text: 'Entrar',
+            icon: Icons.login_rounded,
+            onPressed: _onSignInButtonPressed,
+          ),
+        ),
+        AuthSwitchLink(
+          key: Keys.signInDontHaveAccountButton,
+          question: 'Não tem uma conta?',
+          action: 'Cadastre-se',
+          onPressed: () => Navigator.popAndPushNamed(context, '/sign_up'),
+        ),
+      ],
     );
   }
 }
