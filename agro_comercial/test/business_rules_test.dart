@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/models/bookkeeping_model.dart';
 import 'package:agro_comercial/common/models/cost_model.dart';
 import 'package:agro_comercial/common/models/farm_model.dart';
@@ -156,6 +157,29 @@ void main() {
         consume: const [],
       );
       expect(result.single.workingHours, 0);
+    });
+  });
+
+  group('Parsers.decimal e validações numéricas', () {
+    test('recusa NaN e Infinity', () {
+      expect(Parsers.decimal('NaN'), isNull);
+      expect(Parsers.decimal('Infinity'), isNull);
+      expect(Parsers.money('Infinity'), isNull);
+      expect(Parsers.decimal('1,5'), 1.5);
+    });
+
+    test('medida da embalagem precisa ser maior que zero', () {
+      expect(Validator.validatePositiveDecimal('0'), isNotNull);
+      expect(Validator.validatePositiveDecimal('-1'), isNotNull);
+      expect(Validator.validatePositiveDecimal('abc'), isNotNull);
+      expect(Validator.validatePositiveDecimal('20'), isNull);
+    });
+
+    test('quantidade pode ser zero, mas não negativa', () {
+      expect(Validator.validateNonNegativeDecimal('0'), isNull);
+      expect(Validator.validateNonNegativeDecimal('2,5'), isNull);
+      expect(Validator.validateNonNegativeDecimal('-2'), isNotNull);
+      expect(Validator.validateNonNegativeDecimal('NaN'), isNotNull);
     });
   });
 

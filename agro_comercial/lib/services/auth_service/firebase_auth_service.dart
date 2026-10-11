@@ -45,7 +45,8 @@ class FirebaseAuthService implements AuthService {
             email: data['email'] ?? result.user!.email,
             cpf: data['cpf'],
             password: null, // A senha nunca fica guardada no app
-            role: data['role'] ?? 'colaborador',
+            // 'tipo' é o nome antigo do campo, mantido para cadastros antigos
+            role: data['role'] ?? data['tipo'] ?? 'colaborador',
           );
           await _ensureCpfIndexed(user);
           return DataResult.success(user);
@@ -92,7 +93,8 @@ class FirebaseAuthService implements AuthService {
       }
 
       // 3. Salva o cadastro e reserva o CPF juntos (as regras do Firestore
-      // exigem os dois no mesmo lote)
+      // exigem os dois no mesmo lote). Se falhar, desfaz a conta: sem isso
+      // sobraria um login sem cadastro, e o e-mail ficaria preso.
       final batch = _firestore.batch();
       batch.set(_firestore.collection('users').doc(user.uid), {
         'name': name,
@@ -107,7 +109,12 @@ class FirebaseAuthService implements AuthService {
         uid: user.uid,
         role: role,
       );
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (e) {
+        await _deleteQuietly(user);
+        rethrow;
+      }
 
       // 4. Atualiza o nome no perfil de autenticação
       await user.updateDisplayName(name);
@@ -126,6 +133,14 @@ class FirebaseAuthService implements AuthService {
       return DataResult.failure(AuthException(code: e.code));
     } catch (e) {
       return DataResult.failure(const GeneralException());
+    }
+  }
+
+  Future<void> _deleteQuietly(User user) async {
+    try {
+      await user.delete();
+    } catch (e) {
+      debugPrint("Conta recém-criada não foi desfeita: $e");
     }
   }
 
@@ -181,6 +196,8 @@ class FirebaseAuthService implements AuthService {
     }
   }
 
+  // Conta sem cadastro (users/{uid}): segue como produtor, como o restante do
+  // app (ProfileService) já trata esse caso
   UserModel _createUserModelFromAuthUser(User user) {
     return UserModel(
       name: user.displayName,
@@ -188,7 +205,7 @@ class FirebaseAuthService implements AuthService {
       id: user.uid,
       cpf: null,
       password: null,
-      role: 'colaborador',
+      role: 'admin',
     );
   }
 

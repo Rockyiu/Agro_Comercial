@@ -1,13 +1,13 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
 import 'package:agro_comercial/common/models/machine_cost_data.dart';
 import 'package:agro_comercial/common/models/machine_model.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/warehouse_service/warehouse_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:io';
 
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 
@@ -58,7 +58,7 @@ class RegisterMachineController extends SafeChangeNotifier {
     required String workingHoursStr,
     required String warehouseId,
     required bool isMotorized,
-    required File? imageFile,
+    PhotoChange? photo,
     MachineCostData? costData,
   }) async {
     _changeState(RegisterMachineLoadingState());
@@ -91,11 +91,10 @@ class RegisterMachineController extends SafeChangeNotifier {
         warehouseId: warehouseId,
         farmId: activeFarmId,
         isMotorized: isMotorized,
-        imageUrl: null,
         costData: costData,
       );
 
-      await _machineService.createMachine(newMachine, imageFile);
+      await _machineService.createMachine(newMachine, photo: photo);
       _changeState(RegisterMachineSuccessState());
     } catch (e) {
       _changeState(RegisterMachineErrorState("Erro ao salvar máquina."));

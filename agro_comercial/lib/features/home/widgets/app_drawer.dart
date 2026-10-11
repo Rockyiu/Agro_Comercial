@@ -1,5 +1,8 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/common/widgets/logout_list_tile.dart';
 import 'package:flutter/material.dart';
 
@@ -33,7 +36,40 @@ class AppDrawer extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const AppBrandName(logoSize: 40),
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: AppBrandName(logoSize: 40),
+                          ),
+                        ),
+                        // Foto do perfil (guardada no aparelho)
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: LocalPhoto(
+                            kind: MediaKind.profile,
+                            id: FirebaseAuth.instance.currentUser?.uid,
+                            size: 44,
+                            placeholder: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.15),
+                              ),
+                              child: const Icon(
+                                Icons.person_rounded,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
                     Text(
                       title,

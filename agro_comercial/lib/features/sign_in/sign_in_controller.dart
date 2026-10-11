@@ -1,5 +1,4 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/services.dart';
@@ -44,13 +43,8 @@ class SignInController extends SafeChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('keepConnected', keepConnected);
 
-        bool isCollaborator = false;
-        try {
-          isCollaborator = await _authService.isCurrentUserCollaborator();
-        } catch (e) {
-          debugPrint("Erro ao verificar o perfil do usuário: $e");
-        }
-        _changeState(SignInStateSuccess(isCollaborator: isCollaborator));
+        // O perfil (produtor ou colaborador) já vem do cadastro lido no login
+        _changeState(SignInStateSuccess(isCollaborator: data.isCollaborator));
       },
     );
   }

@@ -1,12 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/models/cost_model.dart';
+import 'package:agro_comercial/services/firestore_batches.dart';
 
 class CostService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Limite de escritas por lote do Firestore
-  static const int _maxBatchWrites = 500;
 
   CollectionReference<Map<String, dynamic>> get _costs =>
       _firestore.collection('costs');
@@ -24,6 +22,15 @@ class CostService {
   Future<void> deleteCost(String costId) async {
     await _costs.doc(costId).delete();
   }
+
+  // Exclui vários custos em lote (uma ida ao banco, em vez de uma por custo)
+  Future<void> deleteCosts(Iterable<String> costIds) => commitInBatches(
+    _firestore,
+    costIds.map(
+      (id) =>
+          (batch) => batch.delete(_costs.doc(id)),
+    ),
+  );
 
   // Custos da fazenda, do mais recente para o mais antigo.
   //
@@ -57,17 +64,17 @@ class CostService {
     if (legacy.isEmpty) return;
 
     try {
-      final pending = legacy.toList();
-      for (var i = 0; i < pending.length; i += _maxBatchWrites) {
-        final batch = _firestore.batch();
-        for (final doc in pending.skip(i).take(_maxBatchWrites)) {
-          final category = doc.data()['category'] as String? ?? '';
-          batch.update(doc.reference, {
-            'laborCost': CostModel.isLaborCategory(category),
-          });
-        }
-        await batch.commit();
-      }
+      await commitInBatches(
+        _firestore,
+        legacy.map(
+          (doc) =>
+              (batch) => batch.update(doc.reference, {
+                'laborCost': CostModel.isLaborCategory(
+                  doc.data()['category'] as String? ?? '',
+                ),
+              }),
+        ),
+      );
     } catch (e) {
       debugPrint("Erro ao atualizar custos antigos: $e");
     }

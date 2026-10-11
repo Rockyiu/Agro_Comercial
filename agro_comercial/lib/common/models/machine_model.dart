@@ -11,7 +11,6 @@ class MachineModel {
   final double workingHours; // Horímetro (aceita frações de hora)
   final String warehouseId;
   final String farmId;
-  final String? imageUrl;
   final bool isMotorized; // false = implemento sem motor/horímetro
   final MachineCostData? costData; // Dados do custo da hora-máquina
 
@@ -24,7 +23,6 @@ class MachineModel {
     required this.workingHours,
     required this.warehouseId,
     required this.farmId,
-    this.imageUrl,
     this.isMotorized = true, // Por padrão, assumimos que tem motor
     this.costData,
   });
@@ -45,7 +43,6 @@ class MachineModel {
     double? workingHours,
     String? warehouseId,
     String? farmId,
-    String? imageUrl,
     bool? isMotorized,
     MachineCostData? costData,
   }) {
@@ -58,7 +55,6 @@ class MachineModel {
       workingHours: workingHours ?? this.workingHours,
       warehouseId: warehouseId ?? this.warehouseId,
       farmId: farmId ?? this.farmId,
-      imageUrl: imageUrl ?? this.imageUrl,
       isMotorized: isMotorized ?? this.isMotorized,
       costData: costData ?? this.costData,
     );
@@ -74,7 +70,6 @@ class MachineModel {
       'workingHours': workingHours,
       'warehouseId': warehouseId,
       'farmId': farmId,
-      'imageUrl': imageUrl,
       'isMotorized': isMotorized, // Salva no banco
       'costData': costData?.toMap(),
     };
@@ -90,7 +85,6 @@ class MachineModel {
       workingHours: (map['workingHours'] as num?)?.toDouble() ?? 0,
       warehouseId: map['warehouseId'] ?? '',
       farmId: map['farmId'] ?? '',
-      imageUrl: map['imageUrl'],
       isMotorized:
           map['isMotorized'] ??
           true, // Lê do banco (evita quebrar máquinas antigas)

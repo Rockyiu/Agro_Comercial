@@ -8,6 +8,8 @@ import 'package:agro_comercial/common/widgets/animations.dart';
 import 'package:agro_comercial/common/widgets/brand.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/empty_state.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:agro_comercial/common/widgets/page_hero.dart';
 import 'package:agro_comercial/common/widgets/surface_card.dart';
 import 'package:agro_comercial/features/edit_machine/edit_machine_page.dart';
@@ -35,6 +37,8 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   static const _filters = ['Tudo', 'Máquinas', 'Produtos'];
 
   String _selectedFilter = 'Tudo';
+  // Atualizado quando o armazém é renomeado
+  late WarehouseModel _warehouse = widget.warehouse;
   final _controller = locator.get<WarehouseDetailsController>();
 
   Set<String> selectedIds = {};
@@ -42,7 +46,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   @override
   void initState() {
     super.initState();
-    _controller.loadInventory(widget.warehouse);
+    _controller.loadInventory(_warehouse);
   }
 
   void _toggleSelection(String id) {
@@ -58,7 +62,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   // Abre a tela e recarrega o estoque ao voltar
   Future<void> _openAndReload(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    _controller.loadInventory(widget.warehouse);
+    _controller.loadInventory(_warehouse);
   }
 
   void _showAddMenu() {
@@ -70,18 +74,36 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           icon: Icons.agriculture_rounded,
           title: 'Cadastrar Máquina',
           subtitle: 'Trator, colhedora, implementos',
-          onTap: () => _openAndReload(const RegisterMachinePage()),
+          onTap: () =>
+              _openAndReload(RegisterMachinePage(initialWarehouse: _warehouse)),
         ),
         AddMenuOption(
           icon: Icons.inventory_2_rounded,
           title: 'Cadastrar Produto',
           subtitle: 'Insumos, sementes, defensivos e fertilizantes',
-          onTap: () => _openAndReload(
-            RegisterProductPage(initialWarehouse: widget.warehouse),
-          ),
+          onTap: () =>
+              _openAndReload(RegisterProductPage(initialWarehouse: _warehouse)),
         ),
       ],
     );
+  }
+
+  Future<void> _editWarehouse() async {
+    final result = await Navigator.push<EditWarehouseResult>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditWarehousePage(warehouse: _warehouse),
+      ),
+    );
+    if (!mounted) return;
+    switch (result) {
+      case WarehouseDeleted():
+        Navigator.pop(context); // o armazém não existe mais
+      case WarehouseRenamed(:final warehouse):
+        setState(() => _warehouse = warehouse);
+      case null:
+        break;
+    }
   }
 
   Future<void> _showDeleteMultipleDialog() async {
@@ -92,7 +114,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           "Tem certeza que deseja excluir os ${selectedIds.length} item(ns) selecionado(s)?",
     );
     if (!confirmed || !mounted) return;
-    _controller.deleteSelectedItems(selectedIds.toList(), widget.warehouse);
+    _controller.deleteSelectedItems(selectedIds.toList(), _warehouse);
     setState(() => selectedIds.clear());
   }
 
@@ -106,18 +128,12 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.warehouse.name),
+        title: Text(_warehouse.name),
         actions: [
           IconButton(
             tooltip: 'Editar armazém',
             icon: const Icon(Icons.edit_rounded),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    EditWarehousePage(warehouse: widget.warehouse),
-              ),
-            ),
+            onPressed: _editWarehouse,
           ),
         ],
       ),
@@ -137,7 +153,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
                 title: 'Algo deu errado',
                 message: state.message,
                 action: TextButton.icon(
-                  onPressed: () => _controller.loadInventory(widget.warehouse),
+                  onPressed: () => _controller.loadInventory(_warehouse),
                   icon: const Icon(Icons.refresh_rounded),
                   label: const Text('Tentar novamente'),
                 ),
@@ -172,7 +188,7 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
           child: PageHero(
             icon: Icons.warehouse_rounded,
             eyebrow: 'Estoque do armazém',
-            title: widget.warehouse.name,
+            title: _warehouse.name,
             metrics: [
               HeroMetric(
                 icon: Icons.agriculture_rounded,
@@ -282,6 +298,8 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
         children: [
           _ItemBadge(
             selected: isSelected,
+            kind: MediaKind.product,
+            id: product.id,
             icon: Icons.inventory_2_rounded,
             color: AppColors.harvestDark,
             background: AppColors.harvestSoft,
@@ -325,6 +343,8 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
         children: [
           _ItemBadge(
             selected: isSelected,
+            kind: MediaKind.machine,
+            id: machine.id,
             icon: machine.isMotorized
                 ? Icons.agriculture_rounded
                 : Icons.construction_rounded,
@@ -376,15 +396,20 @@ class _WarehouseDetailsPageState extends State<WarehouseDetailsPage> {
   }
 }
 
-// Ícone do item, trocado por um "check" quando selecionado
+// Foto do item (guardada no aparelho) ou o ícone, trocados por um "check"
+// quando selecionado
 class _ItemBadge extends StatelessWidget {
   final bool selected;
+  final MediaKind kind;
+  final String? id;
   final IconData icon;
   final Color color;
   final Color background;
 
   const _ItemBadge({
     required this.selected,
+    required this.kind,
+    required this.id,
     required this.icon,
     required this.color,
     required this.background,
@@ -404,12 +429,18 @@ class _ItemBadge extends StatelessWidget {
               color: Colors.white,
               background: AppColors.primary,
             )
-          : IconBadge(
+          : LocalPhoto(
               key: const ValueKey('item'),
-              icon: icon,
+              kind: kind,
+              id: id,
               size: 52,
-              color: color,
-              background: background,
+              borderRadius: BorderRadius.circular(52 * 0.32),
+              placeholder: IconBadge(
+                icon: icon,
+                size: 52,
+                color: color,
+                background: background,
+              ),
             ),
     );
   }

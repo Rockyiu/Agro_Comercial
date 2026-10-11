@@ -1,14 +1,28 @@
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
-import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/loading_overlay.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_warehouse_controller.dart';
 import 'edit_warehouse_state.dart';
+
+// Resultado da tela de edição, devolvido para quem a abriu
+sealed class EditWarehouseResult {
+  const EditWarehouseResult();
+}
+
+class WarehouseRenamed extends EditWarehouseResult {
+  final WarehouseModel warehouse;
+  const WarehouseRenamed(this.warehouse);
+}
+
+class WarehouseDeleted extends EditWarehouseResult {
+  const WarehouseDeleted();
+}
 
 class EditWarehousePage extends StatefulWidget {
   final WarehouseModel warehouse;
@@ -19,44 +33,10 @@ class EditWarehousePage extends StatefulWidget {
 
 class _EditWarehousePageState extends State<EditWarehousePage> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
+  late final _nameController = TextEditingController(
+    text: widget.warehouse.name,
+  );
   final _controller = locator.get<EditWarehouseController>();
-
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.warehouse.name);
-    _controller.addListener(_handleStateChange);
-  }
-
-  void _handleStateChange() {
-    final state = _controller.state;
-    if (state is EditWarehouseLoadingState) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const CustomCircularProgressIndicator(),
-      );
-    } else if (state is EditWarehouseSuccessState) {
-      Navigator.pop(context); // Fecha loading
-      Navigator.pop(context); // Fecha edição
-      Navigator.pop(context); // Volta pra aba Armazém para forçar atualização
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Ação concluída!"),
-          backgroundColor: AppColors.greenlightOne,
-        ),
-      );
-    } else if (state is EditWarehouseErrorState) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.message),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
-  }
 
   @override
   void dispose() {
@@ -65,87 +45,85 @@ class _EditWarehousePageState extends State<EditWarehousePage> {
     super.dispose();
   }
 
-  void _showDeleteDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Armazém",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: const Text(
-          "Tem certeza que deseja excluir este armazém? Todas as máquinas nele ficarão sem local.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancelar",
-              style: TextStyle(color: AppColors.inkMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteWarehouse(widget.warehouse);
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(
-                color: AppColors.danger,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
+  // Executa a ação; se der certo, fecha a tela devolvendo [result]
+  Future<void> _runAndClose(
+    Future<void> Function() action,
+    EditWarehouseResult result,
+  ) async {
+    await action();
+    if (!mounted) return;
+    final state = _controller.state;
+    if (state is EditWarehouseErrorState) {
+      context.showErrorSnackBar(state.message);
+      return;
+    }
+    Navigator.pop(context, result);
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Armazém",
+      message:
+          "Tem certeza que deseja excluir este armazém? Todas as máquinas e produtos guardados nele também serão apagados.",
+    );
+    if (!confirmed || !mounted) return;
+    await _runAndClose(
+      () => _controller.deleteWarehouse(widget.warehouse),
+      const WarehouseDeleted(),
+    );
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final name = _nameController.text.trim();
+    await _runAndClose(
+      () => _controller.updateWarehouseName(widget.warehouse, name),
+      WarehouseRenamed(widget.warehouse.copyWith(name: name)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
-        title: Text(
-          "Editar Armazém",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text("Editar Armazém"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
-            onPressed: _showDeleteDialog,
+            tooltip: 'Excluir armazém',
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: _delete,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              CustomTextFormField(
-                controller: _nameController,
-                labelText: "Nome do armazém",
-                validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-              ),
-              const SizedBox(height: 32),
-              PrimaryButton(
-                text: 'Salvar Alterações',
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    _controller.updateWarehouseName(
-                      widget.warehouse,
-                      _nameController.text.trim(),
-                    );
-                  }
-                },
-              ),
-            ],
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) => LoadingOverlay(
+          isLoading: _controller.state is EditWarehouseLoadingState,
+          child: child!,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                CustomTextFormField(
+                  controller: _nameController,
+                  labelText: "Nome do armazém",
+                  prefixIcon: Icons.warehouse_rounded,
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? "Campo obrigatório" : null,
+                ),
+                const SizedBox(height: 32),
+                PrimaryButton(
+                  text: 'Salvar Alterações',
+                  icon: Icons.check_rounded,
+                  onPressed: _save,
+                ),
+              ],
+            ),
           ),
         ),
       ),

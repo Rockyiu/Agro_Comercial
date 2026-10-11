@@ -1,7 +1,7 @@
-import 'dart:io';
-import 'package:agro_comercial/common/widgets/image_source_picker.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/common/models/warehouse_model.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
@@ -9,6 +9,7 @@ import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/empty_state.dart';
+import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/loading_overlay.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/features/warehouse/warehouse_controller.dart';
@@ -42,7 +43,8 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
   WarehouseModel? _selectedWarehouse;
   String? _selectedCategory;
   String _selectedUnit = 'un';
-  File? _selectedImage;
+  PhotoChange? _photo;
+  final _warehouseController = locator.get<WarehouseController>();
 
   static const List<String> _categories = [
     'Adubo',
@@ -76,6 +78,14 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
   void initState() {
     super.initState();
     _selectedWarehouse = widget.initialWarehouse;
+    // A lista de armazéns vem da aba Armazém; se ela ainda não foi aberta,
+    // carrega aqui
+    if (widget.initialWarehouse == null &&
+        _warehouseController.state is! WarehouseSuccessState) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _warehouseController.loadWarehouseData(),
+      );
+    }
   }
 
   @override
@@ -91,39 +101,36 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    final image = await showImageSourcePicker(
-      context,
-      cameraLabel: 'Tirar Foto (Câmera)',
-      galleryLabel: 'Escolher da Galeria',
-    );
-    if (image != null && mounted) setState(() => _selectedImage = image);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final warehouseState = locator.get<WarehouseController>().state;
+    // Reconstrói quando a lista de armazéns termina de carregar
+    return ListenableBuilder(
+      listenable: _warehouseController,
+      builder: (context, _) => _buildPage(),
+    );
+  }
+
+  Widget _buildPage() {
+    final warehouseState = _warehouseController.state;
     final List<WarehouseModel> availableWarehouses =
         warehouseState is WarehouseSuccessState
         ? warehouseState.warehouses
         : [];
+    final loadingWarehouses =
+        widget.initialWarehouse == null &&
+        (warehouseState is WarehouseLoadingState ||
+            warehouseState is WarehouseInitialState);
     final bool noWarehousesAvailable =
         availableWarehouses.isEmpty && widget.initialWarehouse == null;
 
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Cadastrar Produto",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: noWarehousesAvailable
+      appBar: AppBar(title: const Text("Cadastrar Produto")),
+      body: loadingWarehouses
+          ? const CustomCircularProgressIndicator()
+          : noWarehousesAvailable
           ? const Center(
               child: EmptyState(
-                icon: Icons.warehouse_outlined,
+                icon: Icons.warehouse_rounded,
                 title: "Nenhum armazém",
                 message: "Crie um armazém antes de cadastrar um produto!",
               ),
@@ -141,49 +148,13 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Center(
-                        child: Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            Container(
-                              height: 110,
-                              width: 110,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.greenlightOne,
-                                  width: 2,
-                                ),
-                              ),
-                              child: _selectedImage != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(55),
-                                      child: Image.file(
-                                        _selectedImage!,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.inventory_2_outlined,
-                                      size: 50,
-                                      color: AppColors.lightkGrey,
-                                    ),
-                            ),
-                            CircleAvatar(
-                              backgroundColor: AppColors.greenlightOne,
-                              radius: 18,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                onPressed: _pickImage,
-                              ),
-                            ),
-                          ],
-                        ),
+                      PhotoEditor(
+                        kind: MediaKind.product,
+                        id: null,
+                        change: _photo,
+                        onChanged: (change) => setState(() => _photo = change),
+                        icon: Icons.inventory_2_rounded,
+                        circle: false,
                       ),
                       const SizedBox(height: 24),
 
@@ -243,12 +214,14 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                       CustomTextFormField(
                         controller: _nameController,
                         labelText: "Nome do produto",
-                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                        validator: (v) =>
+                            (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                       ),
                       CustomTextFormField(
                         controller: _brandController,
                         labelText: "Marca / fabricante",
-                        validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                        validator: (v) =>
+                            (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                       ),
 
                       // ATUALIZADO: Linha de 3 Colunas com Quantidade, Medida e Unidade
@@ -262,8 +235,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              validator: (v) =>
-                                  v!.isEmpty ? "Obrigatório" : null,
+                              validator: Validator.validateNonNegativeDecimal,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -276,8 +248,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              validator: (v) =>
-                                  v!.isEmpty ? "Obrigatório" : null,
+                              validator: Validator.validatePositiveDecimal,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -349,7 +320,7 @@ class _RegisterProductPageState extends State<RegisterProductPage> {
       unitPrice: Parsers.decimal(_priceController.text),
     );
 
-    await _controller.createProduct(newProduct, _selectedImage);
+    await _controller.createProduct(newProduct, photo: _photo);
     if (!mounted) return;
 
     final state = _controller.state;

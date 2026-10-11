@@ -1,31 +1,38 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
+import 'package:agro_comercial/services/firestore_batches.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 
+// Produtos (insumos) do estoque. A foto fica só no aparelho.
 class ProductService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalMediaService _media;
 
-  Future<void> createProduct(ProductModel product, File? imageFile) async {
-    final docRef = _firestore.collection('products').doc();
+  ProductService(this._media);
 
-    // Upload de imagem desativado temporariamente devido ao plano Spark
-    final map = product.copyWith(id: docRef.id).toMap()..['imageUrl'] = null;
-    map['createdAt'] = DateTime.now().millisecondsSinceEpoch;
+  CollectionReference<Map<String, dynamic>> get _products =>
+      _firestore.collection('products');
+
+  Future<void> createProduct(ProductModel product, {PhotoChange? photo}) async {
+    final docRef = _products.doc();
+    final map = product.copyWith(id: docRef.id).toMap()
+      ..['createdAt'] = DateTime.now().millisecondsSinceEpoch;
     await docRef.set(map);
+
+    await _media.applyPhotoChange(MediaKind.product, docRef.id, photo);
   }
 
   // Toda consulta filtra pela fazenda: é o que as regras do Firestore usam
   // para liberar a leitura
-  Future<List<ProductModel>> getProductsByFarm(String farmId) => _query(
-    _firestore.collection('products').where('farmId', isEqualTo: farmId),
-  );
+  Future<List<ProductModel>> getProductsByFarm(String farmId) =>
+      _query(_products.where('farmId', isEqualTo: farmId));
 
   Future<List<ProductModel>> getProductsByWarehouse({
     required String farmId,
     required String warehouseId,
   }) => _query(
-    _firestore
-        .collection('products')
+    _products
         .where('farmId', isEqualTo: farmId)
         .where('warehouseId', isEqualTo: warehouseId),
   );
@@ -33,33 +40,43 @@ class ProductService {
   Future<List<ProductModel>> _query(Query<Map<String, dynamic>> query) async {
     final snapshot = await query.get();
     return snapshot.docs
-        .map((doc) => ProductModel.fromMap(doc.data()))
+        .map((doc) => ProductModel.fromMap({...doc.data(), 'id': doc.id}))
         .toList();
   }
 
-  Future<void> updateProduct(ProductModel product, File? newImageFile) async {
-    await _firestore.collection('products').doc(product.id).update({
+  // [updateQuantity]: o estoque só é gravado se foi alterado no formulário.
+  // Ele também muda pelas operações (incremento), e regravar o valor que
+  // estava na tela apagaria as baixas feitas nesse meio-tempo.
+  Future<void> updateProduct(
+    ProductModel product, {
+    required bool updateQuantity,
+    PhotoChange? photo,
+  }) async {
+    await _products.doc(product.id).update({
       'name': product.name,
       'brand': product.brand,
-      'quantity': product.quantity,
+      if (updateQuantity) 'quantity': product.quantity,
       'measure': product.measure,
       'unit': product.unit,
       'category': product.category,
       'attributes': product.attributes,
       'unitPrice': product.unitPrice,
     });
+    await _media.applyPhotoChange(MediaKind.product, product.id!, photo);
   }
 
-  Future<void> deleteProduct(String productId) async {
-    await _firestore.collection('products').doc(productId).delete();
-  }
+  Future<void> deleteProduct(String productId) =>
+      deleteMultipleProducts([productId]);
 
   Future<void> deleteMultipleProducts(List<String> productIds) async {
-    final batch = _firestore.batch();
-    for (String id in productIds) {
-      batch.delete(_firestore.collection('products').doc(id));
-    }
-    await batch.commit();
+    await commitInBatches(
+      _firestore,
+      productIds.map(
+        (id) =>
+            (batch) => batch.delete(_products.doc(id)),
+      ),
+    );
+    await _media.deleteImages(MediaKind.product, productIds);
   }
 
   // Já existe outro produto com o mesmo nome e marca neste armazém?

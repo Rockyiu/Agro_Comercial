@@ -3,7 +3,11 @@ class Parsers {
 
   // Aceita tanto "1,5" quanto "1.5" (teclado brasileiro usa vírgula)
   static double? decimal(String text) =>
-      double.tryParse(text.trim().replaceAll(',', '.'));
+      _finite(double.tryParse(text.trim().replaceAll(',', '.')));
+
+  // "NaN" e "Infinity" também são aceitos pelo double.tryParse
+  static double? _finite(double? value) =>
+      value != null && value.isFinite ? value : null;
 
   // Valor em reais digitado de qualquer jeito comum:
   // "1.500,50", "1500,50", "1500.50", "1.500", "R$ 1.500,50"
@@ -21,6 +25,6 @@ class Parsers {
         RegExp(r'\.\d{3}$').hasMatch(value)) {
       value = value.replaceAll('.', '');
     }
-    return double.tryParse(value);
+    return _finite(double.tryParse(value));
   }
 }

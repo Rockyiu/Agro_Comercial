@@ -8,7 +8,6 @@ class UserModel {
   final String? password;
   final String? role;
   final String? phone;
-  final String? imageUrl;
   final String? managerId; // O ID do gerente dono da fazenda
   // Colaborador liberado pelo produtor para registrar Produção/Colheita.
   // Só é gravado pela tela "Minha Equipe" (EmployeeService), por isso fica
@@ -23,7 +22,6 @@ class UserModel {
     required this.password,
     required this.role,
     this.phone,
-    this.imageUrl,
     this.managerId,
     this.canRegisterHarvest = false,
   });
@@ -39,7 +37,6 @@ class UserModel {
       password: password,
       role: role,
       phone: phone,
-      imageUrl: imageUrl,
       managerId: managerId,
       canRegisterHarvest: canRegisterHarvest ?? this.canRegisterHarvest,
     );
@@ -53,7 +50,6 @@ class UserModel {
       'cpf': cpf,
       'role': role,
       'phone': phone,
-      'imageUrl': imageUrl,
       'managerId': managerId,
     };
   }
@@ -67,7 +63,6 @@ class UserModel {
       password: map['password'] != null ? map['password'] as String : null,
       role: map['role'] != null ? map['role'] as String : null,
       phone: map['phone'] != null ? map['phone'] as String : null,
-      imageUrl: map['imageUrl'] != null ? map['imageUrl'] as String : null,
       managerId: map['managerId'] != null ? map['managerId'] as String : null,
       canRegisterHarvest: map['canRegisterHarvest'] == true,
     );
