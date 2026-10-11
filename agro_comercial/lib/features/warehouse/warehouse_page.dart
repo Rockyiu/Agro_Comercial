@@ -73,18 +73,20 @@ class _WarehousePageState extends State<WarehousePage> {
     _controller.loadWarehouseData();
   }
 
-  void _openWarehouse(WarehouseModel warehouse) {
+  Future<void> _openWarehouse(WarehouseModel warehouse) async {
     // Se tiver selecionando, o clique normal também seleciona. Se não, abre a tela!
     if (selectedIds.isNotEmpty) {
       _toggleSelection(warehouse.id!);
       return;
     }
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WarehouseDetailsPage(warehouse: warehouse),
       ),
     );
+    // O armazém pode ter sido renomeado ou excluído
+    _controller.loadWarehouseData();
   }
 
   @override

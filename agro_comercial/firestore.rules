@@ -82,6 +82,18 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
 
     match /users/{userId} {
+      // Tamanhos e tipos dos dados pessoais (evita gravar textos enormes ou
+      // de outro tipo pelo acesso direto à API)
+      function validPersonalData(data) {
+        return (data.get('name', '') == null
+            || (data.get('name', '') is string && data.get('name', '').size() <= 120))
+          && (data.get('email', '') == null
+            || (data.get('email', '') is string && data.get('email', '').size() <= 254))
+          && (data.get('phone', '') == null
+            || (data.get('phone', '') is string && data.get('phone', '').size() <= 30))
+          && (data.get('cpf', '') == null || data.get('cpf', '') is string);
+      }
+
       function isSelf() {
         return signedIn() && userId == me();
       }
@@ -93,8 +105,10 @@ service cloud.firestore {
       // O próprio usuário só altera dados pessoais. Perfil, fazenda e
       // permissões mudam pelo cadastro e pela tela "Minha Equipe".
       // O CPF só pode ser informado uma vez.
+      // (as fotos ficam só no aparelho: nenhum campo de imagem é gravado)
       function selfEditable() {
-        return changedKeys().hasOnly(['name', 'email', 'phone', 'imageUrl', 'cpf'])
+        return changedKeys().hasOnly(['name', 'email', 'phone', 'cpf'])
+          && validPersonalData(request.resource.data)
           && (!changedKeys().hasAny(['cpf'])
             || (resource.data.get('cpf', '') == ''
               && cpfBelongsToMe(request.resource.data.cpf)));
@@ -118,14 +132,19 @@ service cloud.firestore {
       allow get: if isSelf()
         // Produtor vendo a própria equipe (nome de quem registrou, etc.)
         || (linkedFarm() != null && isOwner(linkedFarm()))
-        // Produtor conferindo um colaborador sem fazenda antes de vinculá-lo
-        || (signedIn() && resource.data.get('role', '') == 'colaborador' && linkedFarm() == null);
+        // Produtor conferindo um colaborador sem fazenda antes de vinculá-lo.
+        // Só contas de produtor: um colaborador não lê o cadastro de outro.
+        || (signedIn()
+          && resource.data.get('role', '') == 'colaborador'
+          && linkedFarm() == null
+          && myProfile().get('role', '') == 'admin');
 
       // "Minha Equipe": a consulta sempre filtra pela fazenda do produtor
       allow list: if linkedFarm() != null && isOwner(linkedFarm());
 
       allow create: if isSelf()
         && request.resource.data.get('role', 'admin') in ['admin', 'colaborador']
+        && validPersonalData(request.resource.data)
         && !request.resource.data.keys().hasAny(['farmId', 'canRegisterHarvest', 'managerId'])
         && cpfBelongsToMe(request.resource.data.get('cpf', ''));
 

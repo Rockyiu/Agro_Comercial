@@ -126,14 +126,16 @@ class _BookkeepingPageState extends State<BookkeepingPage>
   }
 
   Future<void> _excluirSelecionados() async {
-    await _controller.excluirLancamentos(_itensSelecionados.toList());
+    final ok = await _controller.excluirLancamentos(
+      _itensSelecionados.toList(),
+    );
     if (!mounted) return;
 
     setState(() => _itensSelecionados.clear());
 
     // Só confirma o sucesso se a exclusão realmente deu certo
     final state = _controller.state;
-    if (state is BookkeepingErrorState) {
+    if (!ok && state is BookkeepingErrorState) {
       context.showErrorSnackBar(state.message);
     } else {
       context.showSuccessSnackBar("Lançamentos excluídos com sucesso!");
@@ -245,7 +247,11 @@ class _BookkeepingPageState extends State<BookkeepingPage>
                                 l.ano == _yearController.year,
                           )
                           .toList();
-                      return _buildMonth(indexMes, lancamentosDoMes);
+                      return _buildMonth(
+                        indexMes,
+                        lancamentosDoMes,
+                        state.comprovantes,
+                      );
                     }),
                   );
                 }
@@ -300,7 +306,11 @@ class _BookkeepingPageState extends State<BookkeepingPage>
     );
   }
 
-  Widget _buildMonth(int indexMes, List<BookkeepingModel> lancamentos) {
+  Widget _buildMonth(
+    int indexMes,
+    List<BookkeepingModel> lancamentos,
+    Set<String> comprovantes,
+  ) {
     final nomeMes = _nomeMes(indexMes);
 
     if (lancamentos.isEmpty) {
@@ -346,6 +356,7 @@ class _BookkeepingPageState extends State<BookkeepingPage>
             index: i + 1,
             child: _EntryCard(
               item: lancamentos[i],
+              temComprovante: comprovantes.contains(lancamentos[i].id),
               selected: _itensSelecionados.contains(lancamentos[i].id),
               onLongPress: () => _toggleSelecao(lancamentos[i].id!),
               onTap: () {
@@ -522,12 +533,14 @@ class _MoneyLine extends StatelessWidget {
 class _EntryCard extends StatelessWidget {
   final BookkeepingModel item;
   final bool selected;
+  final bool temComprovante;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
   const _EntryCard({
     required this.item,
     required this.selected,
+    required this.temComprovante,
     required this.onTap,
     required this.onLongPress,
   });
@@ -631,7 +644,7 @@ class _EntryCard extends StatelessWidget {
                         color: AppColors.inkMuted,
                       ),
                     ),
-                    if (item.pdfUrl != null) ...[
+                    if (temComprovante) ...[
                       const SizedBox(width: 8),
                       const Icon(
                         Icons.attach_file_rounded,

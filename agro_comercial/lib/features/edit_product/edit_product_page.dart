@@ -1,6 +1,9 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
 import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
@@ -35,6 +38,8 @@ class _EditProductPageState extends State<EditProductPage> {
   // (produtos antigos podem ter só o 'campo_extra_2')
   late final String _extraKey;
 
+  PhotoChange? _photo;
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +47,7 @@ class _EditProductPageState extends State<EditProductPage> {
     _nameController = TextEditingController(text: product.name);
     _brandController = TextEditingController(text: product.brand);
     _quantityController = TextEditingController(
-      text: product.quantity.toString(),
+      text: Formatters.editable(product.quantity),
     );
     _priceController = TextEditingController(
       text: product.unitPrice == null
@@ -101,37 +106,40 @@ class _EditProductPageState extends State<EditProductPage> {
 
     // Construído sem copyWith para permitir apagar o preço (null)
     final product = widget.product;
+    final quantity = Parsers.decimal(_quantityController.text) ?? 0.0;
     final updatedProduct = ProductModel(
       id: product.id,
       name: _nameController.text.trim(),
       brand: _brandController.text.trim(),
-      quantity: Parsers.decimal(_quantityController.text) ?? 0.0,
+      quantity: quantity,
       measure: product.measure,
       unit: product.unit,
       category: product.category,
       warehouseId: product.warehouseId,
       farmId: product.farmId,
-      imageUrl: product.imageUrl,
       attributes: attributes,
       unitPrice: Parsers.decimal(_priceController.text),
     );
-    await _runAndClose(() => _controller.updateProduct(updatedProduct));
+    await _runAndClose(
+      () => _controller.updateProduct(
+        updatedProduct,
+        // Compara com o valor exibido (já arredondado) para saber se mudou
+        quantityChanged:
+            quantity != Parsers.decimal(Formatters.editable(product.quantity)),
+        photo: _photo,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
-        title: Text(
-          "Detalhes do Produto",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text("Detalhes do Produto"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
+            tooltip: 'Excluir produto',
+            icon: const Icon(Icons.delete_outline_rounded),
             onPressed: _delete,
           ),
         ],
@@ -149,12 +157,13 @@ class _EditProductPageState extends State<EditProductPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Center(
-                  child: Icon(
-                    Icons.inventory_2_rounded,
-                    size: 70,
-                    color: AppColors.greenlightOne,
-                  ),
+                PhotoEditor(
+                  kind: MediaKind.product,
+                  id: widget.product.id,
+                  change: _photo,
+                  onChanged: (change) => setState(() => _photo = change),
+                  icon: Icons.inventory_2_rounded,
+                  circle: false,
                 ),
                 const SizedBox(height: 12),
                 Center(
@@ -178,7 +187,7 @@ class _EditProductPageState extends State<EditProductPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      "Medida por Embalagem: ${widget.product.measure} ${widget.product.unit}",
+                      "Medida por embalagem: ${Formatters.decimal(widget.product.measure)} ${widget.product.unit}",
                       style: AppTextStyles.smallText.copyWith(
                         color: AppColors.greenlightOne,
                         fontWeight: FontWeight.bold,
@@ -190,12 +199,14 @@ class _EditProductPageState extends State<EditProductPage> {
                 CustomTextFormField(
                   controller: _nameController,
                   labelText: "Nome do produto",
-                  validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                 ),
                 CustomTextFormField(
                   controller: _brandController,
                   labelText: "Marca / fabricante",
-                  validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                  validator: (v) =>
+                      (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                 ),
                 CustomTextFormField(
                   controller: _quantityController,
@@ -203,7 +214,7 @@ class _EditProductPageState extends State<EditProductPage> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                  validator: Validator.validateNonNegativeDecimal,
                 ),
                 CustomTextFormField(
                   controller: _priceController,

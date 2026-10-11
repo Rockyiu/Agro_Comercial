@@ -1,16 +1,18 @@
-import 'dart:io';
-import 'package:agro_comercial/common/widgets/image_source_picker.dart';
-import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
-import 'package:agro_comercial/common/models/machine_model.dart';
-import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/models/machine_cost_data.dart';
+import 'package:agro_comercial/common/models/machine_model.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
+import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
+import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
+import 'package:agro_comercial/common/widgets/loading_overlay.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
 import 'package:agro_comercial/common/widgets/machine_cost_fields.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
 import 'package:agro_comercial/locator.dart';
-import 'package:agro_comercial/common/utils/parsers.dart';
-import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:flutter/material.dart';
 
 import 'edit_machine_controller.dart';
@@ -27,97 +29,26 @@ class EditMachinePage extends StatefulWidget {
 
 class _EditMachinePageState extends State<EditMachinePage> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _brandController;
-  late TextEditingController _modelController;
-  late TextEditingController _powerController;
-  late TextEditingController _hoursController;
+  late final _nameController = TextEditingController(text: widget.machine.name);
+  late final _brandController = TextEditingController(
+    text: widget.machine.brand,
+  );
+  late final _modelController = TextEditingController(
+    text: widget.machine.model,
+  );
+  late final _powerController = TextEditingController(
+    text: widget.machine.power,
+  );
+  // Valor exibido no início: usado para saber se o horímetro foi alterado
+  late final _initialHours = Formatters.editable(widget.machine.workingHours);
+  late final _hoursController = TextEditingController(text: _initialHours);
   late final _costControllers = MachineCostControllers(widget.machine.costData);
 
-  final _powerFocus = FocusNode();
-  final _hoursFocus = FocusNode();
-  File? _newSelectedImage;
-
+  PhotoChange? _photo;
   final _controller = locator.get<EditMachineController>();
 
   @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.machine.name);
-    _brandController = TextEditingController(text: widget.machine.brand);
-    _modelController = TextEditingController(text: widget.machine.model);
-    _powerController = TextEditingController(text: widget.machine.power);
-    _hoursController = TextEditingController(
-      text: Formatters.editable(widget.machine.workingHours),
-    );
-
-    _controller.addListener(_handleStateChange);
-
-    _powerFocus.addListener(() {
-      setState(() {});
-      if (_powerFocus.hasFocus) {
-        Future.microtask(() {
-          _powerController.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _powerController.text.length,
-          );
-        });
-      }
-    });
-
-    _hoursFocus.addListener(() {
-      if (_hoursFocus.hasFocus) {
-        Future.microtask(() {
-          _hoursController.selection = TextSelection(
-            baseOffset: 0,
-            extentOffset: _hoursController.text.length,
-          );
-        });
-      }
-    });
-  }
-
-  void _handleStateChange() {
-    final state = _controller.state;
-    if (state is EditMachineLoadingState) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const CustomCircularProgressIndicator(),
-      );
-    } else if (state is EditMachineSuccessState) {
-      Navigator.pop(context);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Máquina atualizada com sucesso!"),
-          backgroundColor: AppColors.greenlightOne,
-        ),
-      );
-    } else if (state is EditMachineErrorState) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(state.message),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
-  }
-
-  Future<void> _pickImage() async {
-    final image = await showImageSourcePicker(
-      context,
-      cameraLabel: 'Tirar Nova Foto',
-      galleryLabel: 'Escolher Nova da Galeria',
-    );
-    if (image != null && mounted) setState(() => _newSelectedImage = image);
-  }
-
-  @override
   void dispose() {
-    _powerFocus.dispose();
-    _hoursFocus.dispose();
     _nameController.dispose();
     _brandController.dispose();
     _modelController.dispose();
@@ -128,204 +59,156 @@ class _EditMachinePageState extends State<EditMachinePage> {
     super.dispose();
   }
 
-  void _showDeleteDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          "Excluir Máquina",
-          style: AppTextStyles.midText20.copyWith(
-            color: AppColors.greenlightOne,
-          ),
-        ),
-        content: const Text(
+  String? _required(String? value) =>
+      (value ?? '').trim().isEmpty ? "Campo obrigatório" : null;
+
+  // Executa a ação no controller; se der certo, fecha a tela com o aviso
+  Future<void> _runAndClose(
+    Future<void> Function() action,
+    String successMessage,
+  ) async {
+    await action();
+    if (!mounted) return;
+    final state = _controller.state;
+    if (state is EditMachineErrorState) {
+      context.showErrorSnackBar(state.message);
+      return;
+    }
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+  }
+
+  Future<void> _delete() async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: "Excluir Máquina",
+      message:
           "Tem certeza que deseja excluir esta máquina? Esta ação não pode ser desfeita.",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              "Cancelar",
-              style: TextStyle(color: AppColors.inkMuted),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _controller.deleteMachineData(widget.machine.id!);
-            },
-            child: const Text(
-              "Sim, excluir",
-              style: TextStyle(
-                color: AppColors.danger,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+    );
+    if (!confirmed || !mounted) return;
+    await _runAndClose(
+      () => _controller.deleteMachineData(widget.machine.id!),
+      "Máquina excluída.",
+    );
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final isMotorized = widget.machine.isMotorized;
+
+    // copyWith mantém os demais campos (ex: isMotorized)
+    final updatedMachine = widget.machine.copyWith(
+      name: _nameController.text.trim(),
+      brand: _brandController.text.trim(),
+      model: _modelController.text.trim(),
+      power: _powerController.text.trim(),
+      workingHours: isMotorized
+          ? Parsers.decimal(_hoursController.text) ?? 0
+          : 0,
+      // Campos apagados: grava os dados de custo vazios
+      costData: _costControllers.toCostData() ?? const MachineCostData(),
+    );
+
+    await _runAndClose(
+      () => _controller.updateMachineData(
+        updatedMachine,
+        hoursChanged:
+            isMotorized && _hoursController.text.trim() != _initialHours,
+        photo: _photo,
       ),
+      "Máquina atualizada com sucesso!",
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isMotorized = widget.machine.isMotorized;
+
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
       appBar: AppBar(
         title: Text(
-          "Detalhes da Máquina",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
+          isMotorized ? "Detalhes da Máquina" : "Detalhes do Implemento",
         ),
-        backgroundColor: AppColors.greenlightOne,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_rounded, color: AppColors.danger),
-            onPressed: () => _showDeleteDialog(),
+            tooltip: 'Excluir',
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: _delete,
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      height: 120,
-                      width: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.greenlightOne,
-                          width: 2,
-                        ),
-                      ),
-                      child: _newSelectedImage != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(60),
-                              child: Image.file(
-                                _newSelectedImage!,
-                                height: 120,
-                                width: 120,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : (widget.machine.imageUrl != null &&
-                                widget.machine.imageUrl!.isNotEmpty)
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(60),
-                              child: Image.network(
-                                widget.machine.imageUrl!,
-                                height: 120,
-                                width: 120,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : const Icon(
-                              Icons.agriculture_rounded,
-                              size: 60,
-                              color: AppColors.lightkGrey,
-                            ),
-                    ),
-                    CircleAvatar(
-                      backgroundColor: AppColors.greenlightOne,
-                      radius: 20,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.camera_alt_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        onPressed: _pickImage,
-                      ),
-                    ),
-                  ],
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) => LoadingOverlay(
+          isLoading: _controller.state is EditMachineLoadingState,
+          child: child!,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                PhotoEditor(
+                  kind: MediaKind.machine,
+                  id: widget.machine.id,
+                  change: _photo,
+                  onChanged: (change) => setState(() => _photo = change),
+                  icon: isMotorized
+                      ? Icons.agriculture_rounded
+                      : Icons.construction_rounded,
                 ),
-              ),
-              const SizedBox(height: 32),
+                const SizedBox(height: 28),
 
-              CustomTextFormField(
-                controller: _nameController,
-                labelText: "Nome da máquina",
-                validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-              ),
-              CustomTextFormField(
-                controller: _brandController,
-                labelText: "Marca",
-                validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-              ),
-              CustomTextFormField(
-                controller: _modelController,
-                labelText: "Modelo",
-                validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-              ),
+                CustomTextFormField(
+                  controller: _nameController,
+                  labelText: "Nome da máquina",
+                  validator: _required,
+                ),
+                CustomTextFormField(
+                  controller: _brandController,
+                  labelText: "Marca",
+                  validator: _required,
+                ),
+                CustomTextFormField(
+                  controller: _modelController,
+                  labelText: "Modelo",
+                  validator: _required,
+                ),
 
-              CustomTextFormField(
-                controller: _powerController,
-                focusNode: _powerFocus,
-                labelText: "Potência",
-                keyboardType: TextInputType.number,
-                validator: (v) => v!.isEmpty ? "Campo obrigatório" : null,
-                suffixIcon:
-                    !_powerFocus.hasFocus && _powerController.text.isNotEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 14.0, right: 16.0),
-                        child: Text(
-                          "cv",
-                          style: AppTextStyles.inputText.copyWith(
-                            color: AppColors.grey,
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
+                if (isMotorized) ...[
+                  CustomTextFormField(
+                    controller: _powerController,
+                    labelText: "Potência (cv)",
+                    keyboardType: TextInputType.number,
+                    validator: _required,
+                  ),
+                  CustomTextFormField(
+                    controller: _hoursController,
+                    labelText: "Horímetro (horas trabalhadas)",
+                    helperText: "Também sobe sozinho com as operações lançadas",
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    validator: Validator.validateNonNegativeDecimal,
+                  ),
+                ],
+                const SizedBox(height: 8),
+                MachineCostFields(
+                  controllers: _costControllers,
+                  isMotorized: isMotorized,
+                ),
+                const SizedBox(height: 32),
 
-              CustomTextFormField(
-                controller: _hoursController,
-                focusNode: _hoursFocus,
-                labelText: "Horas trabalhadas",
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              MachineCostFields(
-                controllers: _costControllers,
-                isMotorized: widget.machine.isMotorized,
-              ),
-              const SizedBox(height: 32),
-
-              PrimaryButton(
-                text: 'Salvar Alterações',
-                onPressed: () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    // copyWith mantém os demais campos (ex: isMotorized)
-                    final updatedMachine = widget.machine.copyWith(
-                      name: _nameController.text.trim(),
-                      brand: _brandController.text.trim(),
-                      model: _modelController.text.trim(),
-                      power: _powerController.text.trim(),
-                      workingHours: Parsers.decimal(_hoursController.text) ?? 0,
-                      // Campos apagados: grava os dados de custo vazios
-                      costData:
-                          _costControllers.toCostData() ??
-                          const MachineCostData(),
-                    );
-
-                    _controller.updateMachineData(
-                      updatedMachine,
-                      _newSelectedImage,
-                    );
-                  }
-                },
-              ),
-            ],
+                PrimaryButton(
+                  text: 'Salvar Alterações',
+                  icon: Icons.check_rounded,
+                  onPressed: _save,
+                ),
+              ],
+            ),
           ),
         ),
       ),

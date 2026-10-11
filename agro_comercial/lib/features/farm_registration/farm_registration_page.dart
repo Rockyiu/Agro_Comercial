@@ -4,6 +4,7 @@ import 'package:agro_comercial/common/constants/crop_options.dart';
 import 'package:agro_comercial/common/models/plot_model.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/widgets/custom_bottom_sheet.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
@@ -95,7 +96,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
       final plots = _fieldControllers.map((c) {
         return PlotModel.create(
           name: c['name']!.text.trim(),
-          area: double.tryParse(c['area']!.text.replaceAll(',', '.')) ?? 0.0,
+          area: Parsers.decimal(c['area']!.text) ?? 0.0,
           crop: c['crop']!.text.trim(),
         );
       }).toList();
@@ -197,7 +198,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  validator: Validator.validateNumber,
+                  validator: Validator.validatePositiveDecimal,
                 ),
                 const SizedBox(height: 32),
 
@@ -273,8 +274,7 @@ class _FarmRegistrationPageState extends State<FarmRegistrationPage> {
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
                                       ),
-                                  validator: (v) =>
-                                      v!.isEmpty ? "Obrigatório" : null,
+                                  validator: Validator.validatePositiveDecimal,
                                 ),
                               ),
                               const SizedBox(width: 12),

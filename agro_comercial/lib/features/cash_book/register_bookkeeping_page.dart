@@ -3,7 +3,11 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/chart_of_accounts.dart';
 import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/widgets/confirm_dialog.dart';
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
 import 'package:agro_comercial/common/widgets/primary_button.dart';
@@ -49,8 +53,12 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
   late int _anoSelecionado = widget.anoInicial ?? DateTime.now().year;
   String? _contaSelecionada;
 
-  Uint8List? _arquivoPdfUpload;
+  // Comprovante (PDF): fica só no aparelho
+  final _media = locator.get<LocalMediaService>();
+  File? _comprovanteSalvo; // já guardado para este lançamento
+  Uint8List? _arquivoPdfUpload; // escolhido agora, gravado ao salvar
   String? _nomeArquivoPdfExibicao;
+  bool _removerPdf = false;
   bool _isSaving = false;
 
   // Plano de Contas (+ a conta já salva, caso ela não exista mais no plano)
@@ -74,10 +82,14 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
           .toStringAsFixed(2)
           .replaceAll('.', ',');
 
-      if (widget.dadosEdicao!.pdfUrl != null) {
-        _nomeArquivoPdfExibicao = "Nota_Fiscal_Anexada.pdf";
-      }
+      _carregarComprovante(widget.dadosEdicao!.id);
     }
+  }
+
+  Future<void> _carregarComprovante(String? id) async {
+    if (id == null) return;
+    final arquivo = await _media.receipt(id);
+    if (mounted) setState(() => _comprovanteSalvo = arquivo);
   }
 
   // Quantidade de dias do mês no ano selecionado (fevereiro muda no bissexto)
@@ -102,13 +114,35 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
       context.showErrorSnackBar("O PDF deve ter no máximo 10 MB.");
       return;
     }
+    // Todo PDF começa com "%PDF": recusa outros arquivos renomeados
+    if (!_ehPdf(file.bytes!)) {
+      context.showErrorSnackBar("O arquivo escolhido não é um PDF válido.");
+      return;
+    }
     setState(() {
+      _removerPdf = false;
       _arquivoPdfUpload = file.bytes;
       _nomeArquivoPdfExibicao = file.name;
     });
   }
 
   static const _tamanhoMaximoPdf = 10 * 1024 * 1024;
+
+  static bool _ehPdf(Uint8List bytes) =>
+      bytes.length > 4 &&
+      bytes[0] == 0x25 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x44 &&
+      bytes[3] == 0x46;
+
+  Future<void> _abrirComprovante() async {
+    final arquivo = _comprovanteSalvo;
+    if (arquivo == null) return;
+    final result = await OpenFilex.open(arquivo.path, type: 'application/pdf');
+    if (result.type != ResultType.done && mounted) {
+      context.showErrorSnackBar("Nenhum leitor de PDF encontrado no aparelho.");
+    }
+  }
 
   Future<void> _excluir() async {
     final confirmado = await showConfirmDialog(
@@ -117,8 +151,93 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
       message: "Deseja realmente excluir este lançamento do Livro Caixa?",
     );
     if (!confirmado) return;
-    await _controller.excluirLancamentos([widget.dadosEdicao!.id!]);
-    if (mounted) Navigator.pop(context);
+    final ok = await _controller.excluirLancamentos([widget.dadosEdicao!.id!]);
+    if (!mounted) return;
+    if (ok) {
+      Navigator.pop(context);
+    } else {
+      context.showErrorSnackBar("Erro ao excluir o lançamento.");
+    }
+  }
+
+  // Comprovante em PDF: escolher, abrir, trocar ou remover. Fica só no
+  // aparelho; na web essa parte não aparece.
+  Widget _buildComprovante() {
+    if (!_media.isSupported) {
+      return const Text(
+        "O comprovante em PDF pode ser anexado pelo aplicativo do celular.",
+        style: TextStyle(fontFamily: 'Inter', color: AppColors.inkMuted),
+      );
+    }
+
+    final novo = _nomeArquivoPdfExibicao;
+    final salvo = !_removerPdf && novo == null ? _comprovanteSalvo : null;
+    final temArquivo = novo != null || salvo != null;
+
+    return SurfaceCard(
+      onTap: _escolherPdf,
+      selected: temArquivo,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      child: Column(
+        children: [
+          IconBadge(
+            icon: temArquivo
+                ? Icons.picture_as_pdf_rounded
+                : Icons.upload_file_rounded,
+            size: 52,
+            color: temArquivo ? Colors.white : AppColors.primary,
+            background: temArquivo ? AppColors.primary : AppColors.primarySoft,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            novo ??
+                (salvo != null
+                    ? "Comprovante anexado"
+                    : "Anexar comprovante (PDF)"),
+            textAlign: TextAlign.center,
+            style: AppTextStyles.inputText.copyWith(
+              color: AppColors.ink,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            temArquivo
+                ? "Salvo somente neste aparelho. Toque para trocar."
+                : "Nota fiscal ou recibo. Fica salvo somente neste aparelho.",
+            textAlign: TextAlign.center,
+            style: AppTextStyles.smallText.copyWith(color: AppColors.inkMuted),
+          ),
+          if (temArquivo) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                if (salvo != null)
+                  TextButton.icon(
+                    onPressed: _abrirComprovante,
+                    icon: const Icon(Icons.open_in_new_rounded),
+                    label: const Text("Abrir"),
+                  ),
+                TextButton.icon(
+                  onPressed: () => setState(() {
+                    _arquivoPdfUpload = null;
+                    _nomeArquivoPdfExibicao = null;
+                    _removerPdf = _comprovanteSalvo != null;
+                  }),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                  ),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text("Remover"),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -280,49 +399,7 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    SurfaceCard(
-                      onTap: _escolherPdf,
-                      selected: _nomeArquivoPdfExibicao != null,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 22,
-                        horizontal: 16,
-                      ),
-                      child: Column(
-                        children: [
-                          IconBadge(
-                            icon: _nomeArquivoPdfExibicao == null
-                                ? Icons.upload_file_rounded
-                                : Icons.check_rounded,
-                            size: 52,
-                            color: _nomeArquivoPdfExibicao == null
-                                ? AppColors.primary
-                                : Colors.white,
-                            background: _nomeArquivoPdfExibicao == null
-                                ? AppColors.primarySoft
-                                : AppColors.primary,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            _nomeArquivoPdfExibicao ??
-                                "Anexar Nota Fiscal (PDF)",
-                            textAlign: TextAlign.center,
-                            style: AppTextStyles.inputText.copyWith(
-                              color: AppColors.ink,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _nomeArquivoPdfExibicao == null
-                                ? "Toque para escolher o arquivo"
-                                : "Toque para trocar o arquivo",
-                            style: AppTextStyles.smallText.copyWith(
-                              color: AppColors.inkMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildComprovante(),
                     const SizedBox(height: 40),
 
                     PrimaryButton(
@@ -344,13 +421,13 @@ class _RegisterBookkeepingPageState extends State<RegisterBookkeepingPage> {
                             conta: _contaSelecionada!,
                             historico: _obsController.text.trim(),
                             valor: Parsers.money(_valorController.text)!,
-                            pdfUrl: widget.dadosEdicao?.pdfUrl,
                           );
 
                           // Envia para o motor salvar no banco!
                           final sucesso = await _controller.salvarLancamento(
                             novoLancamento,
                             arquivoPdf: _arquivoPdfUpload,
+                            removerPdf: _removerPdf,
                           );
 
                           if (context.mounted) {

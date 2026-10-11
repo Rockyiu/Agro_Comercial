@@ -8,7 +8,6 @@ class ProductModel {
   final String category;
   final String warehouseId;
   final String farmId;
-  final String? imageUrl;
   final Map<String, dynamic> attributes;
   final double? unitPrice; // Preço por unidade do estoque (ex: R$ por L)
 
@@ -22,7 +21,6 @@ class ProductModel {
     required this.category,
     required this.warehouseId,
     required this.farmId,
-    this.imageUrl,
     required this.attributes,
     this.unitPrice,
   });
@@ -43,7 +41,6 @@ class ProductModel {
     String? category,
     String? warehouseId,
     String? farmId,
-    String? imageUrl,
     Map<String, dynamic>? attributes,
     double? unitPrice,
   }) {
@@ -57,7 +54,6 @@ class ProductModel {
       category: category ?? this.category,
       warehouseId: warehouseId ?? this.warehouseId,
       farmId: farmId ?? this.farmId,
-      imageUrl: imageUrl ?? this.imageUrl,
       attributes: attributes ?? this.attributes,
       unitPrice: unitPrice ?? this.unitPrice,
     );
@@ -74,7 +70,6 @@ class ProductModel {
       'category': category,
       'warehouseId': warehouseId,
       'farmId': farmId,
-      'imageUrl': imageUrl,
       'attributes': attributes,
       'unitPrice': unitPrice,
     };
@@ -91,7 +86,6 @@ class ProductModel {
       category: map['category'] ?? '',
       warehouseId: map['warehouseId'] ?? '',
       farmId: map['farmId'] ?? '',
-      imageUrl: map['imageUrl'],
       attributes: Map<String, dynamic>.from(map['attributes'] ?? {}),
       unitPrice: (map['unitPrice'] as num?)?.toDouble(),
     );

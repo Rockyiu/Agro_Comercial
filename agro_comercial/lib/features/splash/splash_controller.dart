@@ -1,4 +1,5 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
+import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,14 @@ class SplashController extends SafeChangeNotifier {
     notifyListeners();
   }
 
+  static bool _storedRoleIsCollaborator(String json) {
+    try {
+      return UserModel.fromJson(json).isCollaborator;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> isUserLogged() async {
     final prefs = await SharedPreferences.getInstance();
     // Opção "Manter-me conectado" da tela de login (padrão: sim)
@@ -45,13 +54,14 @@ class SplashController extends SafeChangeNotifier {
       return;
     }
 
-    bool isCollaborator = false;
+    bool isCollaborator;
     try {
       isCollaborator = await _authService.isCurrentUserCollaborator();
     } catch (e) {
-      // Sem conexão ao buscar o perfil: segue para a Home do produtor,
-      // como já acontecia antes
+      // Sem conexão ao buscar o perfil: usa o perfil salvo no último login,
+      // para o colaborador não cair na Home do produtor
       debugPrint("Erro ao verificar o perfil do usuário: $e");
+      isCollaborator = _storedRoleIsCollaborator(storedUser);
     }
     _changeState(AuthenticatedUser(isCollaborator: isCollaborator));
   }

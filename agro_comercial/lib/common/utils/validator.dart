@@ -1,3 +1,5 @@
+import 'parsers.dart';
+
 class Validator {
   Validator._();
 
@@ -114,14 +116,25 @@ class Validator {
     if (value == null || value.trim().isEmpty) {
       return "Esse campo não pode ser vazio";
     }
-    // Troca a vírgula por ponto para o Dart conseguir interpretar a casa decimal
-    final sanitizedValue = value.replaceAll(',', '.');
-
-    // Tenta converter para número. Se o resultado for nulo, é porque tem letras.
-    if (double.tryParse(sanitizedValue) == null) {
+    // Aceita vírgula ou ponto na casa decimal; recusa letras, "NaN" etc.
+    if (Parsers.decimal(value) == null) {
       return "Digite apenas números válidos";
     }
     return null;
+  }
+
+  // Número obrigatório, zero ou maior (ex: quantidade em estoque)
+  static String? validateNonNegativeDecimal(String? value) {
+    final error = validateNumber(value);
+    if (error != null) return error;
+    return Parsers.decimal(value!)! < 0 ? "Não pode ser negativo" : null;
+  }
+
+  // Número obrigatório maior que zero (ex: tamanho da embalagem)
+  static String? validatePositiveDecimal(String? value) {
+    final error = validateNumber(value);
+    if (error != null) return error;
+    return Parsers.decimal(value!)! <= 0 ? "Deve ser maior que zero" : null;
   }
 
   // Campo numérico opcional: vazio é aceito, mas se preenchido deve ser número

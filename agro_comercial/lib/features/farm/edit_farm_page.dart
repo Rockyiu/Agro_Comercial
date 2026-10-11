@@ -4,6 +4,8 @@ import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/constants/crop_options.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/models/plot_model.dart';
+import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/parsers.dart';
 import 'package:agro_comercial/common/utils/validator.dart';
 import 'package:agro_comercial/common/utils/area_units.dart';
 import 'package:agro_comercial/common/widgets/area_unit_selector.dart';
@@ -32,14 +34,14 @@ class _PlotFields {
   _PlotFields.fromPlot(PlotModel plot)
     : original = plot,
       name = TextEditingController(text: plot.name),
-      area = TextEditingController(text: plot.area.toString()),
+      area = TextEditingController(text: Formatters.editable(plot.area)),
       crop = TextEditingController(text: plot.crop);
 
   // Talhão renomeado mantém o id e guarda o nome antigo, para os lançamentos
   // anteriores continuarem ligados a ele
   PlotModel toPlot() {
     final name = this.name.text.trim();
-    final area = double.tryParse(this.area.text.replaceAll(',', '.')) ?? 0.0;
+    final area = Parsers.decimal(this.area.text) ?? 0.0;
     final crop = this.crop.text.trim();
     return original?.update(name: name, area: area, crop: crop) ??
         PlotModel.create(name: name, area: area, crop: crop);
@@ -184,21 +186,24 @@ class _EditFarmPageState extends State<EditFarmPage> {
                     CustomTextFormField(
                       controller: _nameController,
                       labelText: "Nome da Fazenda",
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      validator: (v) =>
+                          (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 16),
                     CustomTextFormField(
                       controller: _cadProController,
                       labelText: "CAD/PRO",
                       keyboardType: TextInputType.number,
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      validator: (v) =>
+                          (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 16),
                     // Campo para Endereço
                     CustomTextFormField(
                       controller: _addressController,
                       labelText: "Endereço da Propriedade",
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      validator: (v) =>
+                          (v ?? '').trim().isEmpty ? "Obrigatório" : null,
                     ),
                     const SizedBox(height: 16),
                     AreaUnitSelector(
@@ -214,7 +219,7 @@ class _EditFarmPageState extends State<EditFarmPage> {
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
-                      validator: (v) => v!.isEmpty ? "Obrigatório" : null,
+                      validator: Validator.validatePositiveDecimal,
                     ),
                     const SizedBox(height: 32),
 
@@ -288,8 +293,8 @@ class _EditFarmPageState extends State<EditFarmPage> {
                                           const TextInputType.numberWithOptions(
                                             decimal: true,
                                           ),
-                                      validator: (v) =>
-                                          v!.isEmpty ? "Obrigatório" : null,
+                                      validator:
+                                          Validator.validatePositiveDecimal,
                                     ),
                                   ),
                                   const SizedBox(width: 12),

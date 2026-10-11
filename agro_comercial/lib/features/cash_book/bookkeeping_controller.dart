@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 
 import '../../common/models/bookkeeping_model.dart';
 import '../../services/bookkeeping_service/bookkeeping_service.dart';
+import '../../services/local_media_service/local_media_service.dart';
 import 'bookkeeping_state.dart';
 
 class BookkeepingController extends SafeChangeNotifier {
   final BookkeepingService _bookkeepingService;
+  final LocalMediaService _media;
 
-  BookkeepingController(this._bookkeepingService);
+  BookkeepingController(this._bookkeepingService, this._media);
 
   BookkeepingState _state = BookkeepingInitialState();
   BookkeepingState get state => _state;
@@ -19,11 +21,15 @@ class BookkeepingController extends SafeChangeNotifier {
   }
 
   // --- 1. LER LANÇAMENTOS (READ) ---
+  // Junto vêm os ids dos lançamentos com comprovante guardado no aparelho
   Future<void> carregarLancamentos() async {
     _changeState(BookkeepingLoadingState());
     try {
-      final lancamentos = await _bookkeepingService.getEntries();
-      _changeState(BookkeepingSuccessState(lancamentos));
+      final (lancamentos, comprovantes) = await (
+        _bookkeepingService.getEntries(),
+        _media.receiptIds(),
+      ).wait;
+      _changeState(BookkeepingSuccessState(lancamentos, comprovantes));
     } catch (e) {
       debugPrint("Erro ao carregar o Livro Caixa: $e");
       _changeState(
@@ -36,10 +42,15 @@ class BookkeepingController extends SafeChangeNotifier {
   Future<bool> salvarLancamento(
     BookkeepingModel lancamento, {
     Uint8List? arquivoPdf,
+    bool removerPdf = false,
   }) async {
     _changeState(BookkeepingLoadingState());
     try {
-      await _bookkeepingService.saveEntry(lancamento, pdfBytes: arquivoPdf);
+      await _bookkeepingService.saveEntry(
+        lancamento,
+        pdfBytes: arquivoPdf,
+        removePdf: removerPdf,
+      );
       // Recarrega a lista após salvar
       await carregarLancamentos();
       return true;
@@ -50,29 +61,21 @@ class BookkeepingController extends SafeChangeNotifier {
     }
   }
 
-  // --- 3. EXCLUIR MÚLTIPLOS LANÇAMENTOS (DELETE) ---
-  Future<void> excluirLancamentos(List<String> idsSelecionados) async {
-    // Comprovantes (PDF) dos lançamentos, para apagar junto
-    final current = _state;
-    final ids = idsSelecionados.toSet();
-    final pdfUrls = current is BookkeepingSuccessState
-        ? [
-            for (final l in current.lancamentos)
-              if (ids.contains(l.id)) l.pdfUrl,
-          ]
-        : const <String?>[];
-
+  // --- 3. EXCLUIR LANÇAMENTOS (DELETE) ---
+  // Os comprovantes guardados no aparelho são apagados junto. Devolve false
+  // se der erro.
+  Future<bool> excluirLancamentos(List<String> idsSelecionados) async {
     _changeState(BookkeepingLoadingState());
     try {
-      await _bookkeepingService.deleteEntries(
-        idsSelecionados,
-        pdfUrls: pdfUrls,
-      );
+      await _bookkeepingService.deleteEntries(idsSelecionados);
       await carregarLancamentos(); // Atualiza a tela
+      return true;
     } catch (e) {
+      debugPrint("Erro ao excluir lançamentos: $e");
       _changeState(
         BookkeepingErrorState("Erro ao excluir os lançamentos selecionados."),
       );
+      return false;
     }
   }
 }

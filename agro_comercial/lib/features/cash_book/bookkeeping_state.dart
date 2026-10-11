@@ -8,7 +8,9 @@ class BookkeepingLoadingState extends BookkeepingState {}
 
 class BookkeepingSuccessState extends BookkeepingState {
   final List<BookkeepingModel> lancamentos;
-  BookkeepingSuccessState(this.lancamentos);
+  // Ids dos lançamentos com comprovante (PDF) guardado no aparelho
+  final Set<String> comprovantes;
+  BookkeepingSuccessState(this.lancamentos, [this.comprovantes = const {}]);
 }
 
 class BookkeepingErrorState extends BookkeepingState {

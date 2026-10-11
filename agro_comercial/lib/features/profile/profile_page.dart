@@ -1,7 +1,11 @@
 import 'package:agro_comercial/common/constants/app_colors.dart';
-import 'package:agro_comercial/common/constants/app_text_styles.dart';
 import 'package:agro_comercial/common/models/user_model.dart';
 import 'package:agro_comercial/common/utils/formatters.dart';
+import 'package:agro_comercial/common/utils/validator.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
+import 'package:agro_comercial/common/widgets/brand.dart';
+import 'package:agro_comercial/common/widgets/local_photo.dart';
+import 'package:agro_comercial/services/local_media_service/local_media_service.dart';
 import 'package:agro_comercial/common/widgets/app_snack_bar.dart';
 import 'package:agro_comercial/common/widgets/custom_circular_progress_indicator.dart';
 import 'package:agro_comercial/common/widgets/custom_text_form_field.dart';
@@ -32,7 +36,8 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isProcessing = false;
 
   String? _id;
-  String? _imageUrl;
+  PhotoChange? _photo;
+  final _media = locator.get<LocalMediaService>();
   String? _currentRole;
   // O CPF só pode ser informado uma vez (identifica a conta na equipe)
   bool _cpfLocked = false;
@@ -46,7 +51,6 @@ class _ProfilePageState extends State<ProfilePage> {
   // Função responsável por preencher os dados automaticamente ao entrar na tela
   void _fillFields(UserModel profile) {
     _id = profile.id;
-    _imageUrl = profile.imageUrl;
     _currentRole = profile.role;
     _cpfLocked = (profile.cpf ?? '').isNotEmpty;
 
@@ -68,7 +72,6 @@ class _ProfilePageState extends State<ProfilePage> {
       password: null,
       role: _currentRole,
       phone: _phoneController.text.trim(),
-      imageUrl: _imageUrl,
     );
 
     final result = await _controller.saveProfile(
@@ -82,6 +85,14 @@ class _ProfilePageState extends State<ProfilePage> {
       context.showErrorSnackBar(result.message);
       return;
     }
+    // A foto fica só neste aparelho
+    try {
+      await _media.applyPhotoChange(MediaKind.profile, _id!, _photo);
+    } catch (e) {
+      debugPrint("Erro ao salvar a foto do perfil: $e");
+      if (mounted) context.showErrorSnackBar("Não foi possível salvar a foto.");
+    }
+    if (!mounted) return;
     // Mostra o aviso na tela anterior, depois de fechar esta
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
@@ -107,15 +118,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.iceWhite,
-      appBar: AppBar(
-        title: Text(
-          "Meu Perfil",
-          style: AppTextStyles.midText20.copyWith(color: Colors.white),
-        ),
-        backgroundColor: AppColors.greenlightOne,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: AppBar(title: const Text("Meu Perfil")),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, child) {
@@ -151,50 +154,24 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    PhotoEditor(
+                      kind: MediaKind.profile,
+                      id: _id,
+                      change: _photo,
+                      onChanged: (change) => setState(() => _photo = change),
+                      icon: Icons.person_rounded,
+                    ),
+                    const SizedBox(height: 12),
                     Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 60,
-                            backgroundColor: AppColors.greenlightOne.withValues(
-                              alpha: 0.1,
-                            ),
-                            backgroundImage: _imageUrl != null
-                                ? NetworkImage(_imageUrl!)
-                                : null,
-                            child: _imageUrl == null
-                                ? const Icon(
-                                    Icons.person_rounded,
-                                    size: 64,
-                                    color: AppColors.greenlightOne,
-                                  )
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              backgroundColor: AppColors.greenlightOne,
-                              radius: 18,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                onPressed: () {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "O upload de imagem será integrado em breve!",
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ],
+                      child: StatusChip(
+                        label: _currentRole == 'colaborador'
+                            ? 'Colaborador'
+                            : 'Produtor',
+                        icon: _currentRole == 'colaborador'
+                            ? Icons.badge_rounded
+                            : Icons.agriculture_rounded,
+                        color: AppColors.primary,
+                        background: AppColors.primarySoft,
                       ),
                     ),
                     const SizedBox(height: 32),
@@ -202,15 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     CustomTextFormField(
                       controller: _nameController,
                       labelText: "Nome completo",
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return "O nome é obrigatório";
-                        }
-                        if (v.trim().split(' ').length < 2) {
-                          return "Informe nome e sobrenome";
-                        }
-                        return null;
-                      },
+                      validator: Validator.validateName,
                     ),
                     const SizedBox(height: 16),
 
@@ -218,17 +187,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       controller: _emailController,
                       labelText: "E-mail de acesso",
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) {
-                          return "O e-mail é obrigatório";
-                        }
-                        // Validação nativa de formato de E-mail
-                        final bool emailValid = RegExp(
-                          r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+",
-                        ).hasMatch(v);
-                        if (!emailValid) return "Insira um e-mail válido";
-                        return null;
-                      },
+                      validator: Validator.validateEmail,
                     ),
                     const SizedBox(height: 16),
 
@@ -240,16 +199,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           ? "O CPF não pode ser alterado"
                           : null,
                       keyboardType: TextInputType.number,
-                      validator: (v) {
-                        if (v != null && v.isNotEmpty) {
-                          // Remove pontos e traços para contar apenas os números
-                          String numeros = v.replaceAll(RegExp(r'[^0-9]'), '');
-                          if (numeros.length != 11) {
-                            return "O CPF deve conter 11 dígitos";
-                          }
-                        }
-                        return null;
-                      },
+                      // Opcional, mas se informado precisa ser um CPF válido
+                      validator: (v) => _cpfLocked || (v ?? '').trim().isEmpty
+                          ? null
+                          : Validator.validateCPF(v),
                     ),
                     const SizedBox(height: 16),
 
@@ -272,14 +225,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     CustomTextFormField(
                       controller: _passwordController,
                       labelText: "Nova senha (deixe em branco para manter)",
+                      helperText:
+                          "Mínimo de 8 caracteres, com maiúscula, minúscula e número",
                       obscureText: true,
-                      validator: (v) {
-                        // Só valida se o usuário decidiu digitar uma nova senha
-                        if (v != null && v.isNotEmpty && v.length < 6) {
-                          return "A nova senha deve ter no mínimo 6 caracteres";
-                        }
-                        return null;
-                      },
+                      // Mesma regra do cadastro; vazio mantém a senha atual
+                      validator: (v) => (v ?? '').isEmpty
+                          ? null
+                          : Validator.validatePassword(v),
                     ),
                     const SizedBox(height: 32),
 

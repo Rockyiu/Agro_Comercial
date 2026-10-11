@@ -1,7 +1,6 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
 import 'package:agro_comercial/common/models/product_model.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/services/product_service/product_service.dart';
@@ -22,7 +21,7 @@ class ProductController extends SafeChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createProduct(ProductModel product, File? imageFile) async {
+  Future<void> createProduct(ProductModel product, {PhotoChange? photo}) async {
     _changeState(ProductLoadingState());
     try {
       final activeFarmId = _farmController.selectedFarm?.id;
@@ -33,7 +32,7 @@ class ProductController extends SafeChangeNotifier {
       final newProduct = product.copyWith(farmId: activeFarmId);
       if (await _isDuplicate(newProduct)) return;
 
-      await _productService.createProduct(newProduct, imageFile);
+      await _productService.createProduct(newProduct, photo: photo);
       _changeState(ProductSuccessState());
     } catch (e) {
       debugPrint("Erro ao salvar produto: $e");
@@ -41,12 +40,22 @@ class ProductController extends SafeChangeNotifier {
     }
   }
 
-  Future<void> updateProduct(ProductModel product) async {
+  // [quantityChanged]: o estoque foi alterado no formulário (ver
+  // ProductService.updateProduct)
+  Future<void> updateProduct(
+    ProductModel product, {
+    required bool quantityChanged,
+    PhotoChange? photo,
+  }) async {
     _changeState(ProductLoadingState());
     try {
       if (await _isDuplicate(product)) return;
 
-      await _productService.updateProduct(product, null);
+      await _productService.updateProduct(
+        product,
+        updateQuantity: quantityChanged,
+        photo: photo,
+      );
       _changeState(ProductSuccessState());
     } catch (e) {
       debugPrint("Erro ao atualizar produto: $e");

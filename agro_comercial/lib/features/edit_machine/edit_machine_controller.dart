@@ -1,6 +1,6 @@
 import 'package:agro_comercial/common/utils/safe_change_notifier.dart';
-import 'dart:io';
 import 'package:agro_comercial/common/models/machine_model.dart';
+import 'package:agro_comercial/common/models/photo_change.dart';
 import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'edit_machine_state.dart';
 
@@ -12,15 +12,22 @@ class EditMachineController extends SafeChangeNotifier {
   EditMachineState _state = EditMachineInitialState();
   EditMachineState get state => _state;
 
+  // [hoursChanged]: o horímetro foi alterado no formulário (ver
+  // MachineService.updateMachine)
   Future<void> updateMachineData(
-    MachineModel updatedMachine,
-    File? newImageFile,
-  ) async {
+    MachineModel updatedMachine, {
+    required bool hoursChanged,
+    PhotoChange? photo,
+  }) async {
     _state = EditMachineLoadingState();
     notifyListeners();
 
     try {
-      await _machineService.updateMachine(updatedMachine, newImageFile);
+      await _machineService.updateMachine(
+        updatedMachine,
+        updateHours: hoursChanged,
+        photo: photo,
+      );
       _state = EditMachineSuccessState();
       notifyListeners();
     } catch (e) {

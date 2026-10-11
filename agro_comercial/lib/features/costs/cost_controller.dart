@@ -142,9 +142,7 @@ class CostController extends SafeChangeNotifier {
     _state = CostLoadingState();
     notifyListeners();
     try {
-      for (var id in ids) {
-        await _costService.deleteCost(id);
-      }
+      await _costService.deleteCosts(ids);
       await loadCosts();
     } catch (e) {
       _state = CostErrorState("Erro ao excluir custos selecionados.");

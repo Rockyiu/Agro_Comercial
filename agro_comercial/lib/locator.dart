@@ -11,6 +11,7 @@ import 'services/farm_service/farm_service.dart';
 import 'services/field_operation_service/field_operation_service.dart';
 import 'services/harvest_service/harvest_service.dart';
 import 'services/invoice_service/invoice_local_service.dart';
+import 'services/local_media_service/local_media_service.dart';
 import 'services/machine_service/machine_service.dart';
 import 'services/operation_service/operation_service.dart';
 import 'services/product_service/product_service.dart';
@@ -56,6 +57,10 @@ void setupDependencies() {
 }
 
 void _registerServices() {
+  // Fotos e comprovantes guardados só no aparelho (um único serviço, para as
+  // telas serem avisadas quando uma foto muda)
+  locator.registerLazySingleton<LocalMediaService>(() => LocalMediaService());
+
   locator.registerFactory<SecureStorageService>(
     () => const SecureStorageService(),
   );
@@ -76,9 +81,15 @@ void _registerServices() {
     () => EmployeeService(locator.get<CpfIndexService>()),
   );
 
-  locator.registerFactory<WarehouseService>(() => WarehouseService());
-  locator.registerFactory<MachineService>(() => MachineService());
-  locator.registerFactory<ProductService>(() => ProductService());
+  locator.registerFactory<WarehouseService>(
+    () => WarehouseService(locator.get<LocalMediaService>()),
+  );
+  locator.registerFactory<MachineService>(
+    () => MachineService(locator.get<LocalMediaService>()),
+  );
+  locator.registerFactory<ProductService>(
+    () => ProductService(locator.get<LocalMediaService>()),
+  );
   locator.registerFactory<StockService>(
     () => StockService(
       locator.get<MachineService>(),
@@ -91,7 +102,9 @@ void _registerServices() {
 
   locator.registerLazySingleton<CostService>(() => CostService());
   locator.registerFactory<HarvestService>(() => HarvestService());
-  locator.registerLazySingleton<BookkeepingService>(() => BookkeepingService());
+  locator.registerLazySingleton<BookkeepingService>(
+    () => BookkeepingService(locator.get<LocalMediaService>()),
+  );
   // Singleton: mantém uma única conexão aberta com o banco local (SQLite)
   locator.registerLazySingleton<InvoiceLocalService>(
     () => InvoiceLocalService(),
@@ -112,7 +125,10 @@ void _registerControllers() {
     ),
   );
   locator.registerLazySingleton<BookkeepingController>(
-    () => BookkeepingController(locator.get<BookkeepingService>()),
+    () => BookkeepingController(
+      locator.get<BookkeepingService>(),
+      locator.get<LocalMediaService>(),
+    ),
   );
   // Ano-calendário do Livro Caixa (compartilhado entre as telas)
   locator.registerLazySingleton<CashBookYearController>(
@@ -266,4 +282,15 @@ void _registerControllers() {
       locator.get<StockService>(),
     ),
   );
+}
+
+// Ao sair da conta: descarta o estado guardado em memória (fazenda ativa,
+// armazéns, Livro Caixa), para nada do usuário anterior aparecer para o
+// próximo que entrar no aparelho
+Future<void> resetUserSession() async {
+  await locator.resetLazySingleton<FarmController>();
+  await locator.resetLazySingleton<WarehouseController>();
+  await locator.resetLazySingleton<BookkeepingController>();
+  await locator.resetLazySingleton<CashBookYearController>();
+  await locator.resetLazySingleton<ConsolidationController>();
 }

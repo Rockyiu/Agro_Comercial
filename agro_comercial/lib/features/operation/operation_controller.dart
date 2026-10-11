@@ -166,6 +166,10 @@ class OperationController extends SafeChangeNotifier {
         return;
       }
 
+      // Confere o estoque com os valores mais recentes do banco (outra pessoa
+      // pode ter lançado depois que o formulário abriu)
+      await _refreshFarmResources();
+
       final newOperation = _buildOperation(
         operation,
         appliedProductsList,
