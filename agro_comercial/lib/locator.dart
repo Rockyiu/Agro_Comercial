@@ -176,6 +176,7 @@ void _registerControllers() {
       locator.get<FieldOperationService>(),
       locator.get<EmployeeService>(),
       locator.get<FarmController>(),
+      locator.get<MachineService>(),
     ),
   );
   locator.registerFactory<CollaboratorHomeController>(

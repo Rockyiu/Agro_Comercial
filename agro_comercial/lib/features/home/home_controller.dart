@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:agro_comercial/features/farm/farm_controller.dart';
 import 'package:agro_comercial/services/employee_service/employee_service.dart';
 import 'package:agro_comercial/services/field_operation_service/field_operation_service.dart';
+import 'package:agro_comercial/services/machine_service/machine_service.dart';
 import 'package:agro_comercial/services/operation_service/operation_service.dart';
 import 'home_state.dart';
 
@@ -14,12 +15,14 @@ class HomeController extends SafeChangeNotifier {
   final FieldOperationService _fieldOperationService;
   final EmployeeService _employeeService;
   final FarmController _farmController;
+  final MachineService _machineService;
 
   HomeController(
     this._operationService,
     this._fieldOperationService,
     this._employeeService,
     this._farmController,
+    this._machineService,
   );
 
   HomeState _state = HomeInitialState();
@@ -45,6 +48,16 @@ class HomeController extends SafeChangeNotifier {
         );
         return;
       }
+
+      // Tira os custos das máquinas do documento que o colaborador lê
+      // (cadastros antigos). Roda em segundo plano, sem travar a tela.
+      unawaited(
+        _machineService
+            .moveLegacyCosts(farmId)
+            .catchError(
+              (Object e) => debugPrint("Erro ao mover custos das máquinas: "),
+            ),
+      );
 
       // Busca as duas listas em paralelo
       final (operations, fieldOperations) = await (

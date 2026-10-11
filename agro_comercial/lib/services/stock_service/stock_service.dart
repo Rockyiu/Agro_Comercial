@@ -64,11 +64,12 @@ class StockService {
 
   StockService(this._machineService, this._productService);
 
-  // Máquinas e produtos de todos os armazéns da fazenda (buscados em paralelo)
+  // Máquinas e produtos de todos os armazéns da fazenda (buscados em paralelo).
+  // [withCosts]: inclui o custo da hora-máquina (só o produtor pode ler)
   Future<({List<MachineModel> machines, List<ProductModel> products})>
-  loadFarmResources(String farmId) async {
+  loadFarmResources(String farmId, {bool withCosts = false}) async {
     final (machines, products) = await (
-      _machineService.getMachinesByFarm(farmId),
+      _machineService.getMachinesByFarm(farmId, withCosts: withCosts),
       _productService.getProductsByFarm(farmId),
     ).wait;
     return (machines: machines, products: products);

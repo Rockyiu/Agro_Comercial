@@ -25,6 +25,7 @@ class WarehouseDetailsController extends SafeChangeNotifier {
         _machineService.getMachinesByWarehouse(
           farmId: warehouse.farmId,
           warehouseId: warehouse.id!,
+          withCosts: true,
         ),
         _productService.getProductsByWarehouse(
           farmId: warehouse.farmId,
