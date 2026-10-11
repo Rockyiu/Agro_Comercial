@@ -121,7 +121,7 @@ class ReportsController extends SafeChangeNotifier {
       _fieldOperationService.getFieldOperations(farmId),
       _costService.getCostsByFarm(farmId, includeLabor: true),
       _harvestService.getHarvests(farmId),
-      _stockService.loadFarmResources(farmId),
+      _stockService.loadFarmResources(farmId, withCosts: true),
     ).wait;
 
     return FarmReportInput(

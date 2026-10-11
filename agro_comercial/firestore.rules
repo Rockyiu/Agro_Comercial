@@ -196,15 +196,28 @@ service cloud.firestore {
       allow delete: if isOwner(resource.data.farmId);
     }
 
-    // O colaborador só mexe no horímetro (pelas operações que lança)
+    // O colaborador só mexe no horímetro (pelas operações que lança).
+    // Os dados de custo não ficam aqui, e sim em machine_costs: o colaborador
+    // lê este documento. costData só sobra em cadastros antigos, e o produtor
+    // o remove ao gravar.
     match /machines/{machineId} {
       allow read: if isMember(resource.data.farmId);
-      allow create: if isOwner(request.resource.data.farmId);
+      allow create: if isOwner(request.resource.data.farmId)
+        && !('costData' in request.resource.data);
       allow update: if keeps('farmId') && (
-        isOwner(resource.data.farmId)
+        (isOwner(resource.data.farmId) && !('costData' in request.resource.data))
         || (isCollaborator(resource.data.farmId) && changedKeys().hasOnly(['workingHours']))
       );
       allow delete: if isOwner(resource.data.farmId);
+    }
+
+    // Custo da hora-máquina (id = id da máquina): só o produtor lê e grava.
+    // Excluir um que não existe é liberado (exclusão da máquina em lote).
+    match /machine_costs/{machineId} {
+      allow read: if isOwner(resource.data.farmId);
+      allow create: if isOwner(request.resource.data.farmId);
+      allow update: if isOwner(resource.data.farmId) && keeps('farmId');
+      allow delete: if resource == null || isOwner(resource.data.farmId);
     }
 
     // O colaborador só mexe na quantidade (baixa/estorno de estoque)

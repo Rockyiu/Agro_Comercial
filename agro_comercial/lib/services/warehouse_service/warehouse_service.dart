@@ -77,6 +77,10 @@ class WarehouseService {
     await commitInBatches(_firestore, [
       for (final ref in [...machineRefs, ...productRefs])
         (batch) => batch.delete(ref),
+      // Custo da hora-máquina (machine_costs usa o mesmo id da máquina)
+      for (final ref in machineRefs)
+        (batch) =>
+            batch.delete(_firestore.collection('machine_costs').doc(ref.id)),
       for (final id in warehouseIds)
         (batch) => batch.delete(_firestore.collection('warehouses').doc(id)),
     ]);
